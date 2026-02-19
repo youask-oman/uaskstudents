@@ -2,6 +2,7 @@
 
 import React from "react";
 import MathRenderer from "@/components/math/MathJaxRenderer";
+import TypingPlaybackMessage from "./TypingPlaybackMessage";
 import { NormalizedChatMessage, NormalizedContentItem } from "./types";
 import styles from "./MathCanvas.module.css";
 
@@ -9,6 +10,7 @@ interface ChatMessageProps {
   message: NormalizedChatMessage;
   originalProblem?: string;
   direction?: "ltr" | "rtl";
+  assistantContent?: string;
 }
 
 const normalizePromptPreview = (value: string): string => {
@@ -76,7 +78,7 @@ const RenderAssistantItem = ({
   return <div className={styles.chatBubbleAssistant}>{item.message}</div>;
 };
 
-export default function ChatMessage({ message, originalProblem, direction = "ltr" }: ChatMessageProps) {
+export default function ChatMessage({ message, originalProblem, direction = "ltr", assistantContent }: ChatMessageProps) {
   const isRtl = direction === "rtl";
   if (message.role === "user") {
     const text = message.items.find((item) => item.type === "text");
@@ -99,9 +101,13 @@ export default function ChatMessage({ message, originalProblem, direction = "ltr
     >
       <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>AI TUTOR</div>
       <div style={{ display: "grid", gap: 8, width: "100%" }}>
-        {message.items.map((item, index) => (
-          <RenderAssistantItem key={`${message.id}-${index}`} item={item} originalProblem={originalProblem} />
-        ))}
+        {assistantContent && String(message.id || "").trim() ? (
+          <TypingPlaybackMessage messageId={String(message.id)} fallbackContent={assistantContent} />
+        ) : (
+          message.items.map((item, index) => (
+            <RenderAssistantItem key={`${message.id}-${index}`} item={item} originalProblem={originalProblem} />
+          ))
+        )}
       </div>
       <div className={`${styles.chatSolutionSignature} ${isRtl ? styles.chatSolutionSignatureRtl : ""}`.trim()}>Uask.ai</div>
     </div>

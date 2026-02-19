@@ -2073,6 +2073,7 @@ async def execute_batch_solve(
 
     async def _parse_validate_response(initial_response: Any) -> Tuple[Dict[str, Any], Any, bool]:
         nonlocal provider_raw_text, provider_raw_payload
+        relaxed_short_final = provider_name == "ollama" and external_tier in {"SHORT_STEPS", "FINAL"}
 
         def _capture_provider_raw(resp: Any) -> None:
             nonlocal provider_raw_text, provider_raw_payload
@@ -2085,7 +2086,7 @@ async def execute_batch_solve(
         validator = Draft202012Validator(schema_body)
         output_tokens = int((response_local.usage or {}).get("output") or 0)
         repair_attempted_local = False
-        if output_tokens == 0:
+        if output_tokens == 0 and not relaxed_short_final:
             # One controlled retry for zero-completion responses (common transient failure mode).
             try:
                 response_local = await _call_provider(request_id_suffix=":retry1")
@@ -2139,7 +2140,7 @@ async def execute_batch_solve(
                 return True
 
             extracted_payload = _extract_payload_from_text(raw_local)
-            if not _has_substantive_final_answers(extracted_payload):
+            if not _has_substantive_final_answers(extracted_payload) and not relaxed_short_final:
                 try:
                     response_local = await _call_provider(request_id_suffix=":textretry1")
                     _capture_provider_raw(response_local)
@@ -2149,7 +2150,9 @@ async def execute_batch_solve(
                 except Exception:
                     pass
 
-            extracted_errors = sorted(validator.iter_errors(extracted_payload), key=lambda e: e.path)
+            extracted_errors = [] if relaxed_short_final else sorted(
+                validator.iter_errors(extracted_payload), key=lambda e: e.path
+            )
             if extracted_errors:
                 raise BatchSolveError(
                     "Extracted payload failed schema validation.",
@@ -2162,7 +2165,7 @@ async def execute_batch_solve(
                         ],
                         "raw_preview": _preview_text(raw_local),
                     },
-                )
+            )
             _post_assertions(
                 extracted_payload,
                 schema_body=schema_body,
@@ -2171,7 +2174,7 @@ async def execute_batch_solve(
             )
             return extracted_payload, response_local, False
 
-        allow_json_repair_local = provider_name == "ollama" and external_tier in {"SHORT_STEPS", "FINAL"}
+        allow_json_repair_local = False
         payload_local: Optional[Dict[str, Any]] = None
         parse_error_local: Optional[Exception] = None
         try:
@@ -2230,7 +2233,9 @@ async def execute_batch_solve(
                     max_questions_allowed=max_questions_allowed,
                     runtime_max_tasks_per_question=runtime_max_tasks_per_question,
                 )
-                extracted_errors = sorted(validator.iter_errors(extracted_payload), key=lambda e: e.path)
+                extracted_errors = [] if relaxed_short_final else sorted(
+                    validator.iter_errors(extracted_payload), key=lambda e: e.path
+                )
                 if not extracted_errors:
                     _post_assertions(
                         extracted_payload,
@@ -2238,6 +2243,8 @@ async def execute_batch_solve(
                         questions=normalized_questions,
                         tier=external_tier,
                     )
+                    return extracted_payload, response_local, True
+                if relaxed_short_final:
                     return extracted_payload, response_local, True
             raise BatchSolveError(
                 "Provider returned invalid JSON payload.",
@@ -2250,7 +2257,9 @@ async def execute_batch_solve(
                 },
             )
 
-        errors_local = sorted(validator.iter_errors(payload_local), key=lambda e: e.path)
+        errors_local = [] if relaxed_short_final else sorted(
+            validator.iter_errors(payload_local), key=lambda e: e.path
+        )
         if errors_local and allow_json_repair_local:
             repair_attempted_local = True
             error_summary = _json_error_summary(errors_local)
@@ -2314,7 +2323,9 @@ async def execute_batch_solve(
                     max_questions_allowed=max_questions_allowed,
                     runtime_max_tasks_per_question=runtime_max_tasks_per_question,
                 )
-                extracted_errors = sorted(validator.iter_errors(extracted_payload), key=lambda e: e.path)
+                extracted_errors = [] if relaxed_short_final else sorted(
+                    validator.iter_errors(extracted_payload), key=lambda e: e.path
+                )
                 if not extracted_errors:
                     _post_assertions(
                         extracted_payload,
@@ -2322,6 +2333,8 @@ async def execute_batch_solve(
                         questions=normalized_questions,
                         tier=external_tier,
                     )
+                    return extracted_payload, response_local, True
+                if relaxed_short_final:
                     return extracted_payload, response_local, True
             raise BatchSolveError(
                 "Schema validation failed for provider payload.",

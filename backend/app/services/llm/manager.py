@@ -41,7 +41,7 @@ def get_configured_ollama_model(tier: Optional[str] = None) -> str:
         model = (os.environ.get("OLLAMA_MODEL_FINAL") or "").strip()
         if model:
             return model
-    model = (os.environ.get("OLLAMA_MODEL") or "Qwen2.5-Math-7B-Instruct-Q4_K_M:latest").strip()
+    model = (os.environ.get("OLLAMA_MODEL") or "Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf").strip()
     if not model:
         raise RuntimeError("OLLAMA_MODEL is required")
     return model
@@ -90,7 +90,7 @@ class LLMManager:
                 timeout_seconds=int((os.environ.get("OLLAMA_TIMEOUT_SECONDS") or "60").strip()),
                 connect_timeout_seconds=int((os.environ.get("OLLAMA_CONNECT_TIMEOUT_SECONDS") or "5").strip()),
                 default_temperature=float((os.environ.get("OLLAMA_TEMPERATURE") or "0.2").strip()),
-                default_num_ctx=int((os.environ.get("OLLAMA_NUM_CTX") or "4096").strip()),
+                default_num_ctx=int((os.environ.get("OLLAMA_NUM_CTX") or "8192").strip()),
                 default_max_tokens=default_max_tokens,
             )
         self._clients[provider] = client

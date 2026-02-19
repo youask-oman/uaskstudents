@@ -1,5 +1,0 @@
-{
-  "http": 200,
-  "openai_calls": 0,
-  "sse": "event: meta\ndata: {\"request_id\": \"ba161930-d9ef-497b-972b-732ef915cf2f\", \"attempt_id\": \"fce1a46e-1f09-4381-9e47-e12259c3699d\", \"provider\": \"openai\", \"model\": \"gpt-5-mini\", \"tier_requested\": \"final\", \"effective_tier\": \"final\", \"type\": \"meta\"}\n\nevent: done\ndata: {\"ok\": false, \"error\": {\"code\": \"incomplete_input\", \"message\": \"Input looks incomplete. Please provide the full question before solve.\", \"request_id\": \"ba161930-d9ef-497b-972b-732ef915cf2f\", \"attempt_id\": \"fce1a46e-1f09-4381-9e47-e12259c3699d\"}}\n\n"
-}

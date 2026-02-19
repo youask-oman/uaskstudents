@@ -60,7 +60,7 @@ export default function RecognitionBox({
   if (finalHandwritten) {
     return (
       <div className={styles.recognitionBoxFinalHandwritten}>
-        <div className={styles.recognitionMetaFinalHandwritten}>{String(badgeLabel || "PROBLEM").toUpperCase()}</div>
+        <div className={styles.recognitionMetaFinalHandwritten}>{String(badgeLabel || "QUESTION Q1").toUpperCase()}</div>
         <div className={styles.recognitionContentFinalHandwritten}>
           <MathRenderer content={latex} mode={shouldRenderAsProse(latex) ? "prose" : "block"} />
         </div>

@@ -3003,7 +3003,7 @@
 
 .recognitionBoxShortPaper {
   padding: 32px;
-  background: #ffffff;
+  background: transparent;
   border-bottom: 1px solid #f8e6dc;
 }
 
@@ -3029,7 +3029,7 @@
 }
 
 .paperPageShortPaper .stepsBlock {
-  background: #ffffff;
+  background: transparent;
   padding: 24px 32px 0;
   font-family: var(--short-paper-font-family, "Public Sans", "Inter", system-ui, sans-serif);
   font-size: var(--short-paper-font-size, 16px);
@@ -3059,8 +3059,9 @@
 .paperPageShortPaper .stepsBlock > .stepRow:last-child {
   margin: 24px -32px 0;
   padding: 22px 32px 24px;
-  background: #f3f4f6;
+  background: transparent;
   border-bottom: 0;
+  border-top: 1px solid #dbe3ee;
 }
 
 .paperPageShortPaper .stepsBlock > .stepRow:last-child .stepLabel {

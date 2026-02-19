@@ -575,40 +575,42 @@ class OllamaClient:
                 seen.add(c)
         return uniq
 
-    def _build_prompt(
+    @staticmethod
+    def _content_to_text(content: Any) -> str:
+        if isinstance(content, list):
+            text_parts: List[str] = []
+            for part in content:
+                if isinstance(part, dict) and part.get("type") in {"text", "input_text"}:
+                    text_parts.append(str(part.get("text") or ""))
+            return "\n".join([p for p in text_parts if p]).strip()
+        return str(content or "").strip()
+
+    def _build_chat_messages(
         self,
         *,
         messages: Optional[List[Dict[str, Any]]],
         system_prompt: Optional[str],
         prompt: Optional[str],
-        json_schema: Optional[Dict[str, Any]],
-    ) -> str:
-        if prompt:
-            prompt_text = str(prompt)
-        else:
-            chunks: List[str] = []
-            for msg in messages or []:
-                role = str(msg.get("role") or "user").upper()
-                content = msg.get("content", "")
-                if isinstance(content, list):
-                    text_parts: List[str] = []
-                    for part in content:
-                        if isinstance(part, dict) and part.get("type") in {"text", "input_text"}:
-                            text_parts.append(str(part.get("text") or ""))
-                    content_text = "\n".join([p for p in text_parts if p])
-                else:
-                    content_text = str(content)
-                chunks.append(f"[{role}]\n{content_text}")
-            prompt_text = "\n\n".join([c for c in chunks if c.strip()])
+    ) -> List[Dict[str, str]]:
+        built: List[Dict[str, str]] = []
+        for msg in messages or []:
+            raw_role = str(msg.get("role") or "user").strip().lower()
+            role = raw_role
+            if raw_role == "developer":
+                role = "system"
+            if role not in {"system", "user", "assistant"}:
+                role = "user"
+            text_content = self._content_to_text(msg.get("content", ""))
+            if text_content:
+                built.append({"role": role, "content": text_content})
 
-        if json_schema:
-            schema_payload = json.dumps(json_schema, ensure_ascii=True)
-            prompt_text = (
-                f"{prompt_text}\n\n"
-                "Return ONLY valid JSON that matches this schema exactly:\n"
-                f"{schema_payload}"
-            )
-        return prompt_text.strip()
+        if not built:
+            if system_prompt:
+                built.append({"role": "system", "content": str(system_prompt)})
+            if prompt is not None:
+                built.append({"role": "user", "content": str(prompt)})
+
+        return built
 
     @staticmethod
     def _extract_ollama_format_schema(json_schema: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -632,7 +634,34 @@ class OllamaClient:
 
     @staticmethod
     def _should_enforce_english(model_name: str) -> bool:
-        return str(model_name or "").strip().lower() == "qwen2.5-math-7b-instruct-q4_k_m:latest"
+        return "qwen2.5-math-7b-instruct" in str(model_name or "").strip().lower()
+
+    @staticmethod
+    def _parse_stop_sequences() -> Optional[List[str]]:
+        raw = (os.environ.get("OLLAMA_STOP") or "").strip()
+        if not raw:
+            return None
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    seq = [str(x) for x in parsed if str(x)]
+                    return seq or None
+            except Exception:
+                pass
+        seq = [s.strip() for s in raw.split(",") if s.strip()]
+        return seq or None
+
+    def _strip_stop_suffix(self, text: str) -> str:
+        out = str(text or "")
+        stops = self._parse_stop_sequences() or []
+        for stop in stops:
+            if not stop:
+                continue
+            while out.rstrip().endswith(stop):
+                out = out.rstrip()
+                out = out[: -len(stop)]
+        return out.strip()
 
     async def generate(
         self,
@@ -651,7 +680,7 @@ class OllamaClient:
         verbosity: Optional[str] = None,
         reasoning_effort: Optional[str] = None,
     ) -> LLMResponse:
-        del stream, top_p, verbosity, reasoning_effort
+        del stream, verbosity, reasoning_effort
 
         model_name = (model or self.default_model).strip()
         if not model_name:
@@ -667,39 +696,56 @@ class OllamaClient:
         ).strip().lower() in {"1", "true", "yes"}
         prompt_schema = json_schema if include_schema_in_prompt else None
 
-        prompt_text = self._build_prompt(
+        chat_messages = self._build_chat_messages(
             messages=messages,
-            system_prompt=None,
+            system_prompt=system_prompt,
             prompt=prompt,
-            json_schema=prompt_schema,
         )
-        system_text = (system_prompt or "").strip()
+        if prompt_schema and chat_messages:
+            schema_payload = json.dumps(prompt_schema, ensure_ascii=True)
+            chat_messages[-1]["content"] = (
+                f"{chat_messages[-1]['content']}\n\n"
+                "Return ONLY valid JSON that matches this schema exactly:\n"
+                f"{schema_payload}"
+            ).strip()
+
         english_only_enforced = self._should_enforce_english(model_name)
         if english_only_enforced:
-            system_text = (
-                "You must answer in English only. Do not use any other language.\n\n"
-                f"{system_text}"
-            ).strip()
-        if not prompt_text:
-            raise LLMProviderError("Ollama prompt is empty.", provider="ollama")
+            english_rule = "You must answer in English only. Do not use any other language."
+            if chat_messages and chat_messages[0].get("role") == "system":
+                chat_messages[0]["content"] = f"{english_rule}\n\n{chat_messages[0].get('content', '')}".strip()
+            else:
+                chat_messages.insert(0, {"role": "system", "content": english_rule})
+        if not chat_messages:
+            raise LLMProviderError("Ollama chat messages are empty.", provider="ollama")
 
         options: Dict[str, Any] = {}
         effective_temp = self.default_temperature if temperature is None else temperature
         if effective_temp is not None:
             options["temperature"] = float(effective_temp)
+        effective_top_p = top_p
+        if effective_top_p is None:
+            top_p_raw = (os.environ.get("OLLAMA_TOP_P") or "1").strip()
+            try:
+                effective_top_p = float(top_p_raw)
+            except Exception:
+                effective_top_p = 1.0
+        if effective_top_p is not None:
+            options["top_p"] = float(effective_top_p)
         if self.default_num_ctx:
             options["num_ctx"] = int(self.default_num_ctx)
         effective_max_tokens = max_tokens if max_tokens is not None else self.default_max_tokens
         if effective_max_tokens is not None:
             options["num_predict"] = int(effective_max_tokens)
+        stop_sequences = self._parse_stop_sequences()
+        if stop_sequences:
+            options["stop"] = stop_sequences
 
         payload: Dict[str, Any] = {
             "model": model_name,
-            "prompt": prompt_text,
+            "messages": chat_messages,
             "stream": False,
         }
-        if system_text:
-            payload["system"] = system_text
         format_schema = self._extract_ollama_format_schema(json_schema) if use_format_schema else None
         if format_schema is not None:
             payload["format"] = format_schema
@@ -719,8 +765,8 @@ class OllamaClient:
                 "provider": "ollama",
                 "model": model_name,
                 "base_url": self.base_url,
-                "prompt": _sanitize_prompt_preview(prompt_text),
-                "input_length": len(prompt_text),
+                "messages_preview": _sanitize_prompt_preview(json.dumps(chat_messages, ensure_ascii=True)),
+                "input_length": len(json.dumps(chat_messages, ensure_ascii=True)),
             },
         )
 
@@ -740,7 +786,7 @@ class OllamaClient:
                             client_ctx = httpx.AsyncClient(timeout=timeout)
 
                         async with client_ctx as client:
-                            resp_local = await client.post(f"{candidate_base}/api/generate", json=request_payload)
+                            resp_local = await client.post(f"{candidate_base}/api/chat", json=request_payload)
 
                         if candidate_base != self.base_url:
                             self.base_url = candidate_base
@@ -851,6 +897,20 @@ class OllamaClient:
                 details=details,
             )
 
+        # Capture exact raw Ollama response body before any parsing/formatting.
+        raw_response_text = resp.text or ""
+        try:
+            from app.ollama_raw_capture import capture_ollama_raw_response
+
+            capture_ollama_raw_response(
+                request_json=payload,
+                response_raw_text=raw_response_text,
+                question_number=None,
+                item_number=None,
+            )
+        except Exception:
+            pass
+
         try:
             data = resp.json()
         except Exception as exc:
@@ -861,7 +921,13 @@ class OllamaClient:
                 details={"base_url": self.base_url, "body_preview": (resp.text or "")[:300]},
             ) from exc
 
-        content = str(data.get("response") or "").strip()
+        content = ""
+        message_obj = data.get("message")
+        if isinstance(message_obj, dict):
+            content = str(message_obj.get("content") or "").strip()
+        if not content:
+            content = str(data.get("response") or "").strip()
+        content = self._strip_stop_suffix(content)
         if not content:
             raise LLMProviderError(
                 "Ollama returned empty response text.",
@@ -907,7 +973,11 @@ class OllamaClient:
             status=status,
             payload={
                 "base_url": self.base_url,
-                "full_input_prompt": prompt_text,
+                "endpoint": "/api/chat",
+                "full_input_messages": chat_messages,
+                "full_input_prompt": "\n\n".join(
+                    [f"[{m.get('role', '').upper()}]\n{m.get('content', '')}" for m in chat_messages]
+                ),
                 "ollama_metrics": {
                     "total_duration": data.get("total_duration"),
                     "load_duration": data.get("load_duration"),

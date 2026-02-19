@@ -465,7 +465,7 @@ Choices
 
 === Item 46 ===
 Level: College
-Question (Final answer only)
+what is the final answer for this Question (Final answer only)
 Evaluate exactly:
 ∫_0^1 (6x^5)/(1 + x^6) dx
 (Provide a simplified exact value.)
@@ -10047,3 +10047,297 @@ Evaluate exactly:
 ∫_0^1 (4x^3)/(1 + x^4) dx
 (Provide a simplified exact value.)
 Final answer: ____
+
+\
+
+1) Markov chain with convergence time (3 states)
+A commuter chooses among three routes R1, R2, R3 each day. If they take R1, they take R1 again the next day with probability 0.6, switch to R2 with probability 0.3, and to R3 with probability 0.1. If they take R2, they switch to R1 with probability 0.2, stay on R2 with probability 0.5, and switch to R3 with probability 0.3. If they take R3, they switch to R1 with probability 0.4, to R2 with probability 0.2, and stay on R3 with probability 0.4.
+Find the stationary distribution (long-run fraction of days on each route). Then, starting from R1, determine the smallest n such that the probability of being on R2 after n days is within 0.01 of its stationary value. Explain what “within 0.01” means and justify your stopping rule.
+
+2) Constrained optimization (Lagrange multipliers + interpretation)
+A factory produces two chemicals A and B. The profit function (in thousands of dollars) is:
+P(x,y) = 40x + 55y - 2x^2 - 3y^2 - xy
+where x and y are daily production amounts (tons). Due to safety limits, production must satisfy:
+2x + 3y = 90, with x >= 0 and y >= 0.
+Find the production levels x,y that maximize profit subject to the constraint. Verify your candidate is a maximum (not a minimum), compute the maximum profit, and interpret the result in context. Finally, explain whether the nonnegativity constraints matter for your solution.
+
+3) Series test + error bound (convergence + approximation)
+An engineering approximation uses the infinite series:
+S = sum_{n=1 to infinity} [ (-1)^(n+1) / (n^2 + 3n) ].
+(a) Determine whether the series converges absolutely, conditionally, or diverges.
+(b) Compute a simplified exact expression for the sum if possible (or reduce it to a telescoping/known form).
+(c) Find the minimum number of terms N needed so that the partial sum S_N approximates S within 0.001 in absolute error. Clearly justify the error bound you use and why it applies.
+
+4) Differential equation with forcing + initial condition + long-run behavior
+A mass-spring-damper system satisfies:
+m x'' + c x' + k x = F0 cos(omega t),
+with m = 2, c = 6, k = 18, F0 = 10, and omega = 3. The system starts from rest at equilibrium:
+x(0) = 0, x'(0) = 0.
+(a) Solve for x(t) explicitly (transient + steady-state).
+(b) Identify the steady-state amplitude and phase shift.
+(c) Determine the long-run average power dissipated by damping over one period.
+(d) Explain how your solution reflects the difference between transient decay and forced response.
+
+5) Probability with Bayes + expectation + variance (mixed discrete/conditional)
+A diagnostic test is used for a disease. Disease prevalence is 2%. The test has sensitivity 0.94 (true positive rate) and specificity 0.97 (true negative rate). A patient is tested twice independently (same accuracy each time).
+(a) If the patient tests positive on the first test, find the probability they actually have the disease.
+(b) If the patient tests positive on both tests, update the probability they have the disease.
+(c) Define a random variable X = number of positive tests out of 2. Find E[X] and SD[X] unconditionally (before knowing disease status).
+(d) Explain in context why E[X] is not simply 2*0.94 or 2*0.03.
+
+
+1) Open-top box (optimization):
+A company makes open-top rectangular boxes with a square base. The material for the base costs $0.08/cm^2 and the material for the sides costs $0.05/cm^2. The box must hold 2000 cm^3. Find the dimensions that minimize total cost and compute that minimum cost.
+
+2) Pricing model (quadratic revenue + profit):
+Demand for a product is modeled by q(p)=1200-30p, where q is units/day and p is price in dollars. The cost to produce q units is C(q)=400+6q+0.01q^2. Find the price p that maximizes profit, and the maximum profit.
+
+3) Water tank (related rates + geometry):
+Water is leaking from a conical tank of height 6 m and radius 3 m (at the top). Water depth is decreasing at 0.04 m/min when the water is 2 m deep. Find the rate (in m^3/min) at which the water volume is changing at that instant.
+
+4) Work to pump water (integrals):
+A cylindrical tank of radius 2 m is filled with water to a height of 5 m. Water must be pumped to a spout 1.5 m above the top of the tank. Compute the work required (in joules) assuming water density 1000 kg/m^3 and g=9.8 m/s^2.
+
+5) Cooling (differential equation):
+A metal part at 180°C is placed in a room at 22°C. After 6 minutes, it cools to 120°C. Using Newton’s Law of Cooling, find (a) the cooling constant, and (b) the time when it reaches 60°C.
+
+6) Mixture with leakage (DE + concentration):
+A tank initially contains 100 L of pure water. Brine with 0.5 kg/L of salt flows in at 3 L/min, and the well-mixed solution flows out at 2 L/min (so the volume changes). Find the amount of salt in the tank after 20 minutes.
+
+7) Loan amortization (geometric series):
+You borrow $18,000 at 6.6% APR compounded monthly and make equal monthly payments for 4 years. Find the monthly payment, and then find the remaining balance after 18 payments.
+
+8) Two investments (systems + exponentials):
+You invest $12,000 split between an account earning 4.2% compounded monthly and another earning 6.0% compounded monthly. After 3 years, the total is $14,600. How much was put in each account?
+
+9) Logistic growth (model + solving):
+A campus app has user growth modeled by P(t)=40000/(1 + A e^(-0.35t)), where t is in months. If P(0)=2500 and P(6)=11,000, find A (and check consistency), then predict P(12).
+
+10) Optimization with constraint (Lagrange multipliers):
+A manufacturer wants a closed cylindrical can with volume 500 cm^3. The metal for the top and bottom costs twice as much per cm^2 as the metal for the side. Find the radius and height that minimize cost.
+
+11) Area between curves (integration):
+A designer’s arch is bounded by y=2x and y=x^2. Find the area of the region enclosed between the curves.
+
+12) Average value (calculus + interpretation):
+A car’s speed (m/s) over 0 ≤ t ≤ 10 seconds is v(t)=3t - t^2/2. Find the average speed on the interval, and the total distance traveled.
+
+13) Piecewise cost + marginal analysis:
+The marginal cost (dollars/unit) of producing x units is MC(x)=8+0.04x. Fixed cost is $500. If revenue is R(x)=20x-0.02x^2, find the output x that maximizes profit, and the maximum profit.
+
+14) Min distance to a line (optimization):
+A point moves along the parabola y=x^2. Find the point on the parabola that is closest to the line y=2x+3, and compute that minimum distance.
+
+15) Trigonometry + navigation:
+A boat leaves a dock and travels 12 km at a bearing of 035°. Then it travels 9 km at a bearing of 120°. Find (a) the boat’s distance from the dock, and (b) the bearing from the dock to the boat.
+
+16) Vector resultants (forces):
+Three forces act on a joint: F1 = 40 N at 20° above the positive x-axis, F2 = 55 N at 140°, and F3 = 30 N straight down. Find the magnitude and direction of the resultant force.
+
+17) Matrix model (supply chain):
+A factory uses two raw materials A and B to make products P and Q. To make 1 unit of P requires 2 kg of A and 1 kg of B. To make 1 unit of Q requires 1 kg of A and 3 kg of B. The factory has 240 kg of A and 210 kg of B. If profit is $18 per P and $24 per Q, find production levels that use all materials and compute profit (assume fractional units allowed).
+
+18) Eigenvalue stability (Markov chain context):
+A shopper alternates between two stores A and B weekly. If they shop at A one week, probability they choose A next week is 0.7; if they shop at B, probability they choose A next week is 0.4. Find the long-run fraction of weeks they shop at A, and determine how many weeks it takes until the probability is within 0.01 of the long-run value starting from A.
+
+19) Normal distribution decision rule:
+A test score is normal with mean 72 and standard deviation 10. Scholarships go to the top 12%. Find the cutoff score. If a student improves their mean by 5 points (same SD), what is their new probability of getting the scholarship?
+
+20) Bayes + screening:
+A disease affects 1.5% of a population. A test has 97% sensitivity and 94% specificity. If a randomly selected person tests positive, compute the probability they actually have the disease. Then compute the probability after two independent positive tests.
+
+21) Binomial with constraints:
+A call center resolves a customer issue on the first call with probability 0.68. In a random sample of 20 calls, find the probability that (a) at least 15 are resolved on the first call, and (b) between 12 and 16 inclusive are resolved. Then find the expected value and standard deviation.
+
+22) Expected value (game):
+A game costs $5 to play. You roll two fair dice. If the sum is 2–6 you win $0, if it’s 7–9 you win $8, if it’s 10–11 you win $15, and if it’s 12 you win $40. Find the expected profit for the player and determine if it’s fair.
+
+23) Poisson + conditional:
+A server receives requests following a Poisson process with mean 3.2 per minute. Find the probability that in a given minute it receives (a) exactly 2 requests, (b) at least 5 requests. Given that at least 1 request occurred, find the probability exactly 2 occurred.
+
+24) Confidence interval + sample size:
+A company wants to estimate the mean battery life. A pilot sample has standard deviation 1.8 hours. Determine the sample size needed so a 95% confidence interval for the mean has margin of error at most 0.5 hours. Then write the CI formula they would use once data is collected.
+
+25) Regression interpretation + prediction:
+A linear model predicts monthly sales (in thousands) from ad spend (in thousands) as yhat=12.4+1.85x. The standard error of estimate is 3.1. If x=8, predict sales and give a reasonable interval for actual sales using yhat ± 2(SE). Explain what that interval represents in context.
+
+26) Optimization with piecewise shipping:
+A store sells custom posters. Printing cost per poster is 2+0.01n dollars when producing n posters/day. Shipping is $60/day if n ≤ 200, and $60 plus $0.20 per poster over 200 if n > 200. Revenue is R(n)=9n-0.005n^2. Find the n that maximizes profit.
+
+27) Trig + harmonic motion:
+A piston’s displacement (cm) is x(t)=7cos(4t+phi). At t=0, the piston is at x=3.5 and moving toward decreasing x. Find phi (in 0 ≤ phi < 2pi), then find the first time t>0 when x(t)=-7.
+
+28) Complex numbers (AC circuit):
+An impedance is Z=R+i(XL-XC). A circuit has R=40 ohms, XL=60 ohms, XC=25 ohms. Compute Z in polar form, then compute the current magnitude for a 120 V RMS source, and the phase angle between voltage and current.
+
+29) Sequences + finance:
+A student deposits money at the end of each month into an account earning 5.4% APR compounded monthly. They deposit $120 the first month and increase deposits by $10 each month. Find the account value after 24 months.
+
+30) Integral + probability density:
+A random variable X has density f(x)=k x(4-x) on 0 ≤ x ≤ 4. Find k, then compute P(1 ≤ X ≤ 3), and compute E[X].
+
+31) Differential eq (mixing + evaporation):
+A tank starts with 200 L of solution containing 30 kg of salt. Pure water flows in at 5 L/min. The mixture is drained at 4 L/min. Additionally, evaporation removes 0.2 L/min of water (salt stays). Find the salt amount after 30 minutes.
+
+32) Implicit differentiation (constraint):
+A rectangle has one corner at the origin and the opposite corner on the curve x^2+2y^2=50 in the first quadrant, with sides along the axes. Find the dimensions that maximize area and the maximum area.
+
+33) Volumes (washers):
+A solid is formed by rotating the region bounded by y=sqrt(x), y=0, and x=9 about the x-axis. Find its volume.
+
+34) Volumes (shells, real context):
+A company designs a dome by rotating the region under y=6 - x^2/8 above the x-axis from x=-4 to x=4 about the y-axis. Find the volume using the shell method.
+
+35) Arc length (design):
+A cable follows the curve y=(1/3)x^(3/2) from x=0 to x=9 (units in meters). Find the cable length.
+
+36) Taylor approximation (error bound):
+You approximate (1+x)^(1/3) near x=0 using the second-degree Taylor polynomial. Find the polynomial, then approximate (1.06)^(1/3) and give a bound on the error using the next term.
+
+37) Optimization with interval + absolute value:
+A delivery truck must travel from A(0,0) to B(12,6), but must stop at some point P(x,0) on the x-axis to pick up cargo. Speed is 60 km/h on roads parallel to the x-axis and 40 km/h on roads parallel to the y-axis. Assuming it can only move horizontally then vertically, choose x to minimize total travel time.
+
+38) Partial fractions + area:
+A water flow model requires evaluating integral from 1 to 4 of (3x+2)/(x(x+1)) dx. Compute the exact value and interpret it as accumulated “flow units” over the interval.
+
+39) System of equations (two plans):
+A gym offers Plan A: $25 sign-up fee plus $18/month. Plan B: $5 sign-up fee plus $22/month, but every 6th month is free. After how many months do the total costs match, and which plan is cheaper at 2 years?
+
+40) Optimization with constraint (packaging):
+A closed rectangular box must have a square base and volume 32,000 cm^3. The material for the top and bottom costs $0.03/cm^2; the sides cost $0.02/cm^2. Find the dimensions minimizing cost and the minimum cost.
+
+41) Trig identities (engineering tolerance):
+A signal is S(t)=A sin(omega t)+B cos(omega t) with A=3, B=4. Rewrite S(t) as R sin(omega t+theta) with R>0. Then determine all t in [0, 2pi/omega) where S(t) ≥ 4.
+
+42) Rational function (domain + asymptotes + optimization):
+A company’s average cost per unit is AC(x)=5000/x + 12 + 0.02x for x>0. Find the production level x that minimizes average cost and compute the minimum average cost.
+
+43) Inverse functions (calibration):
+A sensor outputs V(T)=ln(T-10)+2 volts for temperatures T>10 (in °C). Find the inverse function T(V). Then determine the temperature corresponding to V=3.1, and the change in temperature when voltage increases from 2.8 to 3.0.
+
+44) Optimization with geometry (fencing + river):
+A farmer has 300 m of fencing to enclose a rectangular pen against a straight river (so no fence along the river side). Let the sides perpendicular to the river be x and the side parallel to the river be y. Find x,y that maximize area and the maximum area.
+
+45) Probability (hypergeometric + conditional):
+A class has 8 seniors, 12 juniors, and 10 sophomores. A committee of 6 is chosen at random. Find the probability that (a) exactly 3 are seniors, (b) at least 1 is from each grade. Given that the committee has at least 2 seniors, find the probability it has exactly 3 seniors.
+
+46) Optimization with time (calculus):
+A lifeguard at point A on a beach must reach a swimmer at point B, where B is 80 m down the shore and 40 m out in the water from the closest point. The guard runs at 6 m/s on sand and swims at 2 m/s in water. If the guard runs to a point P on the shore before entering the water, find where to enter the water to minimize time and compute that minimum time.
+
+47) Integral test (series):
+A physics model uses the series sum from n=2 to infinity of 1/(n(ln n)^1.4). Determine whether it converges, and justify using an appropriate test.
+
+48) Power series (solve + interval):
+Solve the differential equation y' = x y with y(0)=2. Then express the solution as a power series and state its interval of convergence.
+
+49) Linear algebra (least squares fit in context):
+You measure data points (1,2.1), (2,2.9), (3,3.7), (4,5.2) and want a best-fit line y=mx+b. Find m and b using least squares, then predict y at x=5, and compute the residual at x=4.
+
+50) Multistep geometry + algebra (circle and chord):
+A circular track has radius 50 m. A straight shortcut path is a chord that cuts off an arc of length 60 m. Find (a) the central angle in radians, (b) the chord length, and (c) how much shorter the chord is than the arc length.
+
+
+
+1) A savings account earns 5.2% APR compounded monthly. If $7,500 is deposited today and left untouched for 3 years, what is the account balance at the end of 3 years?
+
+2) A rectangle has perimeter 64 cm and length 4 cm more than width. What is the area of the rectangle?
+
+3) A ladder 10 m long leans against a wall so that its base is 6 m from the wall. How high up the wall does the ladder reach?
+
+4) A car decelerates at 3.5 m/s^2 from 28 m/s. How far does it travel before stopping?
+
+5) A cylindrical can has radius 4 cm and height 12 cm. What is its volume in cm^3?
+
+6) A point is chosen uniformly at random on the interval [0, 10]. What is the probability it lies within 2 units of 7?
+
+7) A factory produces items with defect rate 2%. If 15 items are chosen at random (independent), what is the probability none are defective?
+
+8) The function f(x)=x^3-6x^2+9x+1 has a local minimum at what x-value?
+
+9) A particle’s position is s(t)=4t^3-15t^2+6t (meters). What is its velocity at t=2 seconds?
+
+10) Compute the area between y=x and y=x^2 on the interval 0≤x≤1.
+
+11) A cable is modeled by y=cosh(x/2) for 0≤x≤2. What is the exact slope of the cable at x=2?
+
+12) A company’s revenue is R(x)=120x-0.5x^2 (dollars). What x maximizes revenue?
+
+13) Solve for x: ln(x-1)+ln(x+3)=ln(16).
+
+14) A right triangle has hypotenuse 13 and one leg 5. What is the other leg?
+
+15) A sine wave has amplitude 6 and period π. Write its angular frequency ω.
+
+16) Evaluate: (3-2i)(4+i) in a+bi form.
+
+17) If z=5cis(140°), what is |z|?
+
+18) A sequence is defined by a1=7 and an=0.8 an-1. What is a6?
+
+19) The sum of the first n terms of an arithmetic sequence is Sn = n/2 (2a1 + (n-1)d).
+If a1=12 and d=-3, what is S10?
+
+20) A geometric series has first term 9 and common ratio -1/3. What is its infinite sum?
+
+21) A box contains 5 red, 7 blue, and 8 green balls. One ball is drawn at random. What is the probability it is not blue?
+
+22) Scores are normal with mean 70 and standard deviation 12. What z-score corresponds to a score of 88?
+
+23) A fair coin is flipped 9 times. What is the probability of exactly 6 heads?
+
+24) Requests arrive as a Poisson process with mean 4 per hour. What is the probability of exactly 2 requests in an hour?
+
+25) A line passes through (3, -2) and (11, 6). What is its slope?
+
+26) Find the equation of the line with slope -4 passing through (2, 9) in slope-intercept form.
+
+27) A quadratic passes through x-intercepts -1 and 5 and has y-intercept 10. What is the quadratic in standard form?
+
+28) Simplify: (x^2 - 9)/(x^2 - 3x) and state the simplified expression (assume x≠0,3).
+
+29) Solve for θ on 0≤θ<2π: 2cos(θ)=1.
+
+30) A circular track has radius 30 m. What is the length of an arc subtending a central angle of 2.4 radians?
+
+31) A function has derivative f'(x)=3x^2-12x. If f(0)=5, find f(4).
+
+32) Evaluate the definite integral: ∫ from 0 to 3 of (2x+1) dx.
+
+33) Find the average value of f(x)=x^2 on [0, 4].
+
+34) A tank has 200 L of water and drains at 6 L/min. Assuming a constant rate, how many minutes until 50 L remain?
+
+35) A population grows continuously at 2.3% per year. If it starts at 18,000, what is the population after 5 years?
+
+36) A vector has components <-3, 4>. What is its magnitude?
+
+37) Two forces of 10 N and 14 N act with an included angle of 60°. What is the magnitude of the resultant force?
+
+38) A matrix A has determinant det(A)= -6. What is det(3A) for a 2×2 matrix A?
+
+39) Solve the system:
+2x + y = 11
+x - 3y = -1
+Find x.
+
+40) A plane travels 480 km due east then 360 km due north. How far is it from the starting point?
+
+41) A projectile’s height is h(t) = -4.9t^2 + 24t + 1 (meters). When does it hit the ground? (Give the positive time.)
+
+42) Find the domain of f(x)=sqrt(5-2x).
+
+43) A bag contains 9 identical batteries, 2 of which are dead. If 3 are chosen without replacement, what is the probability all 3 work?
+
+44) A random variable X is uniform on [2, 8]. What is E[X]?
+
+45) If sin(θ)=3/5 and θ is in quadrant II, what is cos(θ)?
+
+46) Simplify: log10(5000) - log10(2).
+
+47) A function is f(x)= (x^2+1)/(x-1). Find the vertical asymptote.
+
+48) Find the remainder when p(x)=2x^3-5x^2+7x-9 is divided by (x-2).
+
+49) A cone has volume 144π cm^3 and radius 6 cm. What is its height?
+
+50) A continuous random variable has density f(x)=kx on 0≤x≤4. Find k.

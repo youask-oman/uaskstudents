@@ -899,6 +899,7 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
           <RightTutorChat
             sessionId={String(session.id)}
             initialMessages={tutorNormalizedMessages}
+            sourceMessages={session?.messages || []}
             originalProblem={originalProblemStatement}
             stepTitles={stepTitles}
             classification={classification}

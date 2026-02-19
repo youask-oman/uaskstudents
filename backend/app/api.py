@@ -23,7 +23,7 @@ import io
 import aiofiles
 import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jsonschema import Draft202012Validator, ValidationError
 from PIL import Image, ImageEnhance, ImageFilter, ImageStat
 from openai import AsyncOpenAI, BadRequestError
@@ -7247,7 +7247,6 @@ async def solve_v3_stream_endpoint(
 
     # Idempotency: return existing attempt for same request_id
     if body.idempotency_key:
-        from app.models import SolverOutputAttempt
         existing_attempt = session.exec(
             select(SolverOutputAttempt).where(SolverOutputAttempt.request_id == request_id)
         ).first()
@@ -7280,8 +7279,6 @@ async def solve_v3_stream_endpoint(
     
     # Phase 1: Create Attempt Record (Pending)
     try:
-        from app.models import SolverOutputAttempt
-        
         attempt = SolverOutputAttempt(
             request_id=request_id,
             attempt_id=attempt_id,
@@ -9564,6 +9561,7 @@ async def get_history(
     return history_items
 
 class ChatMessageSchema(BaseModel):
+    id: Optional[int] = None
     role: str
     content: str
     media_url: Optional[str] = None
@@ -9583,6 +9581,206 @@ class ChatSessionResponse(BaseModel):
     is_saved: bool = False
     created_at: str
     messages: List[ChatMessageSchema]
+
+
+class ChatFinalPlaybackStateResponse(BaseModel):
+    message_id: str
+    full_text: str
+    visible_len: int
+    speed_cps: int
+    is_complete: bool
+    started_at_utc: Optional[str] = None
+
+
+class ChatFinalPlaybackProgressRequest(BaseModel):
+    message_id: str
+    visible_len: int = Field(default=0, ge=0)
+    is_complete: bool = False
+
+
+def _extract_assistant_content_for_playback(msg: ChatMessage) -> str:
+    content = str(getattr(msg, "content", "") or "")
+    if content.strip():
+        return content
+    structured = msg.structured_data if isinstance(msg.structured_data, dict) else {}
+    response_node = structured.get("response")
+    if isinstance(response_node, dict):
+        nested_msg = response_node.get("message")
+        if isinstance(nested_msg, dict):
+            nested_content = str(nested_msg.get("content") or "").strip()
+            if nested_content:
+                return nested_content
+        fallback_response = str(response_node.get("response") or "").strip()
+        if fallback_response:
+            return fallback_response
+    return ""
+
+
+def _parse_iso_datetime_utc(value: Optional[str]) -> Optional[datetime]:
+    if not value or not isinstance(value, str):
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    try:
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is not None:
+            return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+    except Exception:
+        return None
+
+
+def _typing_speed_default_cps() -> int:
+    raw = (os.getenv("CHAT_FINAL_TYPING_SPEED_CPS") or "").strip()
+    try:
+        parsed = int(raw)
+        if parsed > 0:
+            return parsed
+    except Exception:
+        pass
+    return 35
+
+
+def _typing_payload_from_message_telemetry(msg: ChatMessage) -> Dict[str, Any]:
+    telemetry = msg.telemetry if isinstance(msg.telemetry, dict) else {}
+    payload = telemetry.get("typing_playback")
+    return payload if isinstance(payload, dict) else {}
+
+
+def _save_typing_payload_to_message_telemetry(msg: ChatMessage, payload: Dict[str, Any]) -> None:
+    telemetry = msg.telemetry if isinstance(msg.telemetry, dict) else {}
+    msg.telemetry = {**telemetry, "typing_playback": payload}
+
+
+@api_router.get("/chat_final/playback_state", response_model=ChatFinalPlaybackStateResponse)
+async def get_chat_final_playback_state(message_id: str, session: Session = Depends(get_session)):
+    msg_id = str(message_id or "").strip()
+    if not msg_id.isdigit():
+        raise HTTPException(status_code=400, detail="invalid_message_id")
+    msg = session.get(ChatMessage, int(msg_id))
+    if not msg:
+        raise HTTPException(status_code=404, detail="message_not_found")
+    if str(msg.role or "").lower() != "assistant":
+        raise HTTPException(status_code=400, detail="message_not_assistant")
+
+    full_text = _extract_assistant_content_for_playback(msg)
+    total_chars = len(full_text)
+
+    payload = _typing_payload_from_message_telemetry(msg)
+    started_at = _parse_iso_datetime_utc(payload.get("typing_started_at") if isinstance(payload, dict) else None)
+    speed_cps = payload.get("typing_speed_cps") if isinstance(payload, dict) else None
+    try:
+        speed_cps = int(speed_cps)
+    except Exception:
+        speed_cps = _typing_speed_default_cps()
+    if speed_cps <= 0:
+        speed_cps = _typing_speed_default_cps()
+
+    try:
+        last_index = int(payload.get("typing_last_index") or 0)
+    except Exception:
+        last_index = 0
+    if last_index < 0:
+        last_index = 0
+
+    is_complete = bool(payload.get("typing_complete")) if isinstance(payload, dict) else False
+
+    now = datetime.utcnow()
+    changed = False
+    if started_at is None and not is_complete:
+        started_at = now
+        changed = True
+
+    computed_visible = 0
+    if started_at is not None and not is_complete:
+        elapsed = max(0.0, (now - started_at).total_seconds())
+        computed_visible = int(elapsed * speed_cps)
+    visible_len = max(last_index, computed_visible)
+    if total_chars >= 0:
+        visible_len = min(total_chars, visible_len)
+    if visible_len >= total_chars:
+        is_complete = True
+
+    new_payload = {
+        "typing_total_chars": total_chars,
+        "typing_started_at": started_at.isoformat() + "Z" if started_at else None,
+        "typing_speed_cps": speed_cps,
+        "typing_complete": is_complete,
+        "typing_last_index": visible_len,
+    }
+    if new_payload != payload or changed:
+        _save_typing_payload_to_message_telemetry(msg, new_payload)
+        session.add(msg)
+        session.commit()
+
+    return ChatFinalPlaybackStateResponse(
+        message_id=msg_id,
+        full_text=full_text,
+        visible_len=visible_len,
+        speed_cps=speed_cps,
+        is_complete=is_complete,
+        started_at_utc=new_payload.get("typing_started_at"),
+    )
+
+
+@api_router.post("/chat_final/playback_progress")
+async def update_chat_final_playback_progress(
+    body: ChatFinalPlaybackProgressRequest,
+    session: Session = Depends(get_session),
+):
+    msg_id = str(body.message_id or "").strip()
+    if not msg_id.isdigit():
+        raise HTTPException(status_code=400, detail="invalid_message_id")
+    msg = session.get(ChatMessage, int(msg_id))
+    if not msg:
+        raise HTTPException(status_code=404, detail="message_not_found")
+    if str(msg.role or "").lower() != "assistant":
+        raise HTTPException(status_code=400, detail="message_not_assistant")
+
+    full_text = _extract_assistant_content_for_playback(msg)
+    total_chars = len(full_text)
+    payload = _typing_payload_from_message_telemetry(msg)
+    started_at = _parse_iso_datetime_utc(payload.get("typing_started_at") if isinstance(payload, dict) else None)
+    if started_at is None:
+        started_at = datetime.utcnow()
+    try:
+        existing_last = int(payload.get("typing_last_index") or 0)
+    except Exception:
+        existing_last = 0
+
+    speed_cps = payload.get("typing_speed_cps") if isinstance(payload, dict) else None
+    try:
+        speed_cps = int(speed_cps)
+    except Exception:
+        speed_cps = _typing_speed_default_cps()
+    if speed_cps <= 0:
+        speed_cps = _typing_speed_default_cps()
+
+    requested_visible = int(body.visible_len or 0)
+    clamped_visible = max(0, min(total_chars, requested_visible))
+    next_visible = max(existing_last, clamped_visible)
+    next_complete = bool(body.is_complete) or next_visible >= total_chars or bool(payload.get("typing_complete"))
+
+    new_payload = {
+        "typing_total_chars": total_chars,
+        "typing_started_at": started_at.isoformat() + "Z",
+        "typing_speed_cps": speed_cps,
+        "typing_complete": bool(next_complete),
+        "typing_last_index": int(next_visible),
+    }
+    _save_typing_payload_to_message_telemetry(msg, new_payload)
+    session.add(msg)
+    session.commit()
+
+    return {
+        "ok": True,
+        "message_id": msg_id,
+        "visible_len": int(next_visible),
+        "is_complete": bool(next_complete),
+    }
 
 
 class CanonicalMarkdownResponse(BaseModel):
@@ -9691,6 +9889,7 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
         created_at=chat_session.created_at.isoformat(),
         messages=[
             ChatMessageSchema(
+                id=msg.id,
                 role=msg.role,
                 content=msg.content,
                 media_url=getattr(msg, "media_url", None),

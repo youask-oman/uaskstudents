@@ -12,6 +12,7 @@ import { buildSuggestionPrompts, normalizeAssistantMessage, sanitizePromptContex
 interface RightTutorChatProps {
   sessionId: string;
   initialMessages: NormalizedChatMessage[];
+  sourceMessages?: SessionMessage[];
   originalProblem: string;
   stepTitles: string[];
   direction?: "ltr" | "rtl";
@@ -26,6 +27,7 @@ const quickActionSeed = ["Hint", "Solve", "Graph", "History"];
 export default function RightTutorChat({
   sessionId,
   initialMessages,
+  sourceMessages = [],
   originalProblem,
   stepTitles,
   direction = "ltr",
@@ -56,6 +58,19 @@ export default function RightTutorChat({
     const generated = buildSuggestionPrompts(stepTitles);
     return Array.from(new Set([...quickActionSeed, ...generated])).slice(0, 4);
   }, [stepTitles]);
+
+  const assistantContentById = useMemo(() => {
+    const out: Record<string, string> = {};
+    sourceMessages.forEach((msg) => {
+      const id = msg?.id;
+      const key = id === undefined || id === null ? "" : String(id).trim();
+      if (!key) return;
+      if (String(msg.role || "").toLowerCase() !== "assistant") return;
+      const content = typeof msg.content === "string" ? msg.content : String(msg.content || "");
+      if (content.trim()) out[key] = content;
+    });
+    return out;
+  }, [sourceMessages]);
 
   const sendMessage = async (rawMessage: string) => {
     const message = rawMessage.trim();
@@ -161,6 +176,7 @@ export default function RightTutorChat({
             message={message}
             originalProblem={originalProblem}
             direction={direction}
+            assistantContent={message.role === "assistant" ? assistantContentById[String(message.id)] : undefined}
           />
         ))}
         {loading ? (

@@ -172,6 +172,7 @@ export default function SolutionStepsBlock({
   onActiveTextEditorChange,
   onChange,
 }: SolutionStepsBlockProps) {
+  const problemSectionLabel = shortPaper ? "QUESTION Q1" : "PROBLEM";
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [stepDraft, setStepDraft] = React.useState<StepRow>({ title: "", explanation: "", mathLatex: "" });
   const [editingResult, setEditingResult] = React.useState(false);
@@ -302,7 +303,7 @@ export default function SolutionStepsBlock({
     return (
       <div className={styles.stepsBlock} ref={rootRef}>
         {(originalProblem || normalizedProblem) && (
-          <SectionRow label="PROBLEM" id={`${sectionId}-problem`} hideLabel={false}>
+          <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
             <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
               <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
             </div>
@@ -457,7 +458,7 @@ export default function SolutionStepsBlock({
 
       {/* Problem Statement Section */}
       {(originalProblem || normalizedProblem) && (
-        <SectionRow label="PROBLEM" id={`${sectionId}-problem`} hideLabel={hideStepLabels}>
+        <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={hideStepLabels}>
           {editingProblem ? (
             <div className={styles.inlineEditWrap}>
               <div style={{ marginBottom: 12 }}>

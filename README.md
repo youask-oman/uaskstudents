@@ -58,9 +58,12 @@ These are OFF by default and must be explicitly enabled:
 
 - `LLM_PROVIDER=openai|ollama`
 - `OLLAMA_BASE_URL=http://localhost:11434`
-- `OLLAMA_MODEL=Qwen2.5-Math-7B-Instruct-Q4_K_M:latest`
+- `OLLAMA_MODEL=Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf`
 - `OLLAMA_TIMEOUT_SECONDS=60`
 - `OLLAMA_CONNECT_TIMEOUT_SECONDS=5`
 - `OLLAMA_MAX_TOKENS=` (optional)
 - `OLLAMA_TEMPERATURE=0.2`
-- `OLLAMA_NUM_CTX=4096`
+- `OLLAMA_TOP_P=1`
+- `OLLAMA_STOP=["<END>"]` (optional)
+- `OLLAMA_NUM_CTX=8192`
+- `OLLAMA_USE_FORMAT_SCHEMA=true`

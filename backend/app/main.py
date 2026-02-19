@@ -479,6 +479,7 @@ from app.api_admin_health import router as admin_health_router
 from app.api_admin_content import router as admin_content_router
 from app.api_admin_ocr_config import router as admin_ocr_config_router
 from app.api_admin_credits import router as admin_credits_router, prompt_bindings_router as admin_prompt_bindings_router
+from app.api_chat_final import router as chat_final_router
 
 # Billing Admin APIs
 from app.admin_billing.billing_flags import (
@@ -524,6 +525,7 @@ app.include_router(admin_content_router)
 app.include_router(admin_ocr_config_router)
 app.include_router(admin_credits_router)
 app.include_router(admin_prompt_bindings_router)
+app.include_router(chat_final_router)
 
 # Billing Admin Routers
 app.include_router(billing_flags_router)
