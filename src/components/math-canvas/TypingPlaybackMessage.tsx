@@ -57,7 +57,7 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
   const [error, setError] = useState<string | null>(null);
   const [fullText, setFullText] = useState<string>(fallbackContent || "");
   const [visibleLen, setVisibleLen] = useState<number>(0);
-  const [speedCps, setSpeedCps] = useState<number>(35);
+  const [speedCps, setSpeedCps] = useState<number>(160);
   const [isComplete, setIsComplete] = useState<boolean>(false);
   const lastAckLenRef = useRef<number>(0);
   const requestInFlightRef = useRef<boolean>(false);
@@ -141,8 +141,8 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
         setFullText(text);
         setVisibleLen(clampedVisible);
         const parsedSpeed = Number(data.speed_cps);
-        const nextSpeed = Number.isFinite(parsedSpeed) && parsedSpeed > 0 ? Math.floor(parsedSpeed) : 35;
-        setSpeedCps(Math.max(10, Math.min(80, nextSpeed)));
+        const nextSpeed = Number.isFinite(parsedSpeed) && parsedSpeed > 0 ? Math.floor(parsedSpeed) : 160;
+        setSpeedCps(Math.max(10, Math.min(220, nextSpeed)));
         setIsComplete(Boolean(data.is_complete) || clampedVisible >= cpLen);
         lastAckLenRef.current = clampedVisible;
         baseVisibleRef.current = clampedVisible;

@@ -272,7 +272,12 @@ def _enforce_solve_binding_allowlist() -> bool:
 
 def _allow_openai_fallback_for_ollama_first_tiers() -> bool:
     # Default OFF: SHORT_STEPS/FINAL should stay Ollama-only unless explicitly enabled.
-    return os.environ.get("ALLOW_OPENAI_FALLBACK_SHORT_FINAL", "").strip().lower() in {"1", "true", "yes", "on"}
+    # Accept both keys to avoid config drift across runtime paths.
+    for key in ("ALLOW_OPENAI_FALLBACK_SHORT_FINAL", "FINAL_TIER_ALLOW_OPENAI_FALLBACK"):
+        raw = (os.environ.get(key) or "").strip().lower()
+        if raw in {"1", "true", "yes", "on"}:
+            return True
+    return False
 
 
 def _coerce_graph_mode(value: Optional[str]) -> str:

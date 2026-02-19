@@ -10063,7 +10063,7 @@ def _typing_speed_default_cps() -> int:
             return parsed
     except Exception:
         pass
-    return 35
+    return 80
 
 
 def _typing_speed_multiplier() -> float:
@@ -12626,6 +12626,7 @@ async def admin_list_llm_usage_ledger(
     db: Session = Depends(get_session),
     admin: User = Depends(get_admin_user),
 ):
+    provider_filter = (provider or "").strip().lower()
     query = select(LlmUsageLedger)
     if provider:
         query = query.where(LlmUsageLedger.provider == provider.strip())
@@ -12678,7 +12679,95 @@ async def admin_list_llm_usage_ledger(
             )
         )
 
+    # If primary ledger has rows, still supplement with solver attempts when Ollama
+    # visibility would otherwise be missing from the observability page.
     if items:
+        has_ollama = any(str(item.provider or "").strip().lower() == "ollama" for item in items)
+        should_supplement_with_attempts = (
+            solve_session_id is None
+            and (provider_filter in {"", "ollama"})
+            and not has_ollama
+        )
+        if not should_supplement_with_attempts:
+            return AdminLlmUsageLedgerListResponse(total=total, items=items, source="llmusageledger")
+
+        supplement_attempt_query = select(SolverOutputAttempt)
+        if model:
+            supplement_attempt_query = supplement_attempt_query.where(SolverOutputAttempt.model == model.strip())
+        if request_id:
+            supplement_attempt_query = supplement_attempt_query.where(SolverOutputAttempt.request_id.contains(request_id.strip()))
+        if user_id is not None:
+            supplement_attempt_query = supplement_attempt_query.where(SolverOutputAttempt.user_id == user_id)
+
+        supplement_rows = db.exec(
+            supplement_attempt_query.order_by(SolverOutputAttempt.created_at.desc()).limit(limit * 3)
+        ).all()
+        supplement_message_ids = {r.message_id for r in supplement_rows if r.message_id is not None}
+        supplement_message_map: Dict[int, ChatMessage] = {}
+        if supplement_message_ids:
+            supplement_messages = db.exec(select(ChatMessage).where(ChatMessage.id.in_(supplement_message_ids))).all()
+            supplement_message_map = {int(m.id): m for m in supplement_messages if m.id is not None}
+        supplement_session_ids = {r.session_id for r in supplement_rows if r.session_id is not None}
+        supplement_session_map: Dict[int, ChatSession] = {}
+        if supplement_session_ids:
+            supplement_sessions = db.exec(select(ChatSession).where(ChatSession.id.in_(supplement_session_ids))).all()
+            supplement_session_map = {int(s.id): s for s in supplement_sessions if s.id is not None}
+        supplement_user_ids = {r.user_id for r in supplement_rows if r.user_id is not None}
+        supplement_email_map: Dict[int, str] = {}
+        if supplement_user_ids:
+            supplement_users = db.exec(select(User).where(User.id.in_(supplement_user_ids))).all()
+            supplement_email_map = {int(u.id): u.email for u in supplement_users if u.id is not None}
+        supplement_request_ids = {
+            str(r.request_id).strip()
+            for r in supplement_rows
+            if isinstance(r.request_id, str) and str(r.request_id).strip()
+        }
+        supplement_request_summary_map = _build_request_summary_map(db, supplement_request_ids)
+
+        supplement_items: List[AdminLlmUsageLedgerItem] = []
+        for row in supplement_rows:
+            item = _serialize_solver_attempt_as_llm_usage(
+                row,
+                user_email=supplement_email_map.get(row.user_id) if row.user_id is not None else None,
+                message_telemetry=(
+                    supplement_message_map[row.message_id].telemetry
+                    if row.message_id is not None and row.message_id in supplement_message_map and isinstance(supplement_message_map[row.message_id].telemetry, dict)
+                    else None
+                ),
+                message_structured=(
+                    supplement_message_map[row.message_id].structured_data
+                    if row.message_id is not None and row.message_id in supplement_message_map and isinstance(supplement_message_map[row.message_id].structured_data, dict)
+                    else None
+                ),
+                chat_session_title=(
+                    supplement_session_map[row.session_id].title
+                    if row.session_id is not None and row.session_id in supplement_session_map
+                    else None
+                ),
+                chat_message_preview=(
+                    _truncate_text((supplement_message_map[row.message_id].content or "").replace("\n", " "), 180)
+                    if row.message_id is not None and row.message_id in supplement_message_map
+                    else None
+                ),
+                request_summary=(
+                    supplement_request_summary_map.get(str(row.request_id).strip())
+                    if isinstance(row.request_id, str)
+                    else None
+                ),
+            )
+            if str(item.provider or "").strip().lower() != "ollama":
+                continue
+            supplement_items.append(item)
+
+        if supplement_items:
+            merged_items = items + supplement_items
+            merged_items.sort(key=lambda x: x.created_at or "", reverse=True)
+            merged_items = merged_items[:limit]
+            return AdminLlmUsageLedgerListResponse(
+                total=total + len(supplement_items),
+                items=merged_items,
+                source="llmusageledger+solver_attempt_fallback",
+            )
         return AdminLlmUsageLedgerListResponse(total=total, items=items, source="llmusageledger")
 
     # Fallback: derive usage list from solver attempts when llmusageledger is empty.
@@ -12687,8 +12776,6 @@ async def admin_list_llm_usage_ledger(
         return AdminLlmUsageLedgerListResponse(total=0, items=[], source="solver_attempt_fallback")
 
     attempt_query = select(SolverOutputAttempt)
-    if provider:
-        attempt_query = attempt_query.where(SolverOutputAttempt.provider == provider.strip())
     if model:
         attempt_query = attempt_query.where(SolverOutputAttempt.model == model.strip())
     if request_id:
@@ -12721,8 +12808,9 @@ async def admin_list_llm_usage_ledger(
     if fallback_user_ids:
         fallback_users = db.exec(select(User).where(User.id.in_(fallback_user_ids))).all()
         fallback_email_map = {int(u.id): u.email for u in fallback_users if u.id is not None}
-    fallback_items = [
-        _serialize_solver_attempt_as_llm_usage(
+    fallback_items: List[AdminLlmUsageLedgerItem] = []
+    for row in fallback_rows:
+        item = _serialize_solver_attempt_as_llm_usage(
             row,
             user_email=fallback_email_map.get(row.user_id) if row.user_id is not None else None,
             message_telemetry=(
@@ -12751,8 +12839,10 @@ async def admin_list_llm_usage_ledger(
                 else None
             ),
         )
-        for row in fallback_rows
-    ]
+        if provider_filter and str(item.provider or "").strip().lower() != provider_filter:
+            continue
+        fallback_items.append(item)
+    fallback_total = len(fallback_items)
 
     if fallback_items:
         return AdminLlmUsageLedgerListResponse(

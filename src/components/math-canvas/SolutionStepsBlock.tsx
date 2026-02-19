@@ -199,6 +199,12 @@ export default function SolutionStepsBlock({
   onChange,
 }: SolutionStepsBlockProps) {
   const problemSectionLabel = shortPaper ? "QUESTION Q1" : "PROBLEM";
+  const problemTextStyle: React.CSSProperties = {
+    whiteSpace: "pre-wrap",
+    fontSize: shortPaper ? "inherit" : 13,
+    color: "var(--text-main)",
+    lineHeight: 1.6,
+  };
   const [editingStepIndex, setEditingStepIndex] = React.useState<number | null>(null);
   const [stepDraft, setStepDraft] = React.useState<StepRow>({ title: "", explanation: "", mathLatex: "" });
   const [editingResult, setEditingResult] = React.useState(false);
@@ -374,7 +380,7 @@ export default function SolutionStepsBlock({
         <div className={styles.stepsBlock} ref={rootRef}>
           {(originalProblem || normalizedProblem) && (
             <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
-              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+              <div style={problemTextStyle}>
                 <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
               </div>
             </SectionRow>
@@ -395,7 +401,7 @@ export default function SolutionStepsBlock({
       <div className={styles.stepsBlock} ref={rootRef}>
         {(originalProblem || normalizedProblem) && (
           <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
-            <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+            <div style={problemTextStyle}>
               <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
             </div>
           </SectionRow>
@@ -463,7 +469,7 @@ export default function SolutionStepsBlock({
         <div className={styles.stepsBlock} ref={rootRef}>
           {(originalProblem || normalizedProblem || shortSource?.question) && (
             <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
-              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+              <div style={problemTextStyle}>
                 <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || shortSource?.question || "")} mode="prose" />
               </div>
             </SectionRow>
@@ -627,7 +633,7 @@ export default function SolutionStepsBlock({
             </div>
           ) : (
             <>
-              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+              <div style={problemTextStyle}>
                 <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
               </div>
               {editable && !exportMode && (

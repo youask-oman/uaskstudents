@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchApi, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -39,6 +40,8 @@ const PAGE_SIZE = 15;
 export default function LedgerExplorerPage() {
   const { token } = useAuth();
   const { pushToast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +53,9 @@ export default function LedgerExplorerPage() {
 
   const [filterUser, setFilterUser] = useState("");
   const [filterRequestId, setFilterRequestId] = useState("");
+  const [filterAttemptId, setFilterAttemptId] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"ledger" | "details">("ledger");
 
   const hasPrev = cursorHistory.length > 0;
   const hasNext = Boolean(nextCursor);
@@ -69,6 +74,7 @@ export default function LedgerExplorerPage() {
       params.set("limit", String(PAGE_SIZE));
       if (filterUser.trim()) params.set("user_id", filterUser.trim());
       if (filterRequestId.trim()) params.set("request_id", filterRequestId.trim());
+      if (filterAttemptId.trim()) params.set("attempt_id", filterAttemptId.trim());
       if (cursorValue) params.set("cursor", cursorValue);
 
       const res = await fetchApi(`/api/v1/admin/credits/ledger?${params.toString()}`, {
@@ -91,14 +97,54 @@ export default function LedgerExplorerPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterRequestId, filterUser, pushToast, token]);
+  }, [filterAttemptId, filterRequestId, filterUser, pushToast, token]);
 
   useEffect(() => {
     void fetchLedger(cursor);
   }, [cursor, fetchLedger]);
 
+  useEffect(() => {
+    const qpRequest = (searchParams.get("request_id") || "").trim();
+    const qpAttempt = (searchParams.get("attempt_id") || "").trim();
+    const qpUser = (searchParams.get("user_id") || "").trim();
+    const qpTab = (searchParams.get("tab") || "").trim().toLowerCase();
+
+    setFilterRequestId(qpRequest);
+    setFilterAttemptId(qpAttempt);
+    setFilterUser(qpUser);
+    setActiveTab(qpTab === "details" ? "details" : "ledger");
+    setCursor(null);
+    setCursorHistory([]);
+    setPage(1);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeTab !== "details" || rows.length === 0) return;
+    const qpRequest = (searchParams.get("request_id") || "").trim();
+    const qpAttempt = (searchParams.get("attempt_id") || "").trim();
+    if (!qpRequest && !qpAttempt) return;
+    const match = rows.find(
+      (row) =>
+        (qpRequest ? String(row.request_id || "").trim() === qpRequest : true) &&
+        (qpAttempt ? String(row.attempt_id || "").trim() === qpAttempt : true)
+    );
+    if (match) setExpandedId(match.ledger_id);
+  }, [activeTab, rows, searchParams]);
+
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    const params = new URLSearchParams(searchParams.toString());
+    const request = filterRequestId.trim();
+    const attempt = filterAttemptId.trim();
+    const user = filterUser.trim();
+    if (request) params.set("request_id", request);
+    else params.delete("request_id");
+    if (attempt) params.set("attempt_id", attempt);
+    else params.delete("attempt_id");
+    if (user) params.set("user_id", user);
+    else params.delete("user_id");
+    params.set("tab", activeTab);
+    router.push(`/admin/billing/ledger?${params.toString()}`);
     setCursor(null);
     setCursorHistory([]);
     setPage(1);
@@ -149,7 +195,7 @@ export default function LedgerExplorerPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] p-4">
-        <form onSubmit={onSearch} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <form onSubmit={onSearch} className="grid grid-cols-1 md:grid-cols-7 gap-3">
           <input
             type="text"
             placeholder="User ID"
@@ -164,6 +210,13 @@ export default function LedgerExplorerPage() {
             onChange={(e) => setFilterRequestId(e.target.value)}
             className="md:col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
           />
+          <input
+            type="text"
+            placeholder="Attempt ID"
+            value={filterAttemptId}
+            onChange={(e) => setFilterAttemptId(e.target.value)}
+            className="md:col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+          />
           <button type="submit" className="px-4 py-2 rounded-xl bg-admin-primary text-white font-semibold text-sm">
             Search
           </button>
@@ -172,9 +225,12 @@ export default function LedgerExplorerPage() {
             onClick={() => {
               setFilterUser("");
               setFilterRequestId("");
+              setFilterAttemptId("");
               setCursor(null);
               setCursorHistory([]);
               setPage(1);
+              setActiveTab("ledger");
+              router.push("/admin/billing/ledger");
               void fetchLedger(null);
             }}
             className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-sm"
@@ -182,6 +238,35 @@ export default function LedgerExplorerPage() {
             Reset
           </button>
         </form>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] p-3">
+        <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("ledger");
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("tab", "ledger");
+              router.push(`/admin/billing/ledger?${params.toString()}`);
+            }}
+            className={`px-4 py-2 text-sm font-semibold ${activeTab === "ledger" ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"}`}
+          >
+            Ledger
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("details");
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("tab", "details");
+              router.push(`/admin/billing/ledger?${params.toString()}`);
+            }}
+            className={`px-4 py-2 text-sm font-semibold ${activeTab === "details" ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"}`}
+          >
+            Details
+          </button>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] overflow-hidden">
@@ -217,8 +302,26 @@ export default function LedgerExplorerPage() {
                     </td>
                     <td className="px-3 py-3">{row.tier || "n/a"}</td>
                     <td className="px-3 py-3 font-mono text-[11px]">
-                      <div>{row.request_id || "n/a"}</div>
-                      <div className="text-slate-500">{row.attempt_id || "attempt n/a"}</div>
+                      <div>
+                        {row.request_id ? (
+                          <Link
+                            href={`/admin/billing/ledger?tab=details&request_id=${encodeURIComponent(row.request_id)}${row.attempt_id ? `&attempt_id=${encodeURIComponent(row.attempt_id)}` : ""}`}
+                            className="text-cyan-700 dark:text-cyan-300 hover:underline"
+                          >
+                            {row.request_id}
+                          </Link>
+                        ) : "n/a"}
+                      </div>
+                      <div className="text-slate-500">
+                        {row.attempt_id ? (
+                          <Link
+                            href={`/admin/billing/ledger?tab=details&attempt_id=${encodeURIComponent(row.attempt_id)}${row.request_id ? `&request_id=${encodeURIComponent(row.request_id)}` : ""}`}
+                            className="text-cyan-700 dark:text-cyan-300 hover:underline"
+                          >
+                            {row.attempt_id}
+                          </Link>
+                        ) : "attempt n/a"}
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-xs">
                       <div>{row.question_id || "n/a"}</div>
@@ -238,7 +341,18 @@ export default function LedgerExplorerPage() {
                     <td className="px-3 py-3 text-xs text-slate-500">{new Date(row.created_at).toLocaleString()}</td>
                     <td className="px-3 py-3">
                       <button
-                        onClick={() => setExpandedId(expandedId === row.ledger_id ? null : row.ledger_id)}
+                        onClick={() => {
+                          const nextOpen = expandedId === row.ledger_id ? null : row.ledger_id;
+                          setExpandedId(nextOpen);
+                          if (nextOpen) {
+                            setActiveTab("details");
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.set("tab", "details");
+                            if (row.request_id) params.set("request_id", row.request_id);
+                            if (row.attempt_id) params.set("attempt_id", row.attempt_id);
+                            router.push(`/admin/billing/ledger?${params.toString()}`);
+                          }
+                        }}
                         className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-xs"
                       >
                         {expandedId === row.ledger_id ? "Hide" : "Show"}

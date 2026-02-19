@@ -715,6 +715,31 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
       if (block.type === "steps") {
         const qMatch = block.id.match(/batch-steps-([^-]+)-\d+$/);
         const qPrefix = qMatch?.[1] ? `${qMatch[1]} - ` : "";
+        const hasShortSections = Array.isArray(block.shortSections) && block.shortSections.length > 0;
+        const hasShortSourceSections = Array.isArray(block.shortSource?.sections) && block.shortSource.sections.length > 0;
+        const hasPlayback =
+          typeof block.playbackMessageId === "string" &&
+          block.playbackMessageId.trim().length > 0 &&
+          typeof block.playbackFallbackContent === "string" &&
+          block.playbackFallbackContent.trim().length > 0;
+        const isShortOutline = hasShortSections || hasShortSourceSections || hasPlayback;
+
+        if (isShortOutline) {
+          const questionSuffix = (qMatch?.[1] || "Q1").toUpperCase();
+          const questionTag = `QUESTION ${questionSuffix}`;
+          const solutionAnchorId = hasPlayback
+            ? `${block.id}-playback-solution`
+            : hasShortSections
+              ? `${block.id}-section-0`
+              : hasShortSourceSections
+                ? `${block.id}-source-section-0`
+                : `${block.id}-final-answer`;
+          items.push({ id: `${block.id}-problem`, label: `Question ${questionSuffix}`, tag: questionTag });
+          items.push({ id: solutionAnchorId, label: "Solution", tag: "SOLUTION" });
+          items.push({ id: `${block.id}-final-answer`, label: "Final Answer", tag: "FINAL" });
+          return;
+        }
+
         block.steps.forEach((step, index) => {
           const title = (step.title || "").trim();
           const generic = /^step\s+\d+$/i.test(title);

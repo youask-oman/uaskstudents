@@ -1163,7 +1163,7 @@
   border-left: 4px solid #d4dce8;
   border-radius: 10px;
   padding: 14px;
-  background: #f8fafc;
+  background: transparent;
   direction: ltr;
 }
 
@@ -2413,7 +2413,8 @@
 }
 
 .notebookTitle {
-  font-size: 30px;
+  font-size: 14px;
+  font-weight: 700;
   color: #0f172a;
 }
 
@@ -2544,7 +2545,7 @@
   border: 1px solid #dbe3ee;
   border-left: 4px solid #cdd8e6;
   border-radius: 14px;
-  background: #f8fafc;
+  background: transparent;
   padding: 14px 16px;
 }
 
@@ -3051,8 +3052,11 @@
 }
 
 .paperPageShortPaper .chatBubbleAssistant {
-  background: rgba(255, 255, 255, 0.66);
-  border: 1px solid rgba(203, 213, 225, 0.7);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
   color: var(--short-paper-text-color, #0f172a);
   font-family: var(--short-paper-font-family, "Public Sans", "Inter", system-ui, sans-serif);
   font-size: var(--short-paper-font-size, 16px);

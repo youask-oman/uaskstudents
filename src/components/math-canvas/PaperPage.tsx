@@ -650,6 +650,8 @@ export default function PaperPage({
         text: "Double-click to edit",
       });
       onSelectElements([id]);
+      // Start inline typing immediately on the paper without requiring a second double-click.
+      setEditingText({ elementId: id });
       return;
     }
 
