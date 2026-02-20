@@ -1,0 +1,11 @@
+{
+  "baseUrl": "http://localhost:9000",
+  "timeoutSec": 20,
+  "totalDurationSec": 1800,
+  "windowDurationSec": 60,
+  "connections": 20,
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/public/plans"
+  }
+}

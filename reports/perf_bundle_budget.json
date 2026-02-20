@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2026-02-20T04:48:44.900Z",
+  "firstLoad": {
+    "files": [
+      {
+        "file": "static/chunks/polyfills-42372ed130431b0a.js",
+        "sizeBytes": 112594
+      },
+      {
+        "file": "static/chunks/webpack-cd9f753a9213d4da.js",
+        "sizeBytes": 6969
+      },
+      {
+        "file": "static/chunks/4bd1b696-c6d9798076bc2a45.js",
+        "sizeBytes": 198492
+      },
+      {
+        "file": "static/chunks/9826-a9c470320031118f.js",
+        "sizeBytes": 188662
+      },
+      {
+        "file": "static/chunks/main-app-463a3641f8f06978.js",
+        "sizeBytes": 529
+      }
+    ],
+    "totalBytes": 507246,
+    "budgetBytes": 800000,
+    "withinBudget": true
+  },
+  "totalChunks": {
+    "files": [
+      {
+        "file": "static/chunks/polyfills-42372ed130431b0a.js",
+        "sizeBytes": 112594
+      },
+      {
+        "file": "static/chunks/webpack-cd9f753a9213d4da.js",
+        "sizeBytes": 6969
+      },
+      {
+        "file": "static/chunks/4bd1b696-c6d9798076bc2a45.js",
+        "sizeBytes": 198492
+      },
+      {
+        "file": "static/chunks/9826-a9c470320031118f.js",
+        "sizeBytes": 188662
+      },
+      {
+        "file": "static/chunks/main-app-463a3641f8f06978.js",
+        "sizeBytes": 529
+      },
+      {
+        "file": "static/s4Cb3BkKemHGfOGnat0ZL/_buildManifest.js",
+        "sizeBytes": 3718
+      },
+      {
+        "file": "static/s4Cb3BkKemHGfOGnat0ZL/_ssgManifest.js",
+        "sizeBytes": 80
+      }
+    ],
+    "totalBytes": 511044,
+    "budgetBytes": 3000000,
+    "withinBudget": true
+  },
+  "routes": {
+    "budgetBytes": 1200000,
+    "topRoutes": [
+      {
+        "route": "/_app",
+        "totalBytes": 0
+      }
+    ],
+    "violations": [],
+    "withinBudget": true
+  }
+}

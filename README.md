@@ -5,7 +5,8 @@
 Use `orchestrator` (not `backend`) for migration/scripts.
 
 ### One-command DEV NUKE + reseed + smoke
-
+## Qwen2.5-VL-7B-Instruct (primary extractor)
+## InternVL2.5-8B
 ```bash
 docker compose up -d postgres redis orchestrator
 docker compose exec orchestrator alembic upgrade head

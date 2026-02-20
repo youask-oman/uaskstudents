@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-02-20T04:48:44.374337+00:00",
+  "databaseUrlRedacted": "postgresql://uask_user:***@localhost:5432/uask_db",
+  "pgStatStatementsAvailable": false,
+  "topSlowQueries": [],
+  "explainAnalyze": [],
+  "nPlusOneHeuristics": [],
+  "notes": [
+    "pg_stat_statements extension is not enabled; cannot identify top slow queries from runtime stats."
+  ]
+}

@@ -60,6 +60,7 @@ import json
 import time
 import uuid
 import asyncio
+import os
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import limiter
@@ -79,6 +80,10 @@ app = FastAPI(title="UAsk.ai Orchestrator")
 app.state.limiter = limiter
 logger = logging.getLogger("app")
 _harden_logging_stream_encodings()
+
+API_MAX_CONCURRENT_REQUESTS = max(1, int(os.environ.get("API_MAX_CONCURRENT_REQUESTS", "80")))
+API_CONCURRENCY_ACQUIRE_TIMEOUT_MS = max(1, int(os.environ.get("API_CONCURRENCY_ACQUIRE_TIMEOUT_MS", "250")))
+_request_concurrency_sem = asyncio.Semaphore(API_MAX_CONCURRENT_REQUESTS)
 
 
 async def _start_math_render_safely() -> None:
@@ -168,7 +173,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
 app.add_middleware(
     CORSMiddleware,
@@ -178,6 +182,49 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*", "X-Request-ID"],
 )
+
+@app.middleware("http")
+async def enforce_request_concurrency_limit(request: Request, call_next):
+    path = request.url.path or ""
+    # Keep health/docs/static traffic responsive even when API is saturated.
+    if (
+        path.startswith("/health")
+        or path.startswith("/ready")
+        or path.startswith("/docs")
+        or path.startswith("/openapi.json")
+        or path.startswith("/redoc")
+        or path.startswith("/storage")
+    ):
+        return await call_next(request)
+
+    acquired = False
+    try:
+        await asyncio.wait_for(
+            _request_concurrency_sem.acquire(),
+            timeout=(API_CONCURRENCY_ACQUIRE_TIMEOUT_MS / 1000.0),
+        )
+        acquired = True
+    except asyncio.TimeoutError:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": {
+                    "code": "server_busy",
+                    "message": "Server is busy. Please retry shortly.",
+                    "details": {
+                        "max_concurrent_requests": API_MAX_CONCURRENT_REQUESTS,
+                    },
+                }
+            },
+        )
+
+    try:
+        response = await call_next(request)
+        response.headers["X-Concurrency-Limit"] = str(API_MAX_CONCURRENT_REQUESTS)
+        return response
+    finally:
+        if acquired:
+            _request_concurrency_sem.release()
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

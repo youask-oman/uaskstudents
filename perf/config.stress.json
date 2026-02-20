@@ -1,0 +1,15 @@
+{
+  "baseUrl": "http://localhost:9000",
+  "durationSec": 30,
+  "timeoutSec": 20,
+  "concurrencyRamp": [1, 5, 20, 50, 75, 100],
+  "stopOnCliff": true,
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/public/plans"
+  },
+  "thresholds": {
+    "maxP95Ms": 1200,
+    "maxErrorRatePct": 2
+  }
+}

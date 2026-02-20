@@ -1,0 +1,2580 @@
+[
+  {
+    "path": "/",
+    "name": "read_root",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/admin/billing/flags",
+    "name": "get_flags",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/admin/billing/flags",
+    "name": "update_flags",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/admin/billing/flags/audit",
+    "name": "get_flags_audit",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/flags",
+    "name": "get_flags",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/flags",
+    "name": "update_flags",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/flags/audit",
+    "name": "get_flags_audit",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/health",
+    "name": "get_health_dashboard",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/health/export",
+    "name": "export_mismatches",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/health/mismatches",
+    "name": "list_mismatches",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/health/run-reconciliation",
+    "name": "run_reconciliation",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/holds",
+    "name": "list_holds",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/holds/release-ocr",
+    "name": "release_ocr_holds",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/holds/stats",
+    "name": "get_hold_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/holds/{hold_id}/release",
+    "name": "force_release_hold",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/invoices",
+    "name": "list_invoices",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/invoices/{invoice_id}",
+    "name": "get_invoice",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/invoices/{invoice_id}/pdf",
+    "name": "get_invoice_pdf",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/ledger",
+    "name": "query_ledger",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/ledger/{entry_id}",
+    "name": "get_ledger_entry",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/packs",
+    "name": "list_packs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/packs",
+    "name": "create_pack",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/packs/{pack_id}",
+    "name": "deactivate_pack",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/packs/{pack_id}",
+    "name": "update_pack",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/pricing",
+    "name": "list_provider_pricing",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/pricing",
+    "name": "create_provider_pricing",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/pricing/{pricing_id}",
+    "name": "retire_provider_pricing",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs",
+    "name": "list_programs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs",
+    "name": "create_program",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs/enrollments",
+    "name": "enroll_user",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs/enrollments/all",
+    "name": "list_all_enrollments",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs/enrollments/unenroll",
+    "name": "unenroll_user",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs/{program_id}",
+    "name": "delete_program",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs/{program_id}",
+    "name": "get_program",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs/{program_id}",
+    "name": "update_program",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/programs/{program_id}/enrollments",
+    "name": "list_program_enrollments",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/refunds",
+    "name": "list_refunds",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/refunds",
+    "name": "create_refund",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/consumptions",
+    "name": "get_consumptions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/enroll",
+    "name": "enroll_user_in_program",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/enrollments",
+    "name": "get_user_enrollments",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/grant",
+    "name": "grant_credits",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/ledger",
+    "name": "get_user_ledger",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/lots",
+    "name": "get_lots",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/lots",
+    "name": "grant_credits_legacy",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/program-grant",
+    "name": "grant_program_now",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/reconcile",
+    "name": "force_reconcile",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/refund",
+    "name": "refund_credits",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/unenroll",
+    "name": "unenroll_user_from_program",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/wallet",
+    "name": "get_wallet",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/billing/users/{user_id}/wallet_summary",
+    "name": "get_wallet_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/calculator",
+    "name": "calculate_transaction",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/config/history/{config_type}",
+    "name": "get_config_history",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/config/revert",
+    "name": "revert_config",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/config/{config_type}",
+    "name": "get_config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/config/{config_type}",
+    "name": "update_config",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/content/concepts",
+    "name": "list_concepts",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/credits/seed",
+    "name": "seed_user_credits",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/db/table/{table_name}",
+    "name": "admin_get_db_table_alias",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/db/tables",
+    "name": "admin_list_db_tables_alias",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/diagnostics/credits",
+    "name": "get_user_credit_diagnostics",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/diagnostics/transactions/{target_user_id}",
+    "name": "get_user_transactions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/health/cleanup/holds",
+    "name": "trigger_hold_cleanup",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/health/db",
+    "name": "get_db_health",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/health/errors",
+    "name": "list_errors",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/health/errors/summary",
+    "name": "get_error_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/health/findings",
+    "name": "list_findings",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/health/findings/{finding_id}/resolve",
+    "name": "resolve_finding",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/health/holds/stuck",
+    "name": "get_stuck_holds",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/health/reconcile/invoices",
+    "name": "trigger_invoice_reconciliation",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/health/reconcile/ledgers",
+    "name": "trigger_ledger_reconciliation",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/health/stripe/failed",
+    "name": "get_failed_stripe_events",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/jobs/logs",
+    "name": "admin_jobs_logs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/jobs/run",
+    "name": "admin_run_job",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/jobs/status",
+    "name": "admin_jobs_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/legal-documents",
+    "name": "admin_list_legal_documents",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/legal-documents",
+    "name": "admin_upsert_legal_document",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/legal-documents",
+    "name": "admin_upsert_legal_document",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/legal-documents/{document_id}",
+    "name": "admin_get_legal_document",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/legal-documents/{document_id}/publish",
+    "name": "admin_publish_legal_document",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/ocr-configuration",
+    "name": "get_ocr_configuration",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/ocr-configuration",
+    "name": "update_ocr_configuration",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/ocr-configuration/activate/{config_id}",
+    "name": "activate_ocr_configuration",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/config",
+    "name": "get_payments_config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/config",
+    "name": "update_payments_config",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/consumption/{request_id}",
+    "name": "get_consumption_drilldown",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/details/{payment_id}",
+    "name": "get_payment_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/invoices",
+    "name": "list_invoices",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/invoices/{invoice_id}",
+    "name": "get_invoice_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/invoices/{invoice_id}/html",
+    "name": "get_invoice_html",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/lots",
+    "name": "list_lots",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/overview",
+    "name": "get_payments_overview",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/pricing",
+    "name": "list_payments_pricing",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/pricing",
+    "name": "mutate_payments_pricing",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/pricing/provider",
+    "name": "list_provider_pricing",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/pricing/provider",
+    "name": "create_provider_pricing",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/pricing/provider/{pricing_id}",
+    "name": "retire_provider_pricing",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/pricing/provider/{pricing_id}",
+    "name": "update_provider_pricing",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/reconciliation",
+    "name": "get_reconciliation_report",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/reconciliation/run",
+    "name": "run_reconciliation",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/requests",
+    "name": "list_requests",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/stripe/events",
+    "name": "list_stripe_events",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/stripe/events/{event_id}/replay",
+    "name": "replay_stripe_event",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/stripe/health",
+    "name": "stripe_health",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/stripe/sync_mappings",
+    "name": "sync_stripe_mappings",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/subscriptions",
+    "name": "list_subscriptions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/subscriptions/{sub_id}/billing",
+    "name": "get_subscription_billing_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/subscriptions/{sub_id}/periods",
+    "name": "list_subscription_periods",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/topups",
+    "name": "list_topups",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/payments/topups/{topup_id}",
+    "name": "get_topup_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/promo-codes",
+    "name": "admin_list_promo_codes",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/promo-codes",
+    "name": "admin_create_promo_code",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/promo-codes/{promo_id}",
+    "name": "admin_update_promo_code",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/admin/transactions",
+    "name": "get_transactions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/whatsapp/disconnect",
+    "name": "admin_whatsapp_disconnect",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/whatsapp/initialize",
+    "name": "admin_whatsapp_initialize",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/admin/whatsapp/monitor",
+    "name": "admin_whatsapp_monitor",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/whatsapp/monitor/export",
+    "name": "admin_whatsapp_monitor_export",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/whatsapp/monitor/stream",
+    "name": "admin_whatsapp_monitor_stream",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/admin/whatsapp/status",
+    "name": "admin_whatsapp_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/chat_final/from_extracted",
+    "name": "chat_final_from_extracted",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legal/accept",
+    "name": "accept_legal_document",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/legal/privacy",
+    "name": "get_public_privacy_policy",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legal/privacy/v/{version}",
+    "name": "get_public_privacy_policy_by_path",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legal/status",
+    "name": "get_legal_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legal/terms",
+    "name": "get_public_terms_of_service",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legal/terms/inventory",
+    "name": "get_terms_inventory_source",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/legal/terms/v/{version}",
+    "name": "get_public_terms_of_service_by_path",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/analytics/anomalies",
+    "name": "admin_analytics_anomalies",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/analytics/errors",
+    "name": "admin_analytics_errors",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/analytics/overview",
+    "name": "admin_analytics_overview",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/problems",
+    "name": "admin_list_canonical_problems",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/problems",
+    "name": "admin_create_canonical_problem",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/problems/{problem_id}",
+    "name": "admin_delete_canonical_problem",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/problems/{problem_id}",
+    "name": "admin_update_canonical_problem",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/solutions",
+    "name": "admin_list_canonical_solutions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/solutions",
+    "name": "admin_create_canonical_solution",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/solutions/{solution_id}",
+    "name": "admin_delete_canonical_solution",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/canonical/solutions/{solution_id}",
+    "name": "admin_update_canonical_solution",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/question-identity",
+    "name": "admin_list_question_identity_cache",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/question-identity",
+    "name": "admin_create_question_identity_cache_entry",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/question-identity/{entry_id}",
+    "name": "admin_delete_question_identity_cache_entry",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/question-identity/{entry_id}",
+    "name": "admin_get_question_identity_cache_entry",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/cache/question-identity/{entry_id}",
+    "name": "admin_update_question_identity_cache_entry",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/config/credit_transfer",
+    "name": "admin_get_credit_transfer_config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/config/credit_transfer",
+    "name": "admin_update_credit_transfer_config",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/grant",
+    "name": "admin_grant_credits",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/holds",
+    "name": "admin_credits_holds",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/holds/{hold_id}/release",
+    "name": "admin_release_hold",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/ledger",
+    "name": "admin_credits_ledger",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/lots",
+    "name": "admin_credits_lots",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/overview",
+    "name": "admin_credits_overview",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/packs",
+    "name": "admin_list_credit_packs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/packs/{pack_code}",
+    "name": "admin_patch_credit_pack",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/credits/user",
+    "name": "admin_lookup_credit_user",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/db/table/{table_name}",
+    "name": "admin_get_db_table",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/db/tables",
+    "name": "admin_list_db_tables",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/invite",
+    "name": "admin_invite_user",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/llm/circuit-breaker/reset",
+    "name": "admin_reset_llm_circuit_breaker",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/logs/all",
+    "name": "admin_clear_logs",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/observability/chat-billing",
+    "name": "admin_list_chat_billing_records",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/observability/llm-usage",
+    "name": "admin_list_llm_usage_ledger",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/observability/llm-usage",
+    "name": "admin_create_llm_usage_ledger_entry",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/observability/llm-usage/{entry_id}",
+    "name": "admin_delete_llm_usage_ledger_entry",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/observability/llm-usage/{entry_id}",
+    "name": "admin_get_llm_usage_ledger_entry",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/observability/llm-usage/{entry_id}",
+    "name": "admin_update_llm_usage_ledger_entry",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans",
+    "name": "list_plans",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans",
+    "name": "admin_save_plan",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans",
+    "name": "create_or_update_plan",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans-with-prompts",
+    "name": "list_plans_with_prompts",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans/{plan_id}",
+    "name": "admin_delete_plan",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans/{plan_id}",
+    "name": "admin_update_plan",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans/{plan_id}/prompt-links",
+    "name": "get_plan_links_removed",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/plans/{plan_id}/prompt-links",
+    "name": "update_plan_links_removed",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/promo-codes",
+    "name": "create_promo_code",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-assets",
+    "name": "list_prompt_assets_removed",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/audit",
+    "name": "admin_prompt_registry_audit",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/bindings",
+    "name": "admin_list_prompt_registry_bindings",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/bindings/activate",
+    "name": "admin_activate_prompt_registry_binding",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/bindings/{binding_id}",
+    "name": "admin_delete_prompt_registry_binding",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/prompts",
+    "name": "admin_list_prompt_registry_prompts",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}",
+    "name": "admin_delete_prompt_registry_prompt",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}/rollback",
+    "name": "admin_rollback_prompt_registry_prompt",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}/update",
+    "name": "admin_update_prompt_registry_prompt",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/prompts/{prompt_id}/versions",
+    "name": "admin_list_prompt_registry_versions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/schemas",
+    "name": "admin_list_prompt_registry_schemas",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}",
+    "name": "admin_delete_prompt_registry_schema",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}/rollback",
+    "name": "admin_rollback_prompt_registry_schema",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}/update",
+    "name": "admin_update_prompt_registry_schema",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/schemas/{schema_id}/versions",
+    "name": "admin_list_prompt_registry_schema_versions",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt-registry/test",
+    "name": "admin_prompt_registry_test",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt_bindings",
+    "name": "admin_list_prompt_bindings",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompt_bindings/{binding_id}",
+    "name": "admin_patch_prompt_binding",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompts",
+    "name": "admin_get_prompts_removed",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompts/versions/{version_id}/deploy",
+    "name": "admin_deploy_prompt_removed",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompts/{template_id}/save",
+    "name": "admin_save_prompt_removed",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/prompts/{template_id}/versions",
+    "name": "admin_get_prompt_versions_removed",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/quotas",
+    "name": "admin_get_quotas",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/quotas/override",
+    "name": "admin_apply_quota_override",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/solve-traces",
+    "name": "admin_get_solve_traces",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/solve-v2-config",
+    "name": "admin_get_solve_v2_config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/solve-v2-config",
+    "name": "admin_update_solve_v2_config",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/solver-attempts/all",
+    "name": "admin_clear_solver_attempts",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/solver-output-attempts",
+    "name": "admin_list_solver_output_attempts",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/solver-output-attempts/{attempt_id}",
+    "name": "admin_get_solver_output_attempt",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/stats/dashboard",
+    "name": "admin_get_dashboard_stats",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/stats/model-routing",
+    "name": "admin_get_model_routing",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/system-config",
+    "name": "admin_list_system_config",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/system-config",
+    "name": "admin_update_system_config",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users",
+    "name": "admin_list_users",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}",
+    "name": "admin_delete_user",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}",
+    "name": "admin_get_user_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}",
+    "name": "admin_update_user",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/activity",
+    "name": "admin_get_user_activity",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/ban",
+    "name": "admin_ban_user",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/full",
+    "name": "admin_get_user_full",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/full",
+    "name": "admin_get_user_full_data",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/notes",
+    "name": "admin_add_note",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/question-history",
+    "name": "admin_get_user_question_history",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/resend-email",
+    "name": "admin_resend_email",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/users/{user_id}/reset-password",
+    "name": "admin_reset_password",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/all",
+    "name": "admin_clear_whatsapp_monitor",
+    "methods": [
+      "DELETE"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/diag",
+    "name": "whatsapp_diag",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/disconnect",
+    "name": "disconnect_whatsapp_bot",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/initialize",
+    "name": "initialize_whatsapp_bot",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/monitor",
+    "name": "whatsapp_monitor",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/monitor/export",
+    "name": "whatsapp_monitor_export",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/monitor/stream",
+    "name": "whatsapp_monitor_stream",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/ocr-state",
+    "name": "get_whatsapp_ocr_state",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/admin/whatsapp/status",
+    "name": "get_whatsapp_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/ask-question",
+    "name": "ask_question",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/attempt/{attempt_id}",
+    "name": "get_attempt_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/attempt/{attempt_id}/events",
+    "name": "stream_attempt_events",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/attempt/{attempt_id}/graph.png",
+    "name": "get_attempt_graph_png",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/attempt/{attempt_id}/graph.svg",
+    "name": "get_attempt_graph_svg",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/audio/transcribe",
+    "name": "transcribe_audio",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/billing/history",
+    "name": "get_billing_history",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/billing/invoices",
+    "name": "list_my_invoices",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/billing/invoices/{invoice_id}",
+    "name": "get_my_invoice_detail",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/billing/invoices/{invoice_id}/html",
+    "name": "get_my_invoice_html",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/billing/subscribe",
+    "name": "subscribe_user",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/billing/validate-promo",
+    "name": "validate_promo",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/canonical_markdown",
+    "name": "get_canonical_markdown",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/edit_copy",
+    "name": "get_chat_edit_copy",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/edit_copy",
+    "name": "put_chat_edit_copy",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/edit_copy/reset",
+    "name": "reset_chat_edit_copy",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/notes",
+    "name": "get_chat_notes",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/notes",
+    "name": "put_chat_notes",
+    "methods": [
+      "PUT"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/solution_doc",
+    "name": "get_solution_doc",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/chat/{session_id}/solution_doc/preview",
+    "name": "preview_solution_doc",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/chat_final/playback_progress",
+    "name": "update_chat_final_playback_progress",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/chat_final/playback_state",
+    "name": "get_chat_final_playback_state",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/config/token-policy",
+    "name": "get_token_policy_endpoint",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/balance",
+    "name": "credits_balance",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/claim_pending",
+    "name": "claim_pending_credits",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/estimate",
+    "name": "estimate_credits",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/holds",
+    "name": "credits_holds",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/ledger",
+    "name": "credits_ledger",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/lots",
+    "name": "credits_lots",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/packs",
+    "name": "credits_packs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/credits/transfer",
+    "name": "transfer_credits",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/debug/chat_seed",
+    "name": "debug_seed_chat_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/dev/solve_debug",
+    "name": "dev_solve_debug",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/extract_questions",
+    "name": "extract_questions",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/find_error",
+    "name": "find_first_error",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/find_error_local",
+    "name": "find_error_local",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/find_error_local",
+    "name": "find_error_local",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/followup/{solve_session_id}",
+    "name": "solve_followup",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/health/llm",
+    "name": "health_llm",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/history",
+    "name": "get_history",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/import",
+    "name": "import_asset",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/latex-from-image",
+    "name": "extract_latex_from_image",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/library/save",
+    "name": "save_to_library",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/locations/countries",
+    "name": "get_countries",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/locations/grades",
+    "name": "get_grade_levels",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/locations/provinces",
+    "name": "get_provinces",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/login",
+    "name": "login_for_access_token",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/math/render",
+    "name": "render_math_svg",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/math/solve_from_image_or_sketch",
+    "name": "solve_from_image_or_sketch",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/math/solve_text_batch",
+    "name": "solve_text_batch",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/math/svg/{key}.svg",
+    "name": "get_cached_svg",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/me/subscription",
+    "name": "get_my_subscription",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/notifications",
+    "name": "list_notifications",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/notifications/read_all",
+    "name": "mark_all_notifications_read",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/notifications/stream",
+    "name": "notifications_stream",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/notifications/{notification_id}/read",
+    "name": "mark_notification_read",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/notifications/{notification_id}/thank",
+    "name": "thank_notification",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/ocr/artifacts/{artifact_id}",
+    "name": "get_ocr_artifact",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/ocr/artifacts/{artifact_id}/confirm",
+    "name": "confirm_ocr",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/ocr/engines",
+    "name": "get_ocr_engines_endpoint",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/ocr/extract",
+    "name": "ocr_extract",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/ocr/jobs",
+    "name": "create_ocr_job",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/ocr/jobs/{job_id}",
+    "name": "get_ocr_job",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/ocr_v5",
+    "name": "ocr_v5",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/plot/pipeline",
+    "name": "plot_pipeline_v1",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/plot/spec",
+    "name": "plot_spec_v1",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/plot/trigger",
+    "name": "plot_trigger_v1",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/public/plans",
+    "name": "list_public_plans",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/schools/search",
+    "name": "search_schools",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/schools/{school_id}",
+    "name": "get_school_by_id",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/sessions/{session_id}",
+    "name": "get_session_details",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/sessions/{session_id}/chat",
+    "name": "session_chat",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/sessions/{session_id}/details",
+    "name": "get_session_save_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/sessions/{session_id}/paper-versions",
+    "name": "save_paper_version",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/sessions/{session_id}/save",
+    "name": "save_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/shares/attempt/{attempt_id}",
+    "name": "get_attempt_share_state",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/shares/attempt/{attempt_id}",
+    "name": "upsert_attempt_share_state",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/shares/public/{token}",
+    "name": "get_public_shared_solution",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/shares/session/{session_id}/attempt",
+    "name": "resolve_share_attempt_for_session",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/signup",
+    "name": "signup",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/snap-solve/pdf/extract",
+    "name": "snap_solve_pdf_extract",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/snap-solve/pdf/page-image",
+    "name": "snap_solve_pdf_page_image",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/snap-solve/pdf/prepare",
+    "name": "snap_solve_pdf_prepare",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/solve",
+    "name": "solve_problem",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/solve/batch",
+    "name": "solve_batch_endpoint",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/solve/clarify",
+    "name": "solve_clarify",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/solve_questions_batch",
+    "name": "solve_questions_batch",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/solve_selected",
+    "name": "solve_selected",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/solve_v3",
+    "name": "solve_v3_endpoint",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/solve_v3_runtime_meta",
+    "name": "solve_v3_runtime_meta",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/solve_v3_stream",
+    "name": "solve_v3_stream_info",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/solve_v3_stream",
+    "name": "solve_v3_stream_endpoint",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/stripe/create_checkout_session",
+    "name": "create_checkout_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/stripe/webhook",
+    "name": "stripe_webhook",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/subscriptions/stripe/checkout",
+    "name": "create_subscription_stripe_checkout",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/topups/checkout",
+    "name": "create_checkout",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/topups/confirm",
+    "name": "confirm_topup",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/topups/products",
+    "name": "list_products",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/topups/stripe/checkout",
+    "name": "create_stripe_checkout",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/topups/stripe/confirm-session",
+    "name": "confirm_stripe_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/uploads",
+    "name": "upload_file",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/uploads/{upload_id}/crops",
+    "name": "create_crop",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/user/change-password",
+    "name": "change_user_password",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/user/heartbeat",
+    "name": "update_heartbeat",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/user/location",
+    "name": "update_user_location",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/user/preferences",
+    "name": "update_user_preferences",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/user/profile",
+    "name": "get_user_profile",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/user/profile",
+    "name": "update_user_profile",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/user/profile-location",
+    "name": "update_profile_location",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/user/token-usage",
+    "name": "get_token_usage",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/me/subscription",
+    "name": "get_my_subscription_v2",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/users/online",
+    "name": "get_online_users",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/v1/plot/pipeline",
+    "name": "plot_pipeline_v1",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/v1/plot/spec",
+    "name": "plot_spec_v1",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/v1/plot/trigger",
+    "name": "plot_trigger_v1",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/voice/artifacts/{artifact_id}",
+    "name": "get_voice_artifact",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/voice/artifacts/{artifact_id}/confirm",
+    "name": "confirm_voice_artifact",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/voice/command",
+    "name": "resolve_voice_command",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/voice/jobs/{job_id}",
+    "name": "get_voice_job",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/voice/sessions",
+    "name": "create_voice_session",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/voice/sessions/{id}/audio",
+    "name": "upload_voice_audio",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/voice/sessions/{id}/jobs",
+    "name": "create_voice_job",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/wallet/ledger",
+    "name": "list_wallet_ledger",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/wallet/lots",
+    "name": "list_wallet_lots",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/wallet/programs",
+    "name": "list_wallet_programs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/wallet/summary",
+    "name": "get_wallet_summary",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/api/v1/wallet/tier",
+    "name": "update_wallet_tier",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "path": "/api/v1/whatsapp/media",
+    "name": "upload_whatsapp_media",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/whatsapp/message",
+    "name": "handle_whatsapp_message",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "path": "/api/v1/whatsapp/status",
+    "name": "get_public_whatsapp_status",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/docs",
+    "name": "swagger_ui_html",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/docs/oauth2-redirect",
+    "name": "swagger_ui_redirect",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/health",
+    "name": "health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/health/llm",
+    "name": "llm_health_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/openapi.json",
+    "name": "openapi",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/ready",
+    "name": "readiness_check",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "path": "/redoc",
+    "name": "redoc_html",
+    "methods": [
+      "GET",
+      "HEAD"
+    ]
+  },
+  {
+    "path": "/storage",
+    "name": "storage",
+    "methods": []
+  }
+]

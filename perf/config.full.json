@@ -1,0 +1,65 @@
+{
+  "name": "perf-full",
+  "baseUrl": "http://localhost:9000",
+  "durationSec": 45,
+  "timeoutSec": 30,
+  "concurrencyLadder": [1, 5, 20, 50],
+  "metadata": {
+    "purpose": "Local full endpoint load profile"
+  },
+  "endpoints": [
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "name": "public_plans",
+      "method": "GET",
+      "path": "/api/v1/public/plans"
+    },
+    {
+      "name": "legal_terms",
+      "method": "GET",
+      "path": "/api/legal/terms"
+    },
+    {
+      "name": "solve_optional",
+      "method": "POST",
+      "path": "/api/v1/solve",
+      "requiredEnv": ["PERF_AUTH_TOKEN", "PERF_SOLVE_BODY_JSON"],
+      "headersFromEnv": {
+        "Authorization": "PERF_AUTH_TOKEN"
+      },
+      "bodyFromEnvJson": "PERF_SOLVE_BODY_JSON"
+    },
+    {
+      "name": "history_optional",
+      "method": "GET",
+      "path": "/api/v1/history",
+      "requiredEnv": ["PERF_AUTH_TOKEN"],
+      "headersFromEnv": {
+        "Authorization": "PERF_AUTH_TOKEN"
+      }
+    },
+    {
+      "name": "profile_optional",
+      "method": "GET",
+      "path": "/api/v1/user/profile",
+      "requiredEnv": ["PERF_AUTH_TOKEN"],
+      "headersFromEnv": {
+        "Authorization": "PERF_AUTH_TOKEN"
+      }
+    },
+    {
+      "name": "import_optional",
+      "method": "POST",
+      "path": "/api/v1/import",
+      "requiredEnv": ["PERF_AUTH_TOKEN", "PERF_IMPORT_BODY_JSON"],
+      "headersFromEnv": {
+        "Authorization": "PERF_AUTH_TOKEN"
+      },
+      "bodyFromEnvJson": "PERF_IMPORT_BODY_JSON"
+    }
+  ]
+}

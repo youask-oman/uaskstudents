@@ -1,0 +1,150 @@
+﻿{
+  "generated_at": "2026-02-20",
+  "phase": "phase_2_high_confidence_removal",
+  "entrypoints": {
+    "frontend": {
+      "framework": "nextjs_app_router",
+      "roots": [
+        "src/app/layout.tsx",
+        "src/app/page.tsx"
+      ],
+      "api_routes_glob": "src/app/api/**/route.ts"
+    },
+    "backend": {
+      "framework": "fastapi",
+      "main": "backend/app/main.py",
+      "worker": "backend/app/worker.py",
+      "registered_routes": {
+        "path": "backend/reports/registered_routes.json",
+        "count": 368
+      }
+    }
+  },
+  "changes_applied": [
+    {
+      "type": "npm_dependency_remove",
+      "target": "clsx",
+      "status": "removed",
+      "confidence": "HIGH"
+    },
+    {
+      "type": "npm_dependency_remove",
+      "target": "date-fns",
+      "status": "removed",
+      "confidence": "HIGH"
+    },
+    {
+      "type": "npm_dependency_remove",
+      "target": "file-saver",
+      "status": "removed",
+      "confidence": "HIGH"
+    },
+    {
+      "type": "npm_dependency_remove",
+      "target": "tailwind-merge",
+      "status": "removed",
+      "confidence": "HIGH"
+    },
+    {
+      "type": "npm_dependency_remove",
+      "target": "@types/file-saver",
+      "status": "removed",
+      "confidence": "HIGH"
+    },
+    {
+      "type": "npm_dependency_remove",
+      "target": "baileys",
+      "status": "removed",
+      "confidence": "HIGH"
+    },
+    {
+      "type": "source_file_remove",
+      "target": "backend/app/services/vision copy.py",
+      "status": "removed",
+      "confidence": "HIGH"
+    }
+  ],
+  "baseline_before": [
+    { "command": "npm install", "status": "pass" },
+    { "command": "npm run lint", "status": "fail" },
+    { "command": "npm run typecheck", "status": "pass" },
+    { "command": "npx jest --ci", "status": "fail" },
+    { "command": "npm run build", "status": "pass" },
+    { "command": "python -m pytest -q (backend)", "status": "fail" },
+    { "command": "docker compose up + /health + down", "status": "pass" }
+  ],
+  "post_change": [
+    { "command": "npm install", "status": "pass" },
+    {
+      "command": "npm run lint",
+      "status": "fail",
+      "notes": [
+        "react-hooks/preserve-manual-memoization in SolutionStepsBlock.tsx",
+        "@typescript-eslint/no-require-imports in tmp_mq_test/multiQuestionDetector.js"
+      ]
+    },
+    { "command": "npm run typecheck", "status": "pass" },
+    {
+      "command": "npx jest --ci",
+      "status": "fail",
+      "notes": [
+        "playwright e2e specs being executed by jest",
+        "missing vitest for static_design/multiQuestionDetector.test.ts",
+        "react-markdown ESM parse failure in current jest transform"
+      ]
+    },
+    { "command": "npm run build", "status": "pass" },
+    {
+      "command": "python -m pytest -q (backend)",
+      "status": "fail",
+      "notes": [
+        "same 9 collection/import errors as baseline"
+      ]
+    },
+    {
+      "command": "docker compose -f docker-compose.yml up -d postgres redis orchestrator",
+      "status": "pass"
+    },
+    {
+      "command": "GET http://localhost:9000/health",
+      "status": "pass",
+      "notes": ["first probe transient receive-close; retry succeeded"]
+    },
+    {
+      "command": "docker compose -f docker-compose.yml down",
+      "status": "pass"
+    }
+  ],
+  "remaining_candidates": [
+    {
+      "id": "compose-watchtower",
+      "kind": "docker_compose_service",
+      "target": "watchtower",
+      "confidence": "MEDIUM",
+      "recommended_action": "NEEDS_CONFIRMATION",
+      "evidence": ["defined in compose only", "no in-repo docs/scripts dependency"]
+    },
+    {
+      "id": "static-vitest-test",
+      "kind": "source_file",
+      "target": "static_design/multiQuestionDetector.test.ts",
+      "confidence": "MEDIUM",
+      "recommended_action": "DEPRECATE_OR_CONFIRM_DELETE",
+      "evidence": ["requires vitest", "not wired to stable test path"]
+    },
+    {
+      "id": "low-evidence-scripts",
+      "kind": "package_scripts",
+      "target": ["start:e2e", "validate:templates", "test:e2e", "e2e", "qa:frontend-regression"],
+      "confidence": "MEDIUM",
+      "recommended_action": "KEEP_UNTIL_CONFIRMED_UNUSED"
+    },
+    {
+      "id": "runtime-env-uncertain",
+      "kind": "compose_env",
+      "target": ["PIX2TEXT_HOME", "YOLO_RUNS_DIR", "RUNS_DIR", "WATCHTOWER_CLEANUP", "WATCHTOWER_POLL_INTERVAL"],
+      "confidence": "LOW",
+      "recommended_action": "NEEDS_CONFIRMATION"
+    }
+  ]
+}

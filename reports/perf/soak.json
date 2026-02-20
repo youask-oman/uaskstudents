@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-02-20T04:48:44.285Z",
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/public/plans"
+  },
+  "totalDurationSec": 120,
+  "windowDurationSec": 60,
+  "connections": 20,
+  "windows": [
+    {
+      "index": 1,
+      "durationSec": 60,
+      "p95": 113,
+      "p99": 298,
+      "rps": 198.72,
+      "errorPct": 0
+    },
+    {
+      "index": 2,
+      "durationSec": 60,
+      "p95": 117,
+      "p99": 301,
+      "rps": 197.2,
+      "errorPct": 0
+    }
+  ],
+  "drift": {
+    "p95Pct": 3.5398230088495577,
+    "errorPctAbs": 0
+  },
+  "memoryTracking": "Not directly measured in soak runner; use PERF_DOCKER_CONTAINER in load_runner outputs for memory sample trends."
+}

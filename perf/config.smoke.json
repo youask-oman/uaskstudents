@@ -1,0 +1,55 @@
+{
+  "name": "perf-smoke",
+  "baseUrl": "http://localhost:9000",
+  "durationSec": 30,
+  "timeoutSec": 20,
+  "concurrencyLadder": [1, 5, 20, 50],
+  "metadata": {
+    "purpose": "CI-friendly smoke for latency/throughput/error regression checks"
+  },
+  "endpoints": [
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "name": "public_plans",
+      "method": "GET",
+      "path": "/api/v1/public/plans"
+    },
+    {
+      "name": "legal_terms",
+      "method": "GET",
+      "path": "/api/legal/terms"
+    },
+    {
+      "name": "solve_batch_optional",
+      "method": "POST",
+      "path": "/api/v1/solve/batch",
+      "requiredEnv": ["PERF_AUTH_TOKEN", "PERF_SOLVE_BATCH_BODY_JSON"],
+      "headersFromEnv": {
+        "Authorization": "PERF_AUTH_TOKEN"
+      },
+      "bodyFromEnvJson": "PERF_SOLVE_BATCH_BODY_JSON"
+    },
+    {
+      "name": "history_optional",
+      "method": "GET",
+      "path": "/api/v1/history",
+      "requiredEnv": ["PERF_AUTH_TOKEN"],
+      "headersFromEnv": {
+        "Authorization": "PERF_AUTH_TOKEN"
+      }
+    },
+    {
+      "name": "profile_optional",
+      "method": "GET",
+      "path": "/api/v1/user/profile",
+      "requiredEnv": ["PERF_AUTH_TOKEN"],
+      "headersFromEnv": {
+        "Authorization": "PERF_AUTH_TOKEN"
+      }
+    }
+  ]
+}

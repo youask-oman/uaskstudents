@@ -1,0 +1,65 @@
+{
+  "generatedAt": "2026-02-20T04:46:43.600Z",
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/public/plans"
+  },
+  "durationSec": 30,
+  "timeoutSec": 20,
+  "thresholds": {
+    "maxP95Ms": 1200,
+    "maxErrorRatePct": 2
+  },
+  "runs": [
+    {
+      "concurrency": 1,
+      "p95": 6,
+      "p99": 6,
+      "rps": 187,
+      "errorPct": 0,
+      "verdict": "ok"
+    },
+    {
+      "concurrency": 5,
+      "p95": 30,
+      "p99": 31,
+      "rps": 191.87,
+      "errorPct": 0,
+      "verdict": "ok"
+    },
+    {
+      "concurrency": 20,
+      "p95": 111,
+      "p99": 297,
+      "rps": 198.7,
+      "errorPct": 0,
+      "verdict": "ok"
+    },
+    {
+      "concurrency": 50,
+      "p95": 456,
+      "p99": 459,
+      "rps": 195.04,
+      "errorPct": 0,
+      "verdict": "ok"
+    },
+    {
+      "concurrency": 75,
+      "p95": 650,
+      "p99": 663,
+      "rps": 172.5,
+      "errorPct": 0.3082,
+      "verdict": "ok"
+    },
+    {
+      "concurrency": 100,
+      "p95": 789,
+      "p99": 817,
+      "rps": 173.34,
+      "errorPct": 0.7634,
+      "verdict": "ok"
+    }
+  ],
+  "cliffDetected": false,
+  "cliffAt": null
+}

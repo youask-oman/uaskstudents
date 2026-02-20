@@ -12,36 +12,48 @@
             "type": "string"
           },
           "data": {
-            "items": {
-              "$ref": "#/$defs/VisualDataPointV3"
-            },
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/VisualDataPointV3"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "kind",
-          "description",
-          "data"
+          "description"
         ],
         "type": "object",
         "additionalProperties": false
       },
       "AnnotationV3": {
         "properties": {
-          "text": {
+          "name": {
             "type": "string"
           },
-          "x": {
-            "type": "number"
+          "detail": {
+            "type": "string"
           },
-          "y": {
-            "type": "number"
+          "point": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PointV3"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "text",
-          "x",
-          "y"
+          "name",
+          "detail"
         ],
         "type": "object",
         "additionalProperties": false
@@ -125,14 +137,20 @@
             "type": "array"
           },
           "units": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "answer_text",
           "answer_latex",
-          "values",
-          "units"
+          "values"
         ],
         "type": "object",
         "additionalProperties": false
@@ -149,6 +167,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -158,7 +179,6 @@
         },
         "required": [
           "label",
-          "value",
           "value_latex"
         ],
         "type": "object",
@@ -206,22 +226,43 @@
             "type": "number"
           },
           "series": {
-            "items": {
-              "$ref": "#/$defs/SeriesV3"
-            },
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/SeriesV3"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "key_points": {
-            "items": {
-              "$ref": "#/$defs/PointV3"
-            },
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/PointV3"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "annotations": {
-            "items": {
-              "$ref": "#/$defs/AnnotationV3"
-            },
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/AnnotationV3"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -233,10 +274,7 @@
           "x_min",
           "x_max",
           "y_min",
-          "y_max",
-          "series",
-          "key_points",
-          "annotations"
+          "y_max"
         ],
         "type": "object",
         "additionalProperties": false
@@ -247,7 +285,13 @@
           "cartesian_3d",
           "number_line_1d",
           "coordinate_geometry_2d",
-          "statistics_chart"
+          "statistics_chart",
+          "function",
+          "system",
+          "number_line",
+          "inequality_region",
+          "scatter",
+          "histogram"
         ],
         "type": "string"
       },
@@ -260,13 +304,19 @@
             "type": "number"
           },
           "label": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "x",
-          "y",
-          "label"
+          "y"
         ],
         "type": "object",
         "additionalProperties": false
@@ -321,16 +371,28 @@
             "type": "boolean"
           },
           "reason": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "safe_alternative": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "is_refusal",
-          "reason",
-          "safe_alternative"
+          "is_refusal"
         ],
         "type": "object",
         "additionalProperties": false
@@ -359,21 +421,33 @@
             "type": "string"
           },
           "points": {
-            "items": {
-              "$ref": "#/$defs/PointV3"
-            },
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/PointV3"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "style_hint": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "name",
           "kind",
-          "expression_latex",
-          "points",
-          "style_hint"
+          "expression_latex"
         ],
         "type": "object",
         "additionalProperties": false
@@ -458,16 +532,28 @@
             "type": "string"
           },
           "x": {
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "y": {
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "label",
-          "x",
-          "y"
+          "label"
         ],
         "type": "object",
         "additionalProperties": false
@@ -490,20 +576,32 @@
             "type": "string"
           },
           "plots": {
-            "items": {
-              "$ref": "#/$defs/PlotSpecV3"
-            },
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/PlotSpecV3"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "alternative_visual": {
-            "$ref": "#/$defs/AlternativeVisualV3"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AlternativeVisualV3"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "should_visualize",
-          "decision_reason",
-          "plots",
-          "alternative_visual"
+          "decision_reason"
         ],
         "type": "object",
         "additionalProperties": false
@@ -546,7 +644,6 @@
       }
     },
     "required": [
-      "schema_version",
       "problem",
       "classification",
       "refusal",

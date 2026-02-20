@@ -1,0 +1,3697 @@
+{
+  "suite": "perf-smoke",
+  "generatedAt": "2026-02-20T04:30:59.957Z",
+  "baseUrl": "http://localhost:9000",
+  "configPath": "perf/config.smoke.json",
+  "durationSec": 30,
+  "timeoutSec": 20,
+  "concurrencyLadder": [
+    1,
+    5,
+    20,
+    50
+  ],
+  "endpointCount": 6,
+  "runs": [
+    {
+      "endpoint": "health",
+      "method": "GET",
+      "path": "/health",
+      "url": "http://localhost:9000/health",
+      "concurrency": 1,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:24:37.088Z",
+      "finishedAt": "2026-02-20T04:25:09.297Z",
+      "requests": {
+        "total": 270,
+        "averageRps": 16.88,
+        "minRps": 1,
+        "maxRps": 255,
+        "p50Rps": 1,
+        "p95Rps": 255,
+        "p99Rps": 255
+      },
+      "latencyMs": {
+        "average": 118.71,
+        "min": 1,
+        "max": 2009,
+        "p50": 3,
+        "p95": 2005,
+        "p99": 2005
+      },
+      "throughputBytes": {
+        "average": 3723.88,
+        "min": 220,
+        "max": 56285
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 270
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 2.206875,
+        "maxCpuPct": 18.36,
+        "avgMemBytes": 793064243.2,
+        "maxMemBytes": 793352601.6,
+        "samples": [
+          {
+            "at": "2026-02-20T04:24:39.220Z",
+            "cpuPct": 15.17,
+            "memBytes": 793352601.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "15.17%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:41.225Z",
+            "cpuPct": 0.12,
+            "memBytes": 793352601.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:43.233Z",
+            "cpuPct": 0.12,
+            "memBytes": 793038028.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:45.234Z",
+            "cpuPct": 0.13,
+            "memBytes": 793142886.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:47.239Z",
+            "cpuPct": 0.13,
+            "memBytes": 793142886.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:49.247Z",
+            "cpuPct": 0.14,
+            "memBytes": 793142886.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:51.251Z",
+            "cpuPct": 0.13,
+            "memBytes": 793142886.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:53.257Z",
+            "cpuPct": 0.12,
+            "memBytes": 792828313.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:55.258Z",
+            "cpuPct": 0.11,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.11%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:57.263Z",
+            "cpuPct": 0.13,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:24:59.263Z",
+            "cpuPct": 0.12,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.2MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:01.269Z",
+            "cpuPct": 0.12,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.3MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:03.275Z",
+            "cpuPct": 0.15,
+            "memBytes": 792723456,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.3MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:05.280Z",
+            "cpuPct": 0.12,
+            "memBytes": 792618598.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "755.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.3MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:07.284Z",
+            "cpuPct": 0.14,
+            "memBytes": 792618598.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "755.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.3MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:09.287Z",
+            "cpuPct": 18.36,
+            "memBytes": 792933171.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "18.36%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.3MB",
+              "PIDs": "86"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "health",
+      "method": "GET",
+      "path": "/health",
+      "url": "http://localhost:9000/health",
+      "concurrency": 5,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:25:09.298Z",
+      "finishedAt": "2026-02-20T04:25:40.366Z",
+      "requests": {
+        "total": 441,
+        "averageRps": 29.4,
+        "minRps": 5,
+        "maxRps": 371,
+        "p50Rps": 5,
+        "p95Rps": 371,
+        "p99Rps": 371
+      },
+      "latencyMs": {
+        "average": 351.66,
+        "min": 8,
+        "max": 2009,
+        "p50": 11,
+        "p95": 2007,
+        "p99": 2008
+      },
+      "throughputBytes": {
+        "average": 6489.47,
+        "min": 1102,
+        "max": 81899
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 441
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 15,
+        "avgCpuPct": 1.2713333333333334,
+        "maxCpuPct": 17.33,
+        "avgMemBytes": 793366582.6133333,
+        "maxMemBytes": 793876889.6,
+        "samples": [
+          {
+            "at": "2026-02-20T04:25:12.296Z",
+            "cpuPct": 0.13,
+            "memBytes": 792933171.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.4MB",
+              "PIDs": "89"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:14.301Z",
+            "cpuPct": 0.12,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:16.302Z",
+            "cpuPct": 0.11,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.11%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:18.306Z",
+            "cpuPct": 0.1,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.10%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:20.312Z",
+            "cpuPct": 0.12,
+            "memBytes": 793247744,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:22.319Z",
+            "cpuPct": 0.13,
+            "memBytes": 792933171.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:24.326Z",
+            "cpuPct": 17.33,
+            "memBytes": 793562316.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "17.33%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:26.327Z",
+            "cpuPct": 0.12,
+            "memBytes": 793562316.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:28.333Z",
+            "cpuPct": 0.12,
+            "memBytes": 793562316.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:30.336Z",
+            "cpuPct": 0.13,
+            "memBytes": 793562316.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:32.344Z",
+            "cpuPct": 0.12,
+            "memBytes": 793038028.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:34.353Z",
+            "cpuPct": 0.15,
+            "memBytes": 793457459.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:36.353Z",
+            "cpuPct": 0.12,
+            "memBytes": 793457459.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:38.358Z",
+            "cpuPct": 0.15,
+            "memBytes": 793562316.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "756.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:40.361Z",
+            "cpuPct": 0.12,
+            "memBytes": 793876889.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.4MB",
+              "PIDs": "90"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "health",
+      "method": "GET",
+      "path": "/health",
+      "url": "http://localhost:9000/health",
+      "concurrency": 20,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:25:40.366Z",
+      "finishedAt": "2026-02-20T04:26:11.440Z",
+      "requests": {
+        "total": 650,
+        "averageRps": 43.34,
+        "minRps": 20,
+        "maxRps": 370,
+        "p50Rps": 20,
+        "p95Rps": 370,
+        "p99Rps": 370
+      },
+      "latencyMs": {
+        "average": 955.33,
+        "min": 46,
+        "max": 2062,
+        "p50": 60,
+        "p95": 2014,
+        "p99": 2061
+      },
+      "throughputBytes": {
+        "average": 9565.87,
+        "min": 4407,
+        "max": 81682
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 650
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 15,
+        "avgCpuPct": 0.7720000000000002,
+        "maxCpuPct": 9.73,
+        "avgMemBytes": 799077826.56,
+        "maxMemBytes": 799539200,
+        "samples": [
+          {
+            "at": "2026-02-20T04:25:43.372Z",
+            "cpuPct": 0.13,
+            "memBytes": 798176051.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.6MB",
+              "PIDs": "103"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:45.377Z",
+            "cpuPct": 0.13,
+            "memBytes": 799224627.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.6MB",
+              "PIDs": "103"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:47.392Z",
+            "cpuPct": 0.13,
+            "memBytes": 799434342.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.1MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:49.380Z",
+            "cpuPct": 0.13,
+            "memBytes": 799329484.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:51.391Z",
+            "cpuPct": 0.12,
+            "memBytes": 799434342.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:53.392Z",
+            "cpuPct": 0.16,
+            "memBytes": 798280908.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.16%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:55.397Z",
+            "cpuPct": 9.73,
+            "memBytes": 799014912,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "9.73%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:57.401Z",
+            "cpuPct": 0.12,
+            "memBytes": 799224627.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:25:59.403Z",
+            "cpuPct": 0.13,
+            "memBytes": 799224627.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:01.412Z",
+            "cpuPct": 0.13,
+            "memBytes": 799329484.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:03.416Z",
+            "cpuPct": 0.13,
+            "memBytes": 798176051.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:05.419Z",
+            "cpuPct": 0.13,
+            "memBytes": 799329484.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.7MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:07.420Z",
+            "cpuPct": 0.15,
+            "memBytes": 799539200,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.7MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:09.425Z",
+            "cpuPct": 0.12,
+            "memBytes": 799434342.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.7MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:11.435Z",
+            "cpuPct": 0.14,
+            "memBytes": 799014912,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.2MB / 51.7MB",
+              "PIDs": "105"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "health",
+      "method": "GET",
+      "path": "/health",
+      "url": "http://localhost:9000/health",
+      "concurrency": 50,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:26:11.440Z",
+      "finishedAt": "2026-02-20T04:26:43.591Z",
+      "requests": {
+        "total": 1104,
+        "averageRps": 69,
+        "minRps": 50,
+        "maxRps": 354,
+        "p50Rps": 50,
+        "p95Rps": 354,
+        "p99Rps": 354
+      },
+      "latencyMs": {
+        "average": 1455.11,
+        "min": 99,
+        "max": 2171,
+        "p50": 2002,
+        "p95": 2169,
+        "p99": 2170
+      },
+      "throughputBytes": {
+        "average": 15229.25,
+        "min": 11027,
+        "max": 78142
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 1104
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 1.4737499999999997,
+        "maxCpuPct": 17.38,
+        "avgMemBytes": 807324876.8,
+        "maxMemBytes": 808242380.8,
+        "samples": [
+          {
+            "at": "2026-02-20T04:26:13.510Z",
+            "cpuPct": 4.35,
+            "memBytes": 802684928,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "4.35%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.3MB / 51.8MB",
+              "PIDs": "113"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:15.513Z",
+            "cpuPct": 0.13,
+            "memBytes": 807613235.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.3MB / 51.9MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:17.515Z",
+            "cpuPct": 0.13,
+            "memBytes": 807403520,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.3MB / 51.9MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:19.519Z",
+            "cpuPct": 0.12,
+            "memBytes": 807508377.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.3MB / 51.9MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:21.530Z",
+            "cpuPct": 0.14,
+            "memBytes": 807508377.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.3MB / 51.9MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:23.533Z",
+            "cpuPct": 0.12,
+            "memBytes": 806459801.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "769.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.3MB / 51.9MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:25.541Z",
+            "cpuPct": 17.38,
+            "memBytes": 807927808,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "17.38%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.3MB / 52MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:27.710Z",
+            "cpuPct": 0.12,
+            "memBytes": 807927808,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:29.544Z",
+            "cpuPct": 0.14,
+            "memBytes": 808032665.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:31.553Z",
+            "cpuPct": 0.13,
+            "memBytes": 808032665.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:33.555Z",
+            "cpuPct": 0.15,
+            "memBytes": 806669516.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "769.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:35.558Z",
+            "cpuPct": 0.13,
+            "memBytes": 808137523.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52.1MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:37.562Z",
+            "cpuPct": 0.14,
+            "memBytes": 808242380.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52.1MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:39.566Z",
+            "cpuPct": 0.12,
+            "memBytes": 808242380.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52.1MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:41.578Z",
+            "cpuPct": 0.15,
+            "memBytes": 808137523.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52.1MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:43.581Z",
+            "cpuPct": 0.13,
+            "memBytes": 806669516.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "769.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "45.4MB / 52.1MB",
+              "PIDs": "125"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "public_plans",
+      "method": "GET",
+      "path": "/api/v1/public/plans",
+      "url": "http://localhost:9000/api/v1/public/plans",
+      "concurrency": 1,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:26:43.592Z",
+      "finishedAt": "2026-02-20T04:27:15.741Z",
+      "requests": {
+        "total": 144,
+        "averageRps": 9,
+        "minRps": 1,
+        "maxRps": 126,
+        "p50Rps": 1,
+        "p95Rps": 126,
+        "p99Rps": 126
+      },
+      "latencyMs": {
+        "average": 222.71,
+        "min": 4,
+        "max": 2232,
+        "p50": 6,
+        "p95": 2009,
+        "p99": 2154
+      },
+      "throughputBytes": {
+        "average": 51659.63,
+        "min": 5740,
+        "max": 723240
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 144
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 1.2381250000000001,
+        "maxCpuPct": 17.93,
+        "avgMemBytes": 798615142.4,
+        "maxMemBytes": 807403520,
+        "samples": [
+          {
+            "at": "2026-02-20T04:26:45.662Z",
+            "cpuPct": 0.13,
+            "memBytes": 807403520,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:47.665Z",
+            "cpuPct": 0.12,
+            "memBytes": 807403520,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:49.670Z",
+            "cpuPct": 0.12,
+            "memBytes": 807403520,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:51.679Z",
+            "cpuPct": 0.12,
+            "memBytes": 807403520,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "770MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:53.681Z",
+            "cpuPct": 0.13,
+            "memBytes": 806250086.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.41%",
+              "MemUsage": "768.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53MB",
+              "PIDs": "123"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:55.690Z",
+            "cpuPct": 17.93,
+            "memBytes": 795030323.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "17.93%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:57.923Z",
+            "cpuPct": 0.12,
+            "memBytes": 794925465.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:26:59.698Z",
+            "cpuPct": 0.13,
+            "memBytes": 794820608,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:01.852Z",
+            "cpuPct": 0.12,
+            "memBytes": 794820608,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:03.753Z",
+            "cpuPct": 0.14,
+            "memBytes": 794610892.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.2MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:05.714Z",
+            "cpuPct": 0.13,
+            "memBytes": 794610892.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.3MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:07.719Z",
+            "cpuPct": 0.12,
+            "memBytes": 794610892.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.3MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:09.721Z",
+            "cpuPct": 0.12,
+            "memBytes": 794610892.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.3MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:11.788Z",
+            "cpuPct": 0.13,
+            "memBytes": 794820608,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.3MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:13.740Z",
+            "cpuPct": 0.12,
+            "memBytes": 794506035.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.3MB / 53.1MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:15.739Z",
+            "cpuPct": 0.13,
+            "memBytes": 794610892.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "46.3MB / 53.1MB",
+              "PIDs": "86"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "public_plans",
+      "method": "GET",
+      "path": "/api/v1/public/plans",
+      "url": "http://localhost:9000/api/v1/public/plans",
+      "concurrency": 5,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:27:15.741Z",
+      "finishedAt": "2026-02-20T04:27:48.093Z",
+      "requests": {
+        "total": 260,
+        "averageRps": 16.25,
+        "minRps": 5,
+        "maxRps": 180,
+        "p50Rps": 5,
+        "p95Rps": 180,
+        "p99Rps": 180
+      },
+      "latencyMs": {
+        "average": 621.59,
+        "min": 20,
+        "max": 2544,
+        "p50": 29,
+        "p95": 2210,
+        "p99": 2543
+      },
+      "throughputBytes": {
+        "average": 93256,
+        "min": 28700,
+        "max": 1033200
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 260
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 1.9681250000000001,
+        "maxCpuPct": 18.54,
+        "avgMemBytes": 794918912,
+        "maxMemBytes": 795240038.4,
+        "samples": [
+          {
+            "at": "2026-02-20T04:27:17.812Z",
+            "cpuPct": 0.13,
+            "memBytes": 795030323.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.4MB / 54.3MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:19.817Z",
+            "cpuPct": 0.13,
+            "memBytes": 795030323.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.4MB / 54.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:21.822Z",
+            "cpuPct": 0.13,
+            "memBytes": 795030323.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.4MB / 54.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:23.824Z",
+            "cpuPct": 0.12,
+            "memBytes": 794610892.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.4MB / 54.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:25.830Z",
+            "cpuPct": 18.54,
+            "memBytes": 795240038.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "18.54%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.5MB / 54.5MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:28.374Z",
+            "cpuPct": 0.11,
+            "memBytes": 795030323.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.11%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.5MB / 54.5MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:29.838Z",
+            "cpuPct": 0.12,
+            "memBytes": 795030323.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.5MB / 54.5MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:32.044Z",
+            "cpuPct": 0.12,
+            "memBytes": 795030323.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.6MB / 54.6MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:33.849Z",
+            "cpuPct": 0.12,
+            "memBytes": 794715750.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.6MB / 54.6MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:35.853Z",
+            "cpuPct": 0.12,
+            "memBytes": 794820608,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.6MB / 54.6MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:37.858Z",
+            "cpuPct": 0.13,
+            "memBytes": 794925465.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.6MB / 54.7MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:39.863Z",
+            "cpuPct": 0.13,
+            "memBytes": 794925465.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.7MB / 54.7MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:41.866Z",
+            "cpuPct": 11.19,
+            "memBytes": 794925465.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "11.19%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.7MB / 54.7MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:43.872Z",
+            "cpuPct": 0.13,
+            "memBytes": 794610892.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "757.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.7MB / 54.8MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:45.881Z",
+            "cpuPct": 0.12,
+            "memBytes": 794820608,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.8MB / 54.8MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:48.091Z",
+            "cpuPct": 0.15,
+            "memBytes": 794925465.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.37%",
+              "MemUsage": "758.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "47.8MB / 54.8MB",
+              "PIDs": "90"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "public_plans",
+      "method": "GET",
+      "path": "/api/v1/public/plans",
+      "url": "http://localhost:9000/api/v1/public/plans",
+      "concurrency": 20,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:27:48.093Z",
+      "finishedAt": "2026-02-20T04:28:20.243Z",
+      "requests": {
+        "total": 460,
+        "averageRps": 28.75,
+        "minRps": 20,
+        "maxRps": 160,
+        "p50Rps": 20,
+        "p95Rps": 160,
+        "p99Rps": 160
+      },
+      "latencyMs": {
+        "average": 1397.14,
+        "min": 92,
+        "max": 2012,
+        "p50": 2003,
+        "p95": 2011,
+        "p99": 2011
+      },
+      "throughputBytes": {
+        "average": 165002,
+        "min": 114800,
+        "max": 918400
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 460
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 2.1774999999999998,
+        "maxCpuPct": 15.83,
+        "avgMemBytes": 803019161.6,
+        "maxMemBytes": 815896985.6,
+        "samples": [
+          {
+            "at": "2026-02-20T04:27:50.163Z",
+            "cpuPct": 1.74,
+            "memBytes": 802265497.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "1.74%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "48.7MB / 55.9MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:52.174Z",
+            "cpuPct": 0.14,
+            "memBytes": 802370355.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "48.9MB / 56MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:54.173Z",
+            "cpuPct": 0.12,
+            "memBytes": 801426636.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "764.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49MB / 56.2MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:56.178Z",
+            "cpuPct": 15.62,
+            "memBytes": 815896985.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "15.62%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.44%",
+              "MemUsage": "778.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.1MB / 56.3MB",
+              "PIDs": "107"
+            }
+          },
+          {
+            "at": "2026-02-20T04:27:58.183Z",
+            "cpuPct": 0.12,
+            "memBytes": 802475212.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.2MB / 56.4MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:00.184Z",
+            "cpuPct": 0.13,
+            "memBytes": 802370355.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.3MB / 56.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:02.194Z",
+            "cpuPct": 0.14,
+            "memBytes": 802265497.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.4MB / 56.7MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:04.198Z",
+            "cpuPct": 0.12,
+            "memBytes": 801846067.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "764.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.5MB / 56.8MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:06.203Z",
+            "cpuPct": 0.13,
+            "memBytes": 802789785.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.7MB / 57MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:08.206Z",
+            "cpuPct": 0.12,
+            "memBytes": 802370355.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.8MB / 57.1MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:10.210Z",
+            "cpuPct": 0.12,
+            "memBytes": 802475212.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "765.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "49.9MB / 57.2MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:12.222Z",
+            "cpuPct": 15.83,
+            "memBytes": 802055782.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "15.83%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "764.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "50MB / 57.4MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:14.225Z",
+            "cpuPct": 0.14,
+            "memBytes": 801741209.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "764.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "50.1MB / 57.5MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:16.228Z",
+            "cpuPct": 0.13,
+            "memBytes": 801846067.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "764.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "50.2MB / 57.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:18.234Z",
+            "cpuPct": 0.12,
+            "memBytes": 802055782.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "764.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "50.3MB / 57.8MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:20.239Z",
+            "cpuPct": 0.12,
+            "memBytes": 802055782.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "764.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "50.5MB / 57.9MB",
+              "PIDs": "105"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "public_plans",
+      "method": "GET",
+      "path": "/api/v1/public/plans",
+      "url": "http://localhost:9000/api/v1/public/plans",
+      "concurrency": 50,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:28:20.243Z",
+      "finishedAt": "2026-02-20T04:28:51.328Z",
+      "requests": {
+        "total": 900,
+        "averageRps": 60,
+        "minRps": 50,
+        "maxRps": 200,
+        "p50Rps": 50,
+        "p95Rps": 200,
+        "p99Rps": 200
+      },
+      "latencyMs": {
+        "average": 1725.51,
+        "min": 226,
+        "max": 2093,
+        "p50": 2004,
+        "p95": 2049,
+        "p99": 2093
+      },
+      "throughputBytes": {
+        "average": 344524.8,
+        "min": 287000,
+        "max": 1148000
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 900
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 15,
+        "avgCpuPct": 1.3013333333333332,
+        "maxCpuPct": 17.69,
+        "avgMemBytes": 811437042.3466665,
+        "maxMemBytes": 812856115.2,
+        "samples": [
+          {
+            "at": "2026-02-20T04:28:23.247Z",
+            "cpuPct": 0.14,
+            "memBytes": 811492966.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "51.7MB / 59.3MB",
+              "PIDs": "132"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:25.251Z",
+            "cpuPct": 0.13,
+            "memBytes": 812331827.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.43%",
+              "MemUsage": "774.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "52MB / 59.6MB",
+              "PIDs": "132"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:27.256Z",
+            "cpuPct": 17.69,
+            "memBytes": 812436684.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "17.69%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.43%",
+              "MemUsage": "774.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "52.3MB / 60MB",
+              "PIDs": "132"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:29.260Z",
+            "cpuPct": 0.13,
+            "memBytes": 812122112,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "774.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "52.6MB / 60.3MB",
+              "PIDs": "132"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:31.267Z",
+            "cpuPct": 0.13,
+            "memBytes": 812017254.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "774.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "52.9MB / 60.6MB",
+              "PIDs": "132"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:33.270Z",
+            "cpuPct": 0.12,
+            "memBytes": 812122112,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "774.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "53.2MB / 61MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:35.276Z",
+            "cpuPct": 0.16,
+            "memBytes": 812856115.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.16%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.43%",
+              "MemUsage": "775.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "53.5MB / 61.3MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:37.278Z",
+            "cpuPct": 0.14,
+            "memBytes": 810549248,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "53.8MB / 61.7MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:39.285Z",
+            "cpuPct": 0.13,
+            "memBytes": 810234675.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "772.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "54.1MB / 62MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:41.290Z",
+            "cpuPct": 0.13,
+            "memBytes": 810758963.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "54.4MB / 62.3MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:43.296Z",
+            "cpuPct": 0.12,
+            "memBytes": 810654105.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "54.7MB / 62.7MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:45.299Z",
+            "cpuPct": 0.12,
+            "memBytes": 810968678.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "55MB / 63MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:47.303Z",
+            "cpuPct": 0.13,
+            "memBytes": 810863820.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "55.3MB / 63.4MB",
+              "PIDs": "127"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:49.304Z",
+            "cpuPct": 0.12,
+            "memBytes": 811178393.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "55.6MB / 63.7MB",
+              "PIDs": "127"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:51.310Z",
+            "cpuPct": 0.13,
+            "memBytes": 810968678.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "55.8MB / 64MB",
+              "PIDs": "127"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "legal_terms",
+      "method": "GET",
+      "path": "/api/legal/terms",
+      "url": "http://localhost:9000/api/legal/terms",
+      "concurrency": 1,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:28:51.329Z",
+      "finishedAt": "2026-02-20T04:29:23.482Z",
+      "requests": {
+        "total": 128,
+        "averageRps": 8,
+        "minRps": 1,
+        "maxRps": 112,
+        "p50Rps": 1,
+        "p95Rps": 112,
+        "p99Rps": 112
+      },
+      "latencyMs": {
+        "average": 250.65,
+        "min": 4,
+        "max": 2109,
+        "p50": 6,
+        "p95": 2006,
+        "p99": 2008
+      },
+      "throughputBytes": {
+        "average": 109676,
+        "min": 13707,
+        "max": 1535184
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 128
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 1.2150000000000003,
+        "maxCpuPct": 17.57,
+        "avgMemBytes": 802593177.5999999,
+        "maxMemBytes": 811073536,
+        "samples": [
+          {
+            "at": "2026-02-20T04:28:53.409Z",
+            "cpuPct": 0.12,
+            "memBytes": 810444390.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "772.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.8MB / 65.8MB",
+              "PIDs": "127"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:55.415Z",
+            "cpuPct": 0.12,
+            "memBytes": 810444390.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "772.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.8MB / 65.8MB",
+              "PIDs": "127"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:57.415Z",
+            "cpuPct": 17.57,
+            "memBytes": 811073536,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "17.57%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.8MB / 65.8MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:28:59.421Z",
+            "cpuPct": 0.12,
+            "memBytes": 810549248,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "773MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.8MB / 65.8MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:01.530Z",
+            "cpuPct": 0.12,
+            "memBytes": 810444390.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.42%",
+              "MemUsage": "772.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.8MB / 65.8MB",
+              "PIDs": "125"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:03.436Z",
+            "cpuPct": 0.13,
+            "memBytes": 803314073.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "766.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.8MB / 65.9MB",
+              "PIDs": "106"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:05.439Z",
+            "cpuPct": 0.12,
+            "memBytes": 798700339.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.9MB / 65.9MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:07.442Z",
+            "cpuPct": 0.12,
+            "memBytes": 798700339.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.9MB / 65.9MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:09.444Z",
+            "cpuPct": 0.13,
+            "memBytes": 798700339.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.9MB / 65.9MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:11.450Z",
+            "cpuPct": 0.14,
+            "memBytes": 798700339.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.9MB / 65.9MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:13.458Z",
+            "cpuPct": 0.12,
+            "memBytes": 798385766.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.9MB / 65.9MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:15.462Z",
+            "cpuPct": 0.15,
+            "memBytes": 798385766.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.15%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.9MB / 66MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:17.464Z",
+            "cpuPct": 0.12,
+            "memBytes": 798385766.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "57.9MB / 66MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:19.467Z",
+            "cpuPct": 0.12,
+            "memBytes": 798385766.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "58MB / 66MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:21.474Z",
+            "cpuPct": 0.12,
+            "memBytes": 798595481.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "58MB / 66MB",
+              "PIDs": "86"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:23.480Z",
+            "cpuPct": 0.12,
+            "memBytes": 798280908.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "58MB / 66MB",
+              "PIDs": "86"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "legal_terms",
+      "method": "GET",
+      "path": "/api/legal/terms",
+      "url": "http://localhost:9000/api/legal/terms",
+      "concurrency": 5,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:29:23.482Z",
+      "finishedAt": "2026-02-20T04:29:55.648Z",
+      "requests": {
+        "total": 268,
+        "averageRps": 16.75,
+        "minRps": 5,
+        "maxRps": 193,
+        "p50Rps": 5,
+        "p95Rps": 193,
+        "p99Rps": 193
+      },
+      "latencyMs": {
+        "average": 599.53,
+        "min": 18,
+        "max": 2010,
+        "p50": 26,
+        "p95": 2010,
+        "p99": 2010
+      },
+      "throughputBytes": {
+        "average": 229542,
+        "min": 68535,
+        "max": 2645451
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 268
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 1.9725000000000001,
+        "maxCpuPct": 19.07,
+        "avgMemBytes": 799132876.7999998,
+        "maxMemBytes": 799748915.2,
+        "samples": [
+          {
+            "at": "2026-02-20T04:29:25.565Z",
+            "cpuPct": 0.14,
+            "memBytes": 799119769.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "60.8MB / 68.9MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:27.572Z",
+            "cpuPct": 19.07,
+            "memBytes": 799748915.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "19.07%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "60.8MB / 69MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:29.573Z",
+            "cpuPct": 0.13,
+            "memBytes": 799748915.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "60.9MB / 69.1MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:31.584Z",
+            "cpuPct": 0.14,
+            "memBytes": 799748915.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61MB / 69.1MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:33.586Z",
+            "cpuPct": 0.13,
+            "memBytes": 798595481.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.1MB / 69.2MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:35.592Z",
+            "cpuPct": 0.14,
+            "memBytes": 798805196.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.14%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "761.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.1MB / 69.3MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:37.596Z",
+            "cpuPct": 0.13,
+            "memBytes": 798910054.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "761.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.2MB / 69.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:39.601Z",
+            "cpuPct": 0.13,
+            "memBytes": 799224627.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.3MB / 69.4MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:41.608Z",
+            "cpuPct": 0.12,
+            "memBytes": 799224627.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.4MB / 69.5MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:43.610Z",
+            "cpuPct": 10.72,
+            "memBytes": 798910054.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "10.72%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "761.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.4MB / 69.6MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:45.613Z",
+            "cpuPct": 0.11,
+            "memBytes": 799119769.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.11%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.5MB / 69.7MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:47.617Z",
+            "cpuPct": 0.11,
+            "memBytes": 799119769.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.11%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.6MB / 69.7MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:49.623Z",
+            "cpuPct": 0.13,
+            "memBytes": 798805196.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "761.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.6MB / 69.8MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:51.633Z",
+            "cpuPct": 0.12,
+            "memBytes": 799119769.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.7MB / 69.9MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:53.639Z",
+            "cpuPct": 0.12,
+            "memBytes": 798805196.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.38%",
+              "MemUsage": "761.8MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.8MB / 70MB",
+              "PIDs": "90"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:55.645Z",
+            "cpuPct": 0.12,
+            "memBytes": 799119769.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.39%",
+              "MemUsage": "762.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "61.9MB / 70.1MB",
+              "PIDs": "90"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "legal_terms",
+      "method": "GET",
+      "path": "/api/legal/terms",
+      "url": "http://localhost:9000/api/legal/terms",
+      "concurrency": 20,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:29:55.648Z",
+      "finishedAt": "2026-02-20T04:30:27.801Z",
+      "requests": {
+        "total": 526,
+        "averageRps": 32.88,
+        "minRps": 20,
+        "maxRps": 226,
+        "p50Rps": 20,
+        "p95Rps": 226,
+        "p99Rps": 226
+      },
+      "latencyMs": {
+        "average": 1221.88,
+        "min": 62,
+        "max": 2013,
+        "p50": 2002,
+        "p95": 2012,
+        "p99": 2012
+      },
+      "throughputBytes": {
+        "average": 450520,
+        "min": 274140,
+        "max": 3097782
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 526
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 1.2662500000000003,
+        "maxCpuPct": 18.41,
+        "avgMemBytes": 804795187.2,
+        "maxMemBytes": 805201510.4,
+        "samples": [
+          {
+            "at": "2026-02-20T04:29:57.717Z",
+            "cpuPct": 0.13,
+            "memBytes": 804467507.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "65.2MB / 73.5MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:29:59.720Z",
+            "cpuPct": 0.13,
+            "memBytes": 804886937.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "65.5MB / 73.8MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:01.732Z",
+            "cpuPct": 0.12,
+            "memBytes": 804572364.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "65.8MB / 74.1MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:03.736Z",
+            "cpuPct": 0.13,
+            "memBytes": 804572364.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "66.1MB / 74.4MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:05.741Z",
+            "cpuPct": 0.13,
+            "memBytes": 805201510.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "66.4MB / 74.7MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:07.747Z",
+            "cpuPct": 0.13,
+            "memBytes": 804572364.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "66.7MB / 75MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:09.750Z",
+            "cpuPct": 0.12,
+            "memBytes": 804677222.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "67MB / 75.3MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:11.761Z",
+            "cpuPct": 0.12,
+            "memBytes": 804991795.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "67.2MB / 75.6MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:13.762Z",
+            "cpuPct": 18.41,
+            "memBytes": 804677222.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "18.41%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.4MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "67.5MB / 75.9MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:15.767Z",
+            "cpuPct": 0.12,
+            "memBytes": 804886937.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "67.8MB / 76.2MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:17.773Z",
+            "cpuPct": 0.12,
+            "memBytes": 804782080,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "68.1MB / 76.5MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:19.777Z",
+            "cpuPct": 0.12,
+            "memBytes": 805201510.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "68.4MB / 76.8MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:21.787Z",
+            "cpuPct": 0.13,
+            "memBytes": 804782080,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.5MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "68.7MB / 77.1MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:23.790Z",
+            "cpuPct": 0.12,
+            "memBytes": 804572364.8,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.3MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "69MB / 77.4MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:25.793Z",
+            "cpuPct": 0.11,
+            "memBytes": 804991795.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.11%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "69.3MB / 77.7MB",
+              "PIDs": "105"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:27.797Z",
+            "cpuPct": 0.12,
+            "memBytes": 804886937.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.40%",
+              "MemUsage": "767.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "69.6MB / 78MB",
+              "PIDs": "105"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "legal_terms",
+      "method": "GET",
+      "path": "/api/legal/terms",
+      "url": "http://localhost:9000/api/legal/terms",
+      "concurrency": 50,
+      "durationSec": 30,
+      "startedAt": "2026-02-20T04:30:27.801Z",
+      "finishedAt": "2026-02-20T04:30:59.956Z",
+      "requests": {
+        "total": 1000,
+        "averageRps": 62.5,
+        "minRps": 50,
+        "maxRps": 250,
+        "p50Rps": 50,
+        "p95Rps": 250,
+        "p99Rps": 250
+      },
+      "latencyMs": {
+        "average": 1606.78,
+        "min": 189,
+        "max": 2013,
+        "p50": 2003,
+        "p95": 2011,
+        "p99": 2011
+      },
+      "throughputBytes": {
+        "average": 856688,
+        "min": 685350,
+        "max": 3426750
+      },
+      "failures": {
+        "errors": 0,
+        "timeouts": 0,
+        "non2xx": 0,
+        "failureCount": 0,
+        "errorRate": 0
+      },
+      "statusCodes": {
+        "200": {
+          "count": 1000
+        }
+      },
+      "dockerStats": {
+        "sampleCount": 16,
+        "avgCpuPct": 1.9393750000000003,
+        "maxCpuPct": 18.39,
+        "avgMemBytes": 820248576,
+        "maxMemBytes": 822188441.6,
+        "samples": [
+          {
+            "at": "2026-02-20T04:30:29.873Z",
+            "cpuPct": 7.94,
+            "memBytes": 817574707.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "7.94%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.44%",
+              "MemUsage": "779.7MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "73.5MB / 81.8MB",
+              "PIDs": "136"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:31.880Z",
+            "cpuPct": 0.12,
+            "memBytes": 817784422.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.44%",
+              "MemUsage": "779.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "74.2MB / 82.6MB",
+              "PIDs": "136"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:33.882Z",
+            "cpuPct": 0.12,
+            "memBytes": 818518425.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.44%",
+              "MemUsage": "780.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "75MB / 83.4MB",
+              "PIDs": "136"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:35.887Z",
+            "cpuPct": 0.13,
+            "memBytes": 819147571.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "781.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "75.7MB / 84.1MB",
+              "PIDs": "136"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:37.890Z",
+            "cpuPct": 0.13,
+            "memBytes": 819986432,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "782MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "76.5MB / 84.9MB",
+              "PIDs": "136"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:39.893Z",
+            "cpuPct": 0.13,
+            "memBytes": 820196147.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "782.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "77.2MB / 85.7MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:41.903Z",
+            "cpuPct": 0.13,
+            "memBytes": 820196147.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "782.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "77.9MB / 86.4MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:43.907Z",
+            "cpuPct": 18.39,
+            "memBytes": 820196147.2,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "18.39%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "782.2MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "78.7MB / 87.2MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:45.910Z",
+            "cpuPct": 0.13,
+            "memBytes": 820615577.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "782.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "79.4MB / 88MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:47.916Z",
+            "cpuPct": 0.13,
+            "memBytes": 820930150.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "782.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "80.2MB / 88.7MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:49.922Z",
+            "cpuPct": 0.12,
+            "memBytes": 821035008,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "783MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "80.9MB / 89.5MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:51.932Z",
+            "cpuPct": 0.13,
+            "memBytes": 821035008,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.13%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "783MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "81.6MB / 90.3MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:53.934Z",
+            "cpuPct": 0.12,
+            "memBytes": 820930150.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "782.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "82.4MB / 91MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:55.939Z",
+            "cpuPct": 0.12,
+            "memBytes": 821664153.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "783.6MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "83.1MB / 91.8MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:57.944Z",
+            "cpuPct": 0.12,
+            "memBytes": 821978726.4,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "0.12%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.45%",
+              "MemUsage": "783.9MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "83.9MB / 92.6MB",
+              "PIDs": "135"
+            }
+          },
+          {
+            "at": "2026-02-20T04:30:59.946Z",
+            "cpuPct": 3.07,
+            "memBytes": 822188441.6,
+            "raw": {
+              "BlockIO": "0B / 0B",
+              "CPUPerc": "3.07%",
+              "Container": "uask_orchestrator",
+              "ID": "6c0a03b0e772",
+              "MemPerc": "2.46%",
+              "MemUsage": "784.1MiB / 31.19GiB",
+              "Name": "uask_orchestrator",
+              "NetIO": "84.6MB / 93.3MB",
+              "PIDs": "135"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "endpoint": "solve_batch_optional",
+      "path": "/api/v1/solve/batch",
+      "reason": "Missing required env: PERF_AUTH_TOKEN, PERF_SOLVE_BATCH_BODY_JSON"
+    },
+    {
+      "endpoint": "history_optional",
+      "path": "/api/v1/history",
+      "reason": "Missing required env: PERF_AUTH_TOKEN"
+    },
+    {
+      "endpoint": "profile_optional",
+      "path": "/api/v1/user/profile",
+      "reason": "Missing required env: PERF_AUTH_TOKEN"
+    }
+  ],
+  "metadata": {
+    "purpose": "CI-friendly smoke for latency/throughput/error regression checks"
+  }
+}

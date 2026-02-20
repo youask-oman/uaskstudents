@@ -12,7 +12,42 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://uask_user:uask_password@localhost:5432/uask_db")
 
-engine = create_engine(DATABASE_URL, echo=False)
+
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except Exception:
+        return default
+
+
+def _build_engine():
+    kwargs = {"echo": False}
+
+    if DATABASE_URL.lower().startswith("postgresql"):
+        kwargs.update(
+            {
+                "pool_pre_ping": _bool_env("DB_POOL_PRE_PING", True),
+                "pool_size": _int_env("DB_POOL_SIZE", 20),
+                "max_overflow": _int_env("DB_MAX_OVERFLOW", 20),
+                "pool_timeout": _int_env("DB_POOL_TIMEOUT_SECONDS", 10),
+                "pool_recycle": _int_env("DB_POOL_RECYCLE_SECONDS", 1800),
+            }
+        )
+
+    return create_engine(DATABASE_URL, **kwargs)
+
+
+engine = _build_engine()
 
 def _ensure_prompt_mode_enum_ocr_extract():
     if not DATABASE_URL.lower().startswith("postgresql"):

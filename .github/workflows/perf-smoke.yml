@@ -1,0 +1,74 @@
+name: perf-smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  perf-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PERF_BASE_URL: http://127.0.0.1:9000
+      PERF_DOCKER_CONTAINER: uask_orchestrator
+      PERF_THRESHOLD_P95_REGRESSION_PCT: "15"
+      PERF_THRESHOLD_RPS_DROP_PCT: "10"
+      PERF_THRESHOLD_ERROR_RATE_INC_ABS_PCT: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Install backend deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Start docker services
+        run: docker compose -f docker-compose.yml up -d postgres redis orchestrator
+
+      - name: Wait for health
+        run: |
+          for i in {1..90}; do
+            if curl -fsS http://127.0.0.1:9000/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "health check failed"
+          docker compose -f docker-compose.yml logs orchestrator
+          exit 1
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Perf smoke gate
+        run: npm run perf:smoke
+
+      - name: Upload perf artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-smoke-artifacts
+          path: |
+            perf/perf_baseline.json
+            reports/perf_baseline.md
+            reports/perf_regression.md
+            reports/perf/perf_regression.json
+            reports/perf/perf_current.json
+            reports/perf_bundle_budget.json
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.yml down -v
