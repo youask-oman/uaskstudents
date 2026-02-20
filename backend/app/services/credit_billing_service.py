@@ -125,26 +125,7 @@ def _select_binding(session: Session, tier: str) -> PromptBinding:
 
 
 def _costs_from_binding(binding: PromptBinding, tier: str) -> Dict[str, Decimal]:
-    # Prefer dedicated columns. Fall back to multipliers for backward compatibility.
-    if (
-        binding.solve_text_cost is not None
-        and binding.solve_snap_image_cost is not None
-        and binding.solve_snap_pdf_cost is not None
-        and binding.solve_voice_cost is not None
-        and binding.verify_addon_cost is not None
-        and binding.plot_addon_cost is not None
-        and binding.attempt_fee is not None
-    ):
-        return {
-            "text": Decimal(str(binding.solve_text_cost)),
-            "snap_image": Decimal(str(binding.solve_snap_image_cost)),
-            "snap_pdf": Decimal(str(binding.solve_snap_pdf_cost)),
-            "voice": Decimal(str(binding.solve_voice_cost)),
-            "verify_addon": Decimal(str(binding.verify_addon_cost)),
-            "plot_addon": Decimal(str(binding.plot_addon_cost)),
-            "attempt_fee": Decimal(str(binding.attempt_fee)),
-        }
-
+    # Prefer dedicated columns per field; fallback to multipliers for missing fields.
     mults = binding.multipliers or {}
     credits = mults.get("credits") or {}
     solve = credits.get("solve") or {}
@@ -156,7 +137,7 @@ def _costs_from_binding(binding: PromptBinding, tier: str) -> Dict[str, Decimal]
         tier_cfg = solve.get("free") or {}
     if not tier_cfg and key == "final":
         tier_cfg = solve.get("short") or {}
-    return {
+    fallback = {
         "text": Decimal(str(tier_cfg.get("text") or 0)),
         "snap_image": Decimal(str(tier_cfg.get("snap_image") or 0)),
         "snap_pdf": Decimal(str(tier_cfg.get("snap_pdf") or 0)),
@@ -164,6 +145,15 @@ def _costs_from_binding(binding: PromptBinding, tier: str) -> Dict[str, Decimal]
         "verify_addon": Decimal(str(verify_map.get(key) or verify_map.get("free" if key == "short_steps" else ("short" if key == "final" else key)) or 0)),
         "plot_addon": Decimal(str(credits.get("plot_trigger") or 0)),
         "attempt_fee": Decimal(str(attempt_map.get(key) or attempt_map.get("free" if key == "short_steps" else ("short" if key == "final" else key)) or 0)),
+    }
+    return {
+        "text": Decimal(str(binding.solve_text_cost)) if binding.solve_text_cost is not None else fallback["text"],
+        "snap_image": Decimal(str(binding.solve_snap_image_cost)) if binding.solve_snap_image_cost is not None else fallback["snap_image"],
+        "snap_pdf": Decimal(str(binding.solve_snap_pdf_cost)) if binding.solve_snap_pdf_cost is not None else fallback["snap_pdf"],
+        "voice": Decimal(str(binding.solve_voice_cost)) if binding.solve_voice_cost is not None else fallback["voice"],
+        "verify_addon": Decimal(str(binding.verify_addon_cost)) if binding.verify_addon_cost is not None else fallback["verify_addon"],
+        "plot_addon": Decimal(str(binding.plot_addon_cost)) if binding.plot_addon_cost is not None else fallback["plot_addon"],
+        "attempt_fee": Decimal(str(binding.attempt_fee)) if binding.attempt_fee is not None else fallback["attempt_fee"],
     }
 
 

@@ -444,43 +444,39 @@
 }
 
 .solve-segmented .segmented-root {
-  background: rgba(241, 245, 249, 0.4);
-  border: 2px dashed #94a3b8;
-  border-radius: 10px 4px 12px 6px/5px 12px 4px 10px;
-  padding: 4px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 6px;
+  width: 100%;
 }
 
 .solve-segmented .segmented-option {
-  font-family: var(--font-sketch);
-  font-size: 1.0em;
-  padding: 0.3rem 0.5rem !important;
-  gap: 0.2rem !important;
-  line-height: 1.1;
-  color: #64748b;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  padding: 0.6rem 0.8rem !important;
+  gap: 0.35rem !important;
+  line-height: 1.05;
+  color: #475569;
   position: relative;
-  z-index: 1;
+  z-index: 0;
+  border-radius: 10px;
+  flex: 1;
 }
 
 .solve-segmented .segmented-option .material-symbols-outlined {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 .solve-segmented .segmented-option.is-selected {
-  background: transparent !important;
-  color: #0f172a !important;
-  box-shadow: none !important;
-  border: none !important;
+  background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.28) !important;
+  border: 1px solid rgba(37, 99, 235, 0.45) !important;
 }
 
 .solve-segmented .segmented-option.is-selected::after {
-  content: '';
-  position: absolute;
-  inset: 0px -4px;
-  background: #FFEB3B;
-  z-index: -1;
-  transform: rotate(-1.5deg);
-  clip-path: polygon(2% 5%, 98% 2%, 96% 95%, 4% 98%);
-  opacity: 0.9;
+  display: none;
 }
 
 /* Sketch Helper Classes */
@@ -511,12 +507,13 @@
 }
 
 .dark .solve-segmented .segmented-option.is-selected {
-  background: #0b1220;
-  box-shadow: none;
+  background: linear-gradient(135deg, #1d4ed8 0%, #0891b2 100%) !important;
+  box-shadow: 0 8px 18px rgba(8, 145, 178, 0.35) !important;
 }
 
 .solve-segmented .segmented-option.is-disabled {
   color: #94a3b8;
+  opacity: 0.65;
 }
 
 /* Hand-Drawn Title Styles */

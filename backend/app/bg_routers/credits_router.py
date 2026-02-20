@@ -268,33 +268,13 @@ def _binding_costs(binding: Optional[Any], tier_key: str) -> Dict[str, float]:
             "attempt_fee": 0.0,
         }
 
-    # Prefer dedicated prompt_bindings pricing columns for consistency with actual billing.
-    if (
-        getattr(binding, "solve_text_cost", None) is not None
-        and getattr(binding, "solve_snap_image_cost", None) is not None
-        and getattr(binding, "solve_snap_pdf_cost", None) is not None
-        and getattr(binding, "solve_voice_cost", None) is not None
-        and getattr(binding, "verify_addon_cost", None) is not None
-        and getattr(binding, "plot_addon_cost", None) is not None
-        and getattr(binding, "attempt_fee", None) is not None
-    ):
-        return {
-            "text": float(binding.solve_text_cost or 0),
-            "snap_image": float(binding.solve_snap_image_cost or 0),
-            "snap_pdf": float(binding.solve_snap_pdf_cost or 0),
-            "voice": float(binding.solve_voice_cost or 0),
-            "verify_addon": float(binding.verify_addon_cost or 0),
-            "plot_addon": float(binding.plot_addon_cost or 0),
-            "attempt_fee": float(binding.attempt_fee or 0),
-        }
-
     multipliers = (getattr(binding, "multipliers", None) or {}) if binding else {}
     credits = multipliers.get("credits") if isinstance(multipliers, dict) else {}
     solve = credits.get("solve") if isinstance(credits, dict) else {}
     tier_cfg = solve.get(tier_key) if isinstance(solve, dict) else {}
     verify_map = credits.get("verify") if isinstance(credits, dict) else {}
     attempt_map = credits.get("attempt_fee") if isinstance(credits, dict) else {}
-    return {
+    fallback = {
         "text": float((tier_cfg or {}).get("text") or 0),
         "snap_image": float((tier_cfg or {}).get("snap_image") or 0),
         "snap_pdf": float((tier_cfg or {}).get("snap_pdf") or 0),
@@ -302,6 +282,16 @@ def _binding_costs(binding: Optional[Any], tier_key: str) -> Dict[str, float]:
         "verify_addon": float((verify_map or {}).get(tier_key) or 0),
         "plot_addon": float((credits or {}).get("plot_trigger") or 0),
         "attempt_fee": float((attempt_map or {}).get(tier_key) or 0),
+    }
+    return {
+        # Use dedicated columns when present; fallback per field to multipliers.
+        "text": float(binding.solve_text_cost) if getattr(binding, "solve_text_cost", None) is not None else fallback["text"],
+        "snap_image": float(binding.solve_snap_image_cost) if getattr(binding, "solve_snap_image_cost", None) is not None else fallback["snap_image"],
+        "snap_pdf": float(binding.solve_snap_pdf_cost) if getattr(binding, "solve_snap_pdf_cost", None) is not None else fallback["snap_pdf"],
+        "voice": float(binding.solve_voice_cost) if getattr(binding, "solve_voice_cost", None) is not None else fallback["voice"],
+        "verify_addon": float(binding.verify_addon_cost) if getattr(binding, "verify_addon_cost", None) is not None else fallback["verify_addon"],
+        "plot_addon": float(binding.plot_addon_cost) if getattr(binding, "plot_addon_cost", None) is not None else fallback["plot_addon"],
+        "attempt_fee": float(binding.attempt_fee) if getattr(binding, "attempt_fee", None) is not None else fallback["attempt_fee"],
     }
 
 

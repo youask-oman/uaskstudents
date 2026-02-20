@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE_URL, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
+import AdminUserAutocomplete from "@/components/admin/AdminUserAutocomplete";
 
 type QuestionCharge = {
   ledger_id: string;
@@ -253,11 +254,11 @@ export default function AdminChatBillingPage() {
 
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] p-4">
         <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-          <input
+          <AdminUserAutocomplete
             value={userQuery}
-            onChange={(e) => setUserQuery(e.target.value)}
-            placeholder="User ID or email"
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+            onValueChange={setUserQuery}
+            onSelect={(user) => setUserQuery(user.email)}
+            placeholder="Lookup user email"
           />
           <input
             value={sessionId}

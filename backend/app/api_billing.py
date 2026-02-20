@@ -5,6 +5,7 @@ from jose import jwt, JWTError
 from app.auth import SECRET_KEY, ALGORITHM
 from app.database import get_session
 from app.models import User, Invoice, InvoiceLineItem
+from app.services.superadmin_policy import enforce_superadmin_role
 from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -25,6 +26,7 @@ def get_current_user(
         user = session.exec(select(User).where(User.email == email)).first()
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        enforce_superadmin_role(session, user)
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid Token")

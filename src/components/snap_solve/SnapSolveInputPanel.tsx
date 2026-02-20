@@ -89,6 +89,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const [activeSubTab, setActiveSubTab] = React.useState<SnapSubTab>("upload");
     const [questionText, setQuestionText] = React.useState("");
     const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
+    const [originalImageFile, setOriginalImageFile] = React.useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
     const [isDragging, setIsDragging] = React.useState(false);
     const [tool, setTool] = React.useState<"draw" | "erase">("draw");
@@ -562,6 +563,11 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             if (!file) return;
             setOcrReviewed(false);
             setUploadFile(file);
+            if (file.type.startsWith("image/")) {
+                setOriginalImageFile(file);
+            } else {
+                setOriginalImageFile(null);
+            }
             if (file.type === "application/pdf") {
                 try {
                     await preparePdf(file);
@@ -575,6 +581,62 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         },
         [setUploadFile, preparePdf, clearPdfState]
     );
+
+    const rotateImageFile = React.useCallback(async (direction: "left" | "right") => {
+        if (!uploadedFile || !uploadedFile.type.startsWith("image/")) return;
+        const objectUrl = URL.createObjectURL(uploadedFile);
+        try {
+            const img = new Image();
+            const loaded = new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error("Failed to load image for rotation."));
+            });
+            img.src = objectUrl;
+            await loaded;
+
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("Canvas context unavailable.");
+
+            const rotateRight = direction === "right";
+            canvas.width = img.height;
+            canvas.height = img.width;
+
+            if (rotateRight) {
+                ctx.translate(canvas.width, 0);
+                ctx.rotate(Math.PI / 2);
+            } else {
+                ctx.translate(0, canvas.height);
+                ctx.rotate(-Math.PI / 2);
+            }
+            ctx.drawImage(img, 0, 0);
+
+            const mime = uploadedFile.type || "image/jpeg";
+            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, 0.95));
+            if (!blob) throw new Error("Failed to create rotated image.");
+
+            const base = uploadedFile.name.replace(/\.[^.]+$/, "");
+            const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+            const rotated = new File([blob], `${base}_rotated.${ext}`, { type: mime });
+
+            clearExtractedState();
+            setImageCrop(null);
+            setImageRender(null);
+            setUploadFile(rotated);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unable to rotate image.");
+        } finally {
+            URL.revokeObjectURL(objectUrl);
+        }
+    }, [clearExtractedState, setUploadFile, uploadedFile]);
+
+    const resetImageOrientation = React.useCallback(() => {
+        if (!originalImageFile) return;
+        clearExtractedState();
+        setImageCrop(null);
+        setImageRender(null);
+        setUploadFile(originalImageFile);
+    }, [clearExtractedState, originalImageFile, setUploadFile]);
 
     const onFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0] || null;
@@ -681,6 +743,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
 
     const handleClear = () => {
         setUploadFile(null);
+        setOriginalImageFile(null);
         clearExtractedState();
         setSketchHasContent(false);
         sketchRef.current?.clear();
@@ -942,6 +1005,34 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                             }}
                                         >
                                             Clear crop
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="rounded border border-slate-600 px-2 py-1 inline-flex items-center gap-1"
+                                            onClick={() => void rotateImageFile("left")}
+                                            title="Rotate left"
+                                        >
+                                            <span className="material-symbols-outlined text-[14px]">rotate_left</span>
+                                            <span>Left</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="rounded border border-slate-600 px-2 py-1 inline-flex items-center gap-1"
+                                            onClick={() => void rotateImageFile("right")}
+                                            title="Rotate right"
+                                        >
+                                            <span className="material-symbols-outlined text-[14px]">rotate_right</span>
+                                            <span>Right</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="rounded border border-slate-600 px-2 py-1 inline-flex items-center gap-1"
+                                            onClick={resetImageOrientation}
+                                            title="Reset image"
+                                            disabled={!originalImageFile}
+                                        >
+                                            <span className="material-symbols-outlined text-[14px]">restart_alt</span>
+                                            <span>Reset image</span>
                                         </button>
                                     </div>
                                     <PdfCropViewer

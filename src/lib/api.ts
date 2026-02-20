@@ -25,6 +25,13 @@ const friendlyMessage = (code?: string, rawMessage?: string) => {
     const message = rawMessage || "Request failed.";
     const normalized = message.toLowerCase();
 
+    if (
+        normalized.includes("incorrect username or password") ||
+        normalized.includes("incorrect email or password") ||
+        normalized.includes("invalid credentials")
+    ) {
+        return "Incorrect email or password.";
+    }
     if (code === "CAP_EXCEEDED" || normalized.includes("daily credit limit")) {
         return "You've reached your daily credit limit. Please try again tomorrow or top up.";
     }

@@ -102,6 +102,8 @@ from app.services.solver import solver_service
 from app.services.intent import should_require_visual
 from app.services.solve.solution_doc import parse_solution_doc, render_solution_doc_markdown
 from app.services.legal_service import get_terms_requirement_status
+from app.services.superadmin_policy import enforce_superadmin_role
+from app.services.superadmin_policy import is_protected_superadmin_user
 from app.services.audit_log_service import audit_log_service
 from app.services.share_service import share_service
 from app.services.credit_transfer_config import load_credit_transfer_config
@@ -2051,6 +2053,7 @@ async def login_for_access_token(
     session.add(user)
     session.commit()
     session.refresh(user)
+    enforce_superadmin_role(session, user)
 
     access_token = create_access_token(data={"sub": user.email})
     requires_terms_acceptance, required_terms_version = get_terms_requirement_status(session, user_id=user.id)
@@ -11759,6 +11762,15 @@ async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Sessi
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if is_protected_superadmin_user(user):
+        enforce_superadmin_role(db, user)
+        if req.email is not None and req.email.strip().lower() != user.email.strip().lower():
+            raise HTTPException(status_code=403, detail="Protected superadmin email cannot be changed")
+        if req.role is not None and str(req.role).strip().lower() != "superadmin":
+            raise HTTPException(status_code=403, detail="Protected superadmin role cannot be changed")
+        if req.subscription_status is not None and str(req.subscription_status).strip().lower() != "active":
+            raise HTTPException(status_code=403, detail="Protected superadmin cannot be banned or deactivated")
     
     if req.role is not None:
         user.role = req.role
@@ -11789,6 +11801,7 @@ async def admin_update_user(user_id: int, req: AdminUserUpdateRequest, db: Sessi
         
     db.add(user)
     db.commit()
+    enforce_superadmin_role(db, user)
     return {"status": "ok"}
 
 @api_router.post("/admin/users/{user_id}/notes")
@@ -11859,6 +11872,10 @@ async def admin_ban_user(user_id: int, banned: bool = True, db: Session = Depend
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if banned and is_protected_superadmin_user(user):
+        enforce_superadmin_role(db, user)
+        raise HTTPException(status_code=403, detail="Protected superadmin cannot be banned")
     
     user.subscription_status = "expired" if banned else "active"
     db.add(user)
@@ -11871,6 +11888,10 @@ async def admin_delete_user(user_id: int, db: Session = Depends(get_session), ad
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if is_protected_superadmin_user(user):
+        enforce_superadmin_role(db, user)
+        raise HTTPException(status_code=403, detail="Protected superadmin cannot be deleted")
     
     # Manual cascade for problematic tables to avoid IntegrityErrors
     # Many relationships should ideally be cascade=delete but for now manual is safer for high-traffic tables.

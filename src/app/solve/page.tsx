@@ -895,7 +895,7 @@ export default function DashboardPage() {
 
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
-    const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("STANDARD");
+    const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("SHORT_STEPS");
     const isPlotLockedByTier = selectedSolveTier === "FINAL";
     const resolveSessionRoute = useCallback((sessionId: string | number) =>
         (selectedSolveTier === "FINAL" || selectedSolveTier === "SHORT_STEPS")
@@ -996,24 +996,23 @@ export default function DashboardPage() {
     const estimateBreakdown = useMemo(() => {
         if (!estimate?.breakdown) return undefined;
         const raw = estimate.breakdown as Record<string, unknown>;
-        if (typeof raw.tier_base === "number") {
-            return {
-                tier_base: raw.tier_base as number,
-                ocr: Number(raw.ocr || 0),
-                voice: Number(raw.voice || 0),
-                verify: Number(raw.verify || 0),
-                plot: Number(raw.plot || 0),
-                asset_type_addon: Number(raw.asset_type_addon || 0),
-            };
-        }
         const addons = (raw.addons && typeof raw.addons === "object") ? raw.addons as Record<string, unknown> : {};
+        const toNumber = (...values: unknown[]) => {
+            for (const value of values) {
+                const numeric = Number(value);
+                if (Number.isFinite(numeric)) return numeric;
+            }
+            return 0;
+        };
         return {
-            tier_base: Number(raw.base || 0),
-            ocr: Number(addons.ocr || 0),
-            voice: Number(addons.voice || 0),
-            verify: Number(addons.verify || 0),
-            plot: Number(addons.plot || 0),
-            asset_type_addon: Number(addons.asset_type_addon || 0),
+            // Support both legacy and new response layouts.
+            tier_base: toNumber(raw.tier_base, raw.base),
+            ocr: toNumber(raw.ocr, addons.ocr),
+            voice: toNumber(raw.voice, addons.voice),
+            verify: toNumber(raw.verify, addons.verify),
+            plot: toNumber(raw.plot, addons.plot),
+            asset_type_addon: toNumber(raw.asset_type_addon, addons.asset_type_addon, addons.asset),
+            attempt_fee: toNumber(raw.attempt_fee, addons.attempt_fee),
         };
     }, [estimate]);
     const hasEnoughCredits = readyWallet && estimatedSolveCost != null
@@ -1030,7 +1029,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
-        if (stored === "SHORT_STEPS" || stored === "STANDARD" || stored === "RESEARCH" || stored === "FINAL") {
+        if (stored === "SHORT_STEPS" || stored === "FINAL") {
             setSelectedSolveTier(stored);
         }
     }, []);
@@ -1039,9 +1038,9 @@ export default function DashboardPage() {
         if (!walletReady) return;
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
         const defaultTier: SolveTier =
-            stored === "SHORT_STEPS" || stored === "STANDARD" || stored === "RESEARCH" || stored === "FINAL"
+            stored === "SHORT_STEPS" || stored === "FINAL"
                 ? stored
-                : "STANDARD";
+                : "SHORT_STEPS";
         setSelectedSolveTier(defaultTier);
         if (typeof window !== "undefined" && !stored) {
             localStorage.setItem("uask.solveTier", defaultTier);
@@ -1096,7 +1095,7 @@ export default function DashboardPage() {
         const selectedTierBlockedByCredits = !canAffordTier(selectedSolveTier);
         if (!selectedTierBlockedByCredits) return;
 
-        const fallbackOrder: SolveTier[] = ["STANDARD", "FINAL", "SHORT_STEPS", "RESEARCH"];
+        const fallbackOrder: SolveTier[] = ["FINAL", "SHORT_STEPS"];
         const fallback = fallbackOrder.find((tier) => {
             return canAffordTier(tier);
         }) || "SHORT_STEPS";
@@ -2155,38 +2154,47 @@ export default function DashboardPage() {
                     <div className="lg:col-span-8 space-y-6">
 
                         {/* Tier-Aware Controls Section */}
-                        <div className={`${tierSectionColor} dark:bg-slate-900 rounded-2xl shadow-xl border-2 border-slate-300 dark:border-slate-800 p-6 sketch-container relative transition-colors duration-1000`} style={{ filter: 'url(#handWobble) url(#roughpaper)' }}>
-                            <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
-                                {/* Goal Section */}
-                                <div className="flex flex-col gap-2">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Goal</h3>
-                                    <button className="wobbly-button px-6 py-2 flex items-center gap-2 bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 hover:bg-slate-50 transition-all" style={{ filter: 'url(#handWobble) url(#roughpaper)' }}>
-                                        <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-xl hand-drawn-icon">bolt</span>
-                                        <span className="font-bold text-lg tracking-tight">Solve</span>
+                        <div className={`${tierSectionColor} dark:bg-slate-900 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-800 p-5 md:p-6 relative overflow-hidden transition-colors duration-1000`}>
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-cyan-50/70 via-white/0 to-blue-50/60 dark:from-cyan-900/10 dark:via-transparent dark:to-blue-900/10" />
+                            {maxQuestionsAllowed && (
+                                <div className="absolute right-4 top-4 z-10">
+                                    <p className="inline-flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+                                        <span className="material-symbols-outlined text-[14px]">rule</span>
+                                        Max questions per request: <span className="font-black">{maxQuestionsAllowed}</span>
+                                    </p>
+                                </div>
+                            )}
+                            <div className="relative grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-stretch">
+                                <div className="md:col-span-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/85 dark:bg-slate-950/60 p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Goal</p>
+                                    <button className="mt-3 w-full px-4 py-3 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-black tracking-tight shadow-md shadow-blue-500/20">
+                                        <span className="material-symbols-outlined text-[20px]">bolt</span>
+                                        <span className="text-base">Solve</span>
                                     </button>
+                                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Fast math assistant mode with credit-aware answers.</p>
                                 </div>
 
-                                {/* Tier Selector Section */}
-                                <div className="flex flex-col gap-2 flex-grow w-full max-w-[620px]">
-                                    <div className="mb-1 flex flex-col items-start gap-1">
-                                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tier</h3>
-                                        {readyWallet && estimate && (
-                                            <div className="w-full max-w-full">
-                                                <CostPreview
-                                                    perQuestionCost={estimate.per_question_credits}
-                                                    questionCount={estimatedQuestionCount}
-                                                    breakdown={estimateBreakdown}
-                                                    creditsRemaining={readyWallet.computed_balance}
-                                                />
-                                                {maxQuestionsAllowed && (
-                                                    <p className="mt-2 inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-800">
-                                                        <span className="material-symbols-outlined text-[14px]">rule</span>
-                                                        Max questions per request: <span className="font-bold">{maxQuestionsAllowed}</span>
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
+                                <div className="md:col-span-9 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/85 dark:bg-slate-950/60 p-4 md:p-5">
+                                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                                        <span className="inline-flex items-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-200">
+                                            Tier
+                                        </span>
+                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${selectedSolveTier === "FINAL" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"}`}>
+                                            {selectedSolveTier === "FINAL" ? "Final Answer" : "Steps & Plot"}
+                                        </span>
                                     </div>
+
+                                    {readyWallet && estimate && (
+                                        <div className="space-y-2">
+                                            <CostPreview
+                                                perQuestionCost={estimate.per_question_credits}
+                                                questionCount={estimatedQuestionCount}
+                                                breakdown={estimateBreakdown}
+                                                creditsRemaining={readyWallet.computed_balance}
+                                            />
+                                        </div>
+                                    )}
+
                                     <SegmentedControl
                                         options={[
                                             {
@@ -2198,31 +2206,15 @@ export default function DashboardPage() {
                                             },
                                             {
                                                 value: "SHORT_STEPS",
-                                                label: "Short Steps",
+                                                label: "Steps & Plot",
                                                 icon: "bolt",
                                                 disabled: !canAffordTier("SHORT_STEPS"),
                                                 tooltip: !canAffordTier("SHORT_STEPS") ? `Need ${Number(tierEstimateByTier.SHORT_STEPS || 0).toFixed(2)} credits.` : undefined,
                                             },
-                                            {
-                                                value: "STANDARD",
-                                                label: "Standard",
-                                                icon: "school",
-                                                disabled: !canAffordTier("STANDARD"),
-                                                tooltip: !canAffordTier("STANDARD") ? `Need ${Number(tierEstimateByTier.STANDARD || 0).toFixed(2)} credits.` : undefined,
-                                            },
-                                            {
-                                                value: "RESEARCH",
-                                                label: "Research",
-                                                icon: "science",
-                                                disabled: !canAffordTier("RESEARCH"),
-                                                tooltip: !canAffordTier("RESEARCH")
-                                                    ? `Need ${Number(tierEstimateByTier.RESEARCH || 0).toFixed(2)} credits.`
-                                                    : undefined,
-                                            },
                                         ]}
                                         value={selectedSolveTier}
                                         onChange={(v) => {
-                                            if (v === "SHORT_STEPS" || v === "STANDARD" || v === "RESEARCH" || v === "FINAL") {
+                                            if (v === "SHORT_STEPS" || v === "FINAL") {
                                                 setSelectedSolveTier(v as SolveTier);
                                                 if (typeof window !== "undefined") {
                                                     localStorage.setItem("uask.solveTier", v);
@@ -2230,16 +2222,9 @@ export default function DashboardPage() {
                                             }
                                         }}
                                         size="sm"
-                                        className="solve-segmented"
+                                        className="solve-segmented mt-3"
                                     />
                                 </div>
-                            </div>
-
-                            {/* Decorative Flourish */}
-                            <div className="absolute -top-4 -right-4 opacity-10 pointer-events-none hidden lg:block">
-                                <svg width="100" height="100" viewBox="0 0 100 100" fill="none" className="stroke-slate-400">
-                                    <path d="M10 20C30 15 80 10 90 30C100 50 20 80 10 70C0 60 50 40 80 50" strokeWidth="2" strokeLinecap="round" />
-                                </svg>
                             </div>
                         </div>
 

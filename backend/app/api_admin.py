@@ -18,6 +18,7 @@ from app.worker import celery_app
 from app.services.privacy_policy_generator import build_privacy_policy_markdown
 from app.services.legal_document_renderer import markdown_to_basic_html
 from app.services.legal_service import get_legal_status_payload, get_latest_published_document
+from app.services.superadmin_policy import enforce_superadmin_role
 from fastapi.responses import StreamingResponse
 import asyncio
 import io
@@ -179,6 +180,7 @@ def get_current_user(
     if not user:
         print(f"[Auth] User not found for email: {email}")
         raise HTTPException(status_code=401, detail="User not found")
+    enforce_superadmin_role(session, user)
     return user
 
 def get_admin_user(user: User = Depends(get_current_user)):
@@ -213,6 +215,7 @@ def _resolve_admin_from_request(request: Request, session: Session) -> User:
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    enforce_superadmin_role(session, user)
     if user.role not in ["admin", "devops", "superadmin"]:
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return user

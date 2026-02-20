@@ -20,6 +20,7 @@ from jose import JWTError, jwt
 from app.database import get_session
 from app.models import User
 from app.auth import SECRET_KEY, ALGORITHM
+from app.services.superadmin_policy import enforce_superadmin_role
 
 
 # Self-contained auth dependency to avoid circular imports
@@ -43,6 +44,7 @@ def get_current_user(
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    enforce_superadmin_role(session, user)
     return user
 
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE_URL, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
+import AdminUserAutocomplete from "@/components/admin/AdminUserAutocomplete";
 
 type RequestSummary = {
   question_count?: number;
@@ -64,6 +65,7 @@ export default function AdminLlmUsagePage() {
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
   const [userId, setUserId] = useState("");
+  const [userLookup, setUserLookup] = useState("");
   const [requestId, setRequestId] = useState("");
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
@@ -166,7 +168,20 @@ export default function AdminLlmUsagePage() {
           <input className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm" placeholder="Search all fields" value={query} onChange={(e) => setQuery(e.target.value)} />
           <input className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm" placeholder="Provider" value={provider} onChange={(e) => setProvider(e.target.value)} />
           <input className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm" placeholder="Model" value={model} onChange={(e) => setModel(e.target.value)} />
-          <input className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm" placeholder="User ID" value={userId} onChange={(e) => setUserId(e.target.value)} />
+          <AdminUserAutocomplete
+            value={userLookup}
+            onValueChange={(nextValue) => {
+              setUserLookup(nextValue);
+              const trimmed = nextValue.trim();
+              if (/^\d+$/.test(trimmed)) setUserId(trimmed);
+              else setUserId("");
+            }}
+            onSelect={(user) => {
+              setUserLookup(user.email);
+              setUserId(String(user.id));
+            }}
+            placeholder="Lookup user email"
+          />
           <input className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm" placeholder="Request ID" value={requestId} onChange={(e) => setRequestId(e.target.value)} />
           <button onClick={() => void fetchItems()} className="px-4 py-2 rounded-xl bg-admin-primary text-white text-sm font-semibold">{loading ? "Loading..." : "Refresh"}</button>
           <button
@@ -175,6 +190,7 @@ export default function AdminLlmUsagePage() {
               setProvider("");
               setModel("");
               setUserId("");
+              setUserLookup("");
               setRequestId("");
               void fetchItems();
             }}
@@ -294,4 +310,3 @@ function Info({ label, value, wide = false }: { label: string; value: string; wi
     </div>
   );
 }
-

@@ -596,19 +596,7 @@ def admin_list_prompt_bindings(
         return str(value).strip().lower()
 
     def _cost_map(row: PromptBinding) -> dict:
-        # Prefer dedicated columns; fall back to multipliers JSON for compatibility.
-        direct = {
-            "solve_text_cost": _val(row, "solve_text_cost"),
-            "solve_snap_image_cost": _val(row, "solve_snap_image_cost"),
-            "solve_snap_pdf_cost": _val(row, "solve_snap_pdf_cost"),
-            "solve_voice_cost": _val(row, "solve_voice_cost"),
-            "verify_addon_cost": _val(row, "verify_addon_cost"),
-            "plot_addon_cost": _val(row, "plot_addon_cost"),
-            "attempt_fee": _val(row, "attempt_fee"),
-        }
-        if all(v is not None for v in direct.values()):
-            return {k: float(v or 0) for k, v in direct.items()}
-
+        # Prefer dedicated columns per field; fall back to multipliers only for missing fields.
         multipliers = _val(row, "multipliers", {}) or {}
         credits = multipliers.get("credits") if isinstance(multipliers, dict) else {}
         credits = credits if isinstance(credits, dict) else {}
@@ -625,8 +613,7 @@ def admin_list_prompt_bindings(
         verify_map = verify_map if isinstance(verify_map, dict) else {}
         attempt_map = credits.get("attempt_fee") if isinstance(credits, dict) else {}
         attempt_map = attempt_map if isinstance(attempt_map, dict) else {}
-
-        return {
+        fallback = {
             "solve_text_cost": float(tier_cfg.get("text") or 0),
             "solve_snap_image_cost": float(tier_cfg.get("snap_image") or 0),
             "solve_snap_pdf_cost": float(tier_cfg.get("snap_pdf") or 0),
@@ -634,6 +621,16 @@ def admin_list_prompt_bindings(
             "verify_addon_cost": float(verify_map.get(tier_key) or verify_map.get("free" if tier_key == "short_steps" else ("short" if tier_key == "final" else tier_key)) or 0),
             "plot_addon_cost": float(credits.get("plot_trigger") or 0),
             "attempt_fee": float(attempt_map.get(tier_key) or attempt_map.get("free" if tier_key == "short_steps" else ("short" if tier_key == "final" else tier_key)) or 0),
+        }
+
+        return {
+            "solve_text_cost": float(_val(row, "solve_text_cost")) if _val(row, "solve_text_cost") is not None else fallback["solve_text_cost"],
+            "solve_snap_image_cost": float(_val(row, "solve_snap_image_cost")) if _val(row, "solve_snap_image_cost") is not None else fallback["solve_snap_image_cost"],
+            "solve_snap_pdf_cost": float(_val(row, "solve_snap_pdf_cost")) if _val(row, "solve_snap_pdf_cost") is not None else fallback["solve_snap_pdf_cost"],
+            "solve_voice_cost": float(_val(row, "solve_voice_cost")) if _val(row, "solve_voice_cost") is not None else fallback["solve_voice_cost"],
+            "verify_addon_cost": float(_val(row, "verify_addon_cost")) if _val(row, "verify_addon_cost") is not None else fallback["verify_addon_cost"],
+            "plot_addon_cost": float(_val(row, "plot_addon_cost")) if _val(row, "plot_addon_cost") is not None else fallback["plot_addon_cost"],
+            "attempt_fee": float(_val(row, "attempt_fee")) if _val(row, "attempt_fee") is not None else fallback["attempt_fee"],
         }
 
     return {
@@ -715,6 +712,49 @@ def admin_patch_prompt_binding(
         if not hasattr(binding, key):
             continue
         setattr(binding, key, value)
+
+    # Backfill missing dedicated pricing columns from multipliers after updates.
+    # This prevents legacy "all-columns-required" fallback code paths from reverting to default multipliers.
+    pricing_fields = {
+        "solve_text_cost",
+        "solve_snap_image_cost",
+        "solve_snap_pdf_cost",
+        "solve_voice_cost",
+        "verify_addon_cost",
+        "plot_addon_cost",
+        "attempt_fee",
+    }
+    if changed_keys.intersection(pricing_fields):
+        tier_raw = str(getattr(getattr(binding, "tier", None), "value", getattr(binding, "tier", ""))).strip().lower()
+        multipliers = getattr(binding, "multipliers", {}) or {}
+        credits = multipliers.get("credits") if isinstance(multipliers, dict) else {}
+        credits = credits if isinstance(credits, dict) else {}
+        solve = credits.get("solve") if isinstance(credits, dict) else {}
+        solve = solve if isinstance(solve, dict) else {}
+        tier_cfg = solve.get(tier_raw) if isinstance(solve, dict) else {}
+        tier_cfg = tier_cfg if isinstance(tier_cfg, dict) else {}
+        if not tier_cfg and tier_raw == "short_steps":
+            tier_cfg = solve.get("free") if isinstance(solve, dict) else {}
+        if not tier_cfg and tier_raw == "final":
+            tier_cfg = solve.get("short") if isinstance(solve, dict) else {}
+        verify_map = credits.get("verify") if isinstance(credits, dict) else {}
+        verify_map = verify_map if isinstance(verify_map, dict) else {}
+        attempt_map = credits.get("attempt_fee") if isinstance(credits, dict) else {}
+        attempt_map = attempt_map if isinstance(attempt_map, dict) else {}
+        alias_key = "free" if tier_raw == "short_steps" else ("short" if tier_raw == "final" else tier_raw)
+        fallback = {
+            "solve_text_cost": Decimal(str(tier_cfg.get("text") or 0)),
+            "solve_snap_image_cost": Decimal(str(tier_cfg.get("snap_image") or 0)),
+            "solve_snap_pdf_cost": Decimal(str(tier_cfg.get("snap_pdf") or 0)),
+            "solve_voice_cost": Decimal(str(tier_cfg.get("voice") or 0)),
+            "verify_addon_cost": Decimal(str(verify_map.get(tier_raw) or verify_map.get(alias_key) or 0)),
+            "plot_addon_cost": Decimal(str(credits.get("plot_trigger") or 0)),
+            "attempt_fee": Decimal(str(attempt_map.get(tier_raw) or attempt_map.get(alias_key) or 0)),
+        }
+        for field, value in fallback.items():
+            if getattr(binding, field, None) is None:
+                setattr(binding, field, value)
+
     binding.updated_at = datetime.utcnow()
     binding.updated_by = current_user.email
     session.add(binding)

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
+import AdminUserAutocomplete from '@/components/admin/AdminUserAutocomplete';
 
 const PAGE_TITLE = "Program Enrollments";
 
@@ -35,6 +36,7 @@ export default function GlobalEnrollmentsPage() {
 
     // Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [enrollUserEmail, setEnrollUserEmail] = useState('');
     const [formData, setFormData] = useState({
         user_id: '',
         program_id: '',
@@ -105,6 +107,15 @@ export default function GlobalEnrollmentsPage() {
 
     const handleEnroll = async (e: React.FormEvent) => {
         e.preventDefault();
+        const userId = parseInt(formData.user_id, 10);
+        if (!Number.isFinite(userId)) {
+            pushToast({
+                type: "error",
+                title: "Select a user",
+                message: "Choose a user from the email autocomplete list.",
+            });
+            return;
+        }
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/billing/programs/enrollments`, {
                 method: 'POST',
@@ -113,15 +124,16 @@ export default function GlobalEnrollmentsPage() {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    user_id: parseInt(formData.user_id),
+                    user_id: userId,
                     program_id: parseInt(formData.program_id),
                     reason: formData.reason,
-                    idempotency_key: `enroll_${formData.user_id}_${Date.now()}`
+                    idempotency_key: `enroll_${userId}_${Date.now()}`
                 })
             });
 
             if (res.ok) {
                 setIsModalOpen(false);
+                setEnrollUserEmail('');
                 setFormData({ user_id: '', program_id: '', reason: '' });
                 fetchEnrollments();
                 pushToast({
@@ -334,15 +346,27 @@ export default function GlobalEnrollmentsPage() {
                         </div>
                         <form onSubmit={handleEnroll} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">User ID</label>
-                                <input
-                                    type="number"
-                                    required
-                                    value={formData.user_id}
-                                    onChange={e => setFormData({ ...formData, user_id: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                                    placeholder="1001"
+                                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Lookup User</label>
+                                <AdminUserAutocomplete
+                                    value={enrollUserEmail}
+                                    onValueChange={(nextValue) => {
+                                        setEnrollUserEmail(nextValue);
+                                        if (/^\d+$/.test(nextValue.trim())) {
+                                            setFormData({ ...formData, user_id: nextValue.trim() });
+                                        } else {
+                                            setFormData({ ...formData, user_id: '' });
+                                        }
+                                    }}
+                                    onSelect={(user) => {
+                                        setEnrollUserEmail(user.email);
+                                        setFormData({ ...formData, user_id: String(user.id) });
+                                    }}
+                                    placeholder="Type user email"
+                                    inputClassName="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                                 />
+                                {formData.user_id && (
+                                    <p className="mt-1 text-[11px] text-slate-500">Selected user ID: {formData.user_id}</p>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Select Program</label>

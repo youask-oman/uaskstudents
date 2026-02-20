@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { API_BASE_URL, parseApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/ToastProvider';
+import AdminUserAutocomplete from '@/components/admin/AdminUserAutocomplete';
 
 interface Refund {
     id: number;
@@ -26,6 +27,7 @@ export default function RefundCenterPage() {
     // Form state
     const [showForm, setShowForm] = useState(false);
     const [targetUser, setTargetUser] = useState('');
+    const [targetUserEmail, setTargetUserEmail] = useState('');
     const [credits, setCredits] = useState('');
     const [reason, setReason] = useState('');
     const [reasonCode, setReasonCode] = useState('SERVICE_ISSUE');
@@ -69,6 +71,15 @@ export default function RefundCenterPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const targetUserId = parseInt(targetUser, 10);
+        if (!Number.isFinite(targetUserId)) {
+            pushToast({
+                type: "error",
+                title: "Select a user",
+                message: "Choose a user from the email autocomplete list.",
+            });
+            return;
+        }
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/billing/refunds`, {
                 method: 'POST',
@@ -77,16 +88,17 @@ export default function RefundCenterPage() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    user_id: parseInt(targetUser),
+                    user_id: targetUserId,
                     credits: parseFloat(credits),
                     reason_code: reasonCode,
                     reason: reason,
-                    idempotency_key: `refund_${targetUser}_${Date.now()}`
+                    idempotency_key: `refund_${targetUserId}_${Date.now()}`
                 })
             });
             if (res.ok) {
                 setShowForm(false);
                 setTargetUser('');
+                setTargetUserEmail('');
                 setCredits('');
                 setReason('');
                 fetchRefunds();
@@ -154,15 +166,27 @@ export default function RefundCenterPage() {
                     <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 italic">Issue New Credit Refund</h3>
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target User ID</label>
-                            <input
-                                required
-                                type="number"
-                                value={targetUser}
-                                onChange={(e) => setTargetUser(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none"
-                                placeholder="e.g. 1234"
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Lookup User</label>
+                            <AdminUserAutocomplete
+                                value={targetUserEmail}
+                                onValueChange={(nextValue) => {
+                                    setTargetUserEmail(nextValue);
+                                    if (/^\d+$/.test(nextValue.trim())) {
+                                        setTargetUser(nextValue.trim());
+                                    } else {
+                                        setTargetUser('');
+                                    }
+                                }}
+                                onSelect={(user) => {
+                                    setTargetUserEmail(user.email);
+                                    setTargetUser(String(user.id));
+                                }}
+                                placeholder="Type user email"
+                                inputClassName="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none"
                             />
+                            {targetUser && (
+                                <p className="text-[11px] text-slate-500">Selected user ID: {targetUser}</p>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Credit Amount</label>

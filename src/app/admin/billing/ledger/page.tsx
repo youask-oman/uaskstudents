@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchApi, parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/ToastProvider";
+import AdminUserAutocomplete from "@/components/admin/AdminUserAutocomplete";
 
 type LedgerRow = {
   ledger_id: string;
@@ -52,6 +53,7 @@ export default function LedgerExplorerPage() {
   const [total, setTotal] = useState<number | null>(null);
 
   const [filterUser, setFilterUser] = useState("");
+  const [filterUserLookup, setFilterUserLookup] = useState("");
   const [filterRequestId, setFilterRequestId] = useState("");
   const [filterAttemptId, setFilterAttemptId] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -112,6 +114,7 @@ export default function LedgerExplorerPage() {
     setFilterRequestId(qpRequest);
     setFilterAttemptId(qpAttempt);
     setFilterUser(qpUser);
+    setFilterUserLookup(qpUser);
     setActiveTab(qpTab === "details" ? "details" : "ledger");
     setCursor(null);
     setCursorHistory([]);
@@ -196,12 +199,19 @@ export default function LedgerExplorerPage() {
 
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] p-4">
         <form onSubmit={onSearch} className="grid grid-cols-1 md:grid-cols-7 gap-3">
-          <input
-            type="text"
-            placeholder="User ID"
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+          <AdminUserAutocomplete
+            value={filterUserLookup}
+            onValueChange={(nextValue) => {
+              setFilterUserLookup(nextValue);
+              const trimmed = nextValue.trim();
+              if (/^\d+$/.test(trimmed)) setFilterUser(trimmed);
+              else setFilterUser("");
+            }}
+            onSelect={(user) => {
+              setFilterUserLookup(user.email);
+              setFilterUser(String(user.id));
+            }}
+            placeholder="Lookup user email"
           />
           <input
             type="text"
@@ -224,6 +234,7 @@ export default function LedgerExplorerPage() {
             type="button"
             onClick={() => {
               setFilterUser("");
+              setFilterUserLookup("");
               setFilterRequestId("");
               setFilterAttemptId("");
               setCursor(null);

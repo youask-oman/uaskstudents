@@ -9,6 +9,7 @@ from app.auth import SECRET_KEY, ALGORITHM
 from app.database import get_session
 from app.services.top_up_service import top_up_service
 from app.models import User, TopUpOrder
+from app.services.superadmin_policy import enforce_superadmin_role
 
 # Define Router
 router = APIRouter(prefix="/topups", tags=["topups"])
@@ -30,6 +31,7 @@ def get_current_user(
         user = session.exec(select(User).where(User.email == email)).first()
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        enforce_superadmin_role(session, user)
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid Token")
