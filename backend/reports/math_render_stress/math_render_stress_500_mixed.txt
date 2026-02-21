@@ -1,0 +1,5 @@
+Math render stress report (500 mixed long text+math)
+timestamp_utc: 2026-02-21T08:07:21.498347+00:00
+total: 500
+passed: 500
+failed: 0

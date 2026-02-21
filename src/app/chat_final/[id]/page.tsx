@@ -166,13 +166,15 @@ const getSavedPaperVersions = (messages: SessionMessage[]): SavedPaperVersion[] 
 
 const heuristicallyWrapMath = (text: string): string => {
   if (!text) return "";
-  const normalized = text
+  let normalized = text
     .replace(/\\\\\(/g, "\\(")
     .replace(/\\\\\)/g, "\\)")
     .replace(/\\\\\[/g, "\\[")
     .replace(/\\\\\]/g, "\\]");
+  normalized = normalized.replace(/\\text\{([^}]*)\}/g, "$1");
   // If already has delimiters, leave it alone
   if (normalized.includes("\\(") || normalized.includes("\\[") || normalized.includes("$")) return normalized;
+  if (/\\[a-zA-Z]+/.test(normalized)) return normalized;
 
   // Pattern: "Solve for x, 2x + 7 = 19"
   const solveMatch = normalized.match(/^(Solve for\s+)([a-zA-Z])([,:]?\s*)(.+)$/i);

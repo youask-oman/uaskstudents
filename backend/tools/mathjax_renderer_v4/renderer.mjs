@@ -1,15 +1,18 @@
 import readline from "node:readline";
 import { performance } from "node:perf_hooks";
-import { mathjax } from "@mathjax/src/js/mathjax.js";
-import { TeX } from "@mathjax/src/js/input/tex.js";
-import { SVG } from "@mathjax/src/js/output/svg.js";
-import { liteAdaptor } from "@mathjax/src/js/adaptors/liteAdaptor.js";
-import { RegisterHTMLHandler } from "@mathjax/src/js/handlers/html.js";
-import { handleRetriesFor } from "@mathjax/src/js/util/Retries.js";
-import "@mathjax/src/js/input/tex/base/BaseConfiguration.js";
-import "@mathjax/src/js/input/tex/ams/AmsConfiguration.js";
-import "@mathjax/src/js/input/tex/newcommand/NewcommandConfiguration.js";
-import "@mathjax/src/js/input/tex/noundefined/NoUndefinedConfiguration.js";
+import "@mathjax/src/bundle/require.mjs";
+import { mathjax } from "@mathjax/src/mjs/mathjax.js";
+import { TeX } from "@mathjax/src/mjs/input/tex.js";
+import { SVG } from "@mathjax/src/mjs/output/svg.js";
+import { liteAdaptor } from "@mathjax/src/mjs/adaptors/liteAdaptor.js";
+import { RegisterHTMLHandler } from "@mathjax/src/mjs/handlers/html.js";
+import { handleRetriesFor } from "@mathjax/src/mjs/util/Retries.js";
+import "@mathjax/src/mjs/util/asyncLoad/node.js";
+import "@mathjax/src/mjs/input/tex/base/BaseConfiguration.js";
+import "@mathjax/src/mjs/input/tex/ams/AmsConfiguration.js";
+import "@mathjax/src/mjs/input/tex/newcommand/NewcommandConfiguration.js";
+import "@mathjax/src/mjs/input/tex/noundefined/NoUndefinedConfiguration.js";
+import { MathJaxNewcmFont } from "@mathjax/mathjax-newcm-font/mjs/svg.js";
 import { sanitizeSvg } from "./sanitize_svg.js";
 
 global.MathJax = {
@@ -31,7 +34,11 @@ RegisterHTMLHandler(adaptor);
 const tex = new TeX({
   packages: ["base", "ams", "newcommand", "noundefined"],
 });
-const svg = new SVG({ fontCache: "none" });
+const svg = new SVG({
+  fontCache: "none",
+  fontData: MathJaxNewcmFont,
+  dynamicPrefix: "@mathjax/mathjax-newcm-font/mjs/svg/dynamic",
+});
 const document = mathjax.document("", { InputJax: tex, OutputJax: svg });
 
 function parseSizeAttr(svgText, attr) {
@@ -50,6 +57,19 @@ function extractMetrics(svgText) {
   return { width, height, baseline: null };
 }
 
+function toStandaloneSvg(node) {
+  if (!node) return "";
+  const kind = String(adaptor.kind(node) || "").toLowerCase();
+  if (kind === "svg") {
+    return adaptor.outerHTML(node);
+  }
+  const first = adaptor.firstChild(node);
+  if (first && String(adaptor.kind(first) || "").toLowerCase() === "svg") {
+    return adaptor.outerHTML(first);
+  }
+  return adaptor.outerHTML(node);
+}
+
 function macroSizeOk(macros) {
   if (!macros || typeof macros !== "object") return { ok: true };
   const entries = Object.entries(macros);
@@ -63,6 +83,23 @@ function macroSizeOk(macros) {
   return { ok: true };
 }
 
+function ensureMathWrapped(latex, displayMode) {
+  const src = String(latex || "").trim();
+  if (!src) return src;
+  let inner = src;
+  if (inner.startsWith("\\(") && inner.endsWith("\\)")) {
+    inner = inner.slice(2, -2).trim();
+  } else if (inner.startsWith("\\[") && inner.endsWith("\\]")) {
+    inner = inner.slice(2, -2).trim();
+  } else if (inner.startsWith("$$") && inner.endsWith("$$")) {
+    inner = inner.slice(2, -2).trim();
+  } else if (inner.startsWith("$") && inner.endsWith("$")) {
+    inner = inner.slice(1, -1).trim();
+  }
+  if (!inner) return inner;
+  return displayMode ? `\\displaystyle{${inner}}` : `{${inner}}`;
+}
+
 async function renderOne(req) {
   const started = performance.now();
   const id = String(req?.id || "");
@@ -72,6 +109,7 @@ async function renderOne(req) {
   const sanitize = req?.sanitize !== false;
   const timeoutMs = Number(req?.timeout_ms || DEFAULT_TIMEOUT_MS);
   const macros = req?.macros || {};
+  const latexForMathJax = ensureMathWrapped(latex, displayMode);
 
   const macroCheck = macroSizeOk(macros);
   if (!macroCheck.ok) {
@@ -86,7 +124,7 @@ async function renderOne(req) {
 
   try {
     const convertPromise = handleRetriesFor(() =>
-      document.convertPromise(latex, {
+      document.convertPromise(latexForMathJax, {
         display: displayMode,
         scale: Number.isFinite(scale) ? scale : 1.0,
         em: 16,
@@ -98,7 +136,7 @@ async function renderOne(req) {
       setTimeout(() => reject(new Error("render-timeout")), timeoutMs);
     });
     const node = await Promise.race([convertPromise, timeoutPromise]);
-    let svgText = adaptor.outerHTML(node);
+    let svgText = toStandaloneSvg(node);
     if (sanitize) {
       svgText = sanitizeSvg(svgText);
     }

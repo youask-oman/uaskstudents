@@ -10,6 +10,8 @@ import random
 import re
 import time
 import uuid
+import logging
+import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -21,10 +23,12 @@ from sqlalchemy import text
 from app.database import engine
 
 
-RENDERER_VERSION = "mathjax_v4_components_v1"
+RENDERER_VERSION = "mathjax_v4_components_v2"
 _FORBIDDEN_TAG_RE = re.compile(r"<\s*(script|foreignObject)\b", re.IGNORECASE)
 _FORBIDDEN_EVENT_ATTR_RE = re.compile(r"\son[a-zA-Z]+\s*=", re.IGNORECASE)
 _FORBIDDEN_HREF_RE = re.compile(r"\s(?:href|xlink:href)\s*=\s*(['\"])\s*javascript:", re.IGNORECASE)
+_SVG_TAG_RE = re.compile(r"<\s*svg\b", re.IGNORECASE)
+logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> datetime:
@@ -37,6 +41,9 @@ def sanitize_svg_server(svg: str) -> str:
     out = re.sub(r"\s(?:href|xlink:href)\s*=\s*(['\"])\s*javascript:.*?\1", "", out, flags=re.IGNORECASE | re.DOTALL)
     out = re.sub(r"<\s*script\b.*?<\s*/\s*script\s*>", "", out, flags=re.IGNORECASE | re.DOTALL)
     out = re.sub(r"<\s*foreignObject\b.*?<\s*/\s*foreignObject\s*>", "", out, flags=re.IGNORECASE | re.DOTALL)
+    # Some sanitizer paths can emit malformed XML attributes like: <path d></path>.
+    # Normalize these into XML-safe empty values.
+    out = re.sub(r"<path([^>]*?)\sd(?=(\s|/?>))", r"<path\1 d=\"\"", out, flags=re.IGNORECASE)
     return out
 
 
@@ -47,6 +54,68 @@ def has_forbidden_svg(svg: str) -> bool:
         or _FORBIDDEN_EVENT_ATTR_RE.search(text_svg)
         or _FORBIDDEN_HREF_RE.search(text_svg)
     )
+
+
+def _parse_svg_numeric(value: Optional[str]) -> Optional[float]:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    raw = re.sub(r"(ex|em|px|pt|cm|mm|in|%)$", "", raw, flags=re.IGNORECASE)
+    try:
+        parsed = float(raw)
+    except Exception:
+        return None
+    return parsed if parsed > 0 else None
+
+
+def validate_svg_output(svg: str) -> Tuple[bool, Optional[str], Dict[str, Optional[float]]]:
+    """
+    Strict SVG validation:
+    - Well-formed XML.
+    - Root element is <svg>.
+    - Must have viewBox or both width/height.
+    - Must not include forbidden constructs.
+    """
+    text_svg = str(svg or "").strip()
+    if not text_svg:
+        return False, "empty_svg", {}
+    if not _SVG_TAG_RE.search(text_svg):
+        return False, "missing_svg_root", {}
+    if has_forbidden_svg(text_svg):
+        return False, "forbidden_svg_content", {}
+
+    try:
+        root = ET.fromstring(text_svg)
+    except Exception:
+        return False, "invalid_xml", {}
+
+    if not isinstance(root.tag, str) or not root.tag.lower().endswith("svg"):
+        return False, "root_not_svg", {}
+
+    view_box = root.attrib.get("viewBox") or root.attrib.get("viewbox")
+    width = _parse_svg_numeric(root.attrib.get("width"))
+    height = _parse_svg_numeric(root.attrib.get("height"))
+    parsed: Dict[str, Optional[float]] = {"width": width, "height": height}
+
+    if view_box:
+        parts = [p for p in re.split(r"\s+", str(view_box).strip()) if p]
+        if len(parts) == 4:
+            try:
+                vb_w = float(parts[2])
+                vb_h = float(parts[3])
+                if vb_w > 0 and vb_h > 0:
+                    parsed["viewbox_width"] = vb_w
+                    parsed["viewbox_height"] = vb_h
+            except Exception:
+                pass
+
+    has_viewbox = "viewbox_width" in parsed and "viewbox_height" in parsed
+    has_dims = (parsed.get("width") or 0) > 0 and (parsed.get("height") or 0) > 0
+    if not has_viewbox and not has_dims:
+        return False, "missing_dimensions", parsed
+    return True, None, parsed
 
 
 def normalize_macros(macros: Optional[Dict[str, Any]]) -> Dict[str, str]:
@@ -448,6 +517,16 @@ class MathRenderService:
             # Never-break mode: cache persistence errors must not fail response path.
             return
 
+    def _db_delete(self, key: str) -> None:
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("DELETE FROM math_svg_cache WHERE key = :key"),
+                    {"key": key},
+                )
+        except Exception:
+            return
+
     async def render_batch(self, items: List[Dict[str, Any]], options: Dict[str, Any]) -> Dict[str, Any]:
         started = time.perf_counter()
         font = str(options.get("font") or "tex")
@@ -514,17 +593,33 @@ class MathRenderService:
         for key, record in unique_by_key.items():
             mem = await self.mem_cache.get(key)
             if mem is not None:
-                cache_hits += 1
-                resolved[key] = {"ok": True, "svg": mem["svg"], "metrics": mem.get("metrics") or {}, "cache": "hit", "key": key}
-                await self.mark_hit(key)
-                continue
+                svg_text = str(mem.get("svg") or "")
+                valid_hit, _, hit_metrics = validate_svg_output(svg_text)
+                if valid_hit:
+                    cache_hits += 1
+                    merged_metrics = (mem.get("metrics") or {}) if isinstance(mem.get("metrics"), dict) else {}
+                    if hit_metrics:
+                        merged_metrics = {**merged_metrics, **hit_metrics}
+                    resolved[key] = {"ok": True, "svg": svg_text, "metrics": merged_metrics, "cache": "hit", "key": key}
+                    await self.mark_hit(key)
+                    continue
+                # Bad in-memory cache entry; let re-render path repair it.
+
             db_row = self._db_get(key)
             if db_row is not None:
-                cache_hits += 1
-                resolved[key] = {"ok": True, "svg": db_row["svg"], "metrics": db_row.get("metrics") or {}, "cache": "hit", "key": key}
-                await self.mem_cache.set(key, {"svg": db_row["svg"], "metrics": db_row.get("metrics") or {}})
-                await self.mark_hit(key)
-                continue
+                db_svg = str(db_row.get("svg") or "")
+                valid_db, _, db_metrics = validate_svg_output(db_svg)
+                if valid_db:
+                    cache_hits += 1
+                    merged_metrics = (db_row.get("metrics") or {}) if isinstance(db_row.get("metrics"), dict) else {}
+                    if db_metrics:
+                        merged_metrics = {**merged_metrics, **db_metrics}
+                    resolved[key] = {"ok": True, "svg": db_svg, "metrics": merged_metrics, "cache": "hit", "key": key}
+                    await self.mem_cache.set(key, {"svg": db_svg, "metrics": merged_metrics})
+                    await self.mark_hit(key)
+                    continue
+                # Invalid stale DB cache row; remove and re-render.
+                self._db_delete(key)
 
             payload = {
                 "id": uuid.uuid4().hex,
@@ -561,6 +656,7 @@ class MathRenderService:
                 svg_text = str(worker_result.get("svg") or "")
                 if sanitize:
                     svg_text = sanitize_svg_server(svg_text)
+                is_valid, validation_error, validation_metrics = validate_svg_output(svg_text)
                 if sanitize and has_forbidden_svg(svg_text):
                     resolved[key] = {
                         "ok": False,
@@ -569,8 +665,22 @@ class MathRenderService:
                         "cache": "miss",
                         "key": key,
                     }
+                elif not is_valid:
+                    resolved[key] = {
+                        "ok": False,
+                        "error": {
+                            "code": "SVG_VALIDATE_FAIL",
+                            "message": f"Invalid SVG output: {validation_error or 'unknown'}",
+                        },
+                        "fallback_text": record["latex"],
+                        "cache": "miss",
+                        "key": key,
+                        "metrics": validation_metrics,
+                    }
                 else:
                     metrics = worker_result.get("metrics") if isinstance(worker_result.get("metrics"), dict) else {}
+                    if validation_metrics:
+                        metrics = {**metrics, **validation_metrics}
                     resolved[key] = {"ok": True, "svg": svg_text, "metrics": metrics, "cache": "miss", "key": key}
                     await self.mem_cache.set(key, {"svg": svg_text, "metrics": metrics})
                     self._db_set(

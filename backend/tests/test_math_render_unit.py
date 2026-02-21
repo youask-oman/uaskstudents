@@ -5,6 +5,7 @@ from app.services.math_render_service import (
     has_forbidden_svg,
     sanitize_svg_server,
     split_latex_segments,
+    validate_svg_output,
 )
 
 
@@ -60,4 +61,29 @@ Then $$\int_0^1 x dx$$ and \(a+b\) and \[c+d\].
     assert any(m.get("latex") == "c+d" for m in math_parts)
     # Code block content should not be parsed as math.
     assert not any("$not_math$" == m.get("latex") for m in math_parts)
+
+
+def test_validate_svg_output_rejects_non_svg_or_missing_dims() -> None:
+    ok, err, _ = validate_svg_output("<div>x</div>")
+    assert ok is False
+    assert err in {"missing_svg_root", "root_not_svg"}
+
+    bad = '<svg xmlns="http://www.w3.org/2000/svg"><g><text>x</text></g></svg>'
+    ok2, err2, _ = validate_svg_output(bad)
+    assert ok2 is False
+    assert err2 == "missing_dimensions"
+
+
+def test_validate_svg_output_accepts_viewbox_or_width_height() -> None:
+    svg_with_viewbox = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40"><g><text>x</text></g></svg>'
+    ok, err, metrics = validate_svg_output(svg_with_viewbox)
+    assert ok is True
+    assert err is None
+    assert metrics.get("viewbox_width") == 120
+
+    svg_with_dims = '<svg xmlns="http://www.w3.org/2000/svg" width="120px" height="40px"><g><text>x</text></g></svg>'
+    ok2, err2, metrics2 = validate_svg_output(svg_with_dims)
+    assert ok2 is True
+    assert err2 is None
+    assert metrics2.get("width") == 120
 

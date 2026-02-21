@@ -32,3 +32,187 @@ Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
 Stripe key masked: sk_test***6NRS
 Incoming: POST /api/v1/math/render
 Response: 200 | 211ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 201ms
+Using proactor: IocpProactor
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 206ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 0ms
+Using proactor: IocpProactor
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+DISABLE_OPENAI is enabled; skipping LLM manager initialization
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 205ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 494ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 141ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 126ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 127ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 127ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 135ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 133ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 123ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 99ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 493ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 142ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 130ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 124ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 122ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 122ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 127ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 133ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 103ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 489ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 142ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 126ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 130ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 126ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 127ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 129ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 126ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 98ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 488ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 145ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 132ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 134ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 126ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 126ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 127ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 121ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 101ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 502ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 142ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 128ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 124ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 124ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 123ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 127ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 125ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 96ms
+Attempting to connect to database (Attempt 1/10)...
+Ensured promptmodeenum includes OCR_EXTRACT
+Database connection successful and tables created.
+Prompt registry bootstrap from files is disabled; using DB-only prompts/schemas.
+Prompt binding integrity OK: active_bindings=4 active_pairs=4
+Stripe env loaded: STRIPE_SECRET_KEY=SET STRIPE_LIVE_MODE=False
+Stripe key masked: sk_test***6NRS
+Incoming: POST /api/v1/math/render
+Response: 200 | 502ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 143ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 129ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 128ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 122ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 133ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 136ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 135ms
+Incoming: POST /api/v1/math/render
+Response: 200 | 101ms

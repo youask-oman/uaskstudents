@@ -1,0 +1,272 @@
+{
+  "timestamp_utc": "2026-02-21T08:00:01.063151+00:00",
+  "total": 220,
+  "passed": 176,
+  "failed": 44,
+  "failures": [
+    {
+      "latex": "\\lim_{x\\to 0}\\frac{\\sin x}{x}=1",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:12b1be64ea65be7c1afca707f7e5a75f6e0795aea53ce561b8dbb5f33fbcc25e"
+    },
+    {
+      "latex": "\\forall \\epsilon>0\\ \\exists \\delta>0:\\ |x-a|<\\delta\\Rightarrow |f(x)-L|<\\epsilon",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:87017f9a14da6ced1863f819c97a7b137e0ecce4b31457732c4e060eda87cc50"
+    },
+    {
+      "latex": "\\operatorname{Var}(X)=\\mathbb{E}[X^2]-\\mathbb{E}[X]^2",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:17e94c7eae41c10d44642edf6402660e86172c9dc08cb4183cd7ebabe564292f"
+    },
+    {
+      "latex": "\\operatorname{rank}(A)=\\dim(\\operatorname{Col}(A))",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:77af5d5a803798fda31b249a3a0fdeb555e31dcab1232d63c22b190e941a3ab3"
+    },
+    {
+      "latex": "\\ker(T)=\\{v\\in V:T(v)=0\\}",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:194046d6c83549214b21bb14b29f157c8c41e299b7c1bea9c42308a6761033f8"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{5}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:e4376fa58cb87e6698af4d354f8dd54ac26bc0301595ce4abb8f52efc6e40785"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{6}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:c05df80a9087b198bcb6ba6980a87d5fc54d912417410c08025170f5a2aa5314"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{7}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:53f8b78d9e17506a17baee9d9f323de6372abe4a608237f5687af96ba70bbd07"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{8}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:231d85f76ceba6af3a5f79c29b4202d27606b7c9ac9b8008e02855ae9e5cf959"
+    },
+    {
+      "latex": "\\frac{d^{2}}{dx^{2}}\\left(x^{9}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:2e8b168632718719a98bb106f7e26593bdaa80f45850e7fdf5725822e560ac7f"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{10}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:877b54377c0ac968d9a6b1b146c17c3275f4cc67d3a763d045c588bcf238619f"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{11}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:5c1a8eb40fa1e1c53fa45ffc8795c51e908e328f7f1f7165bcb607258c12064e"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{12}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:9c6995f755c3e943fba35cc9eb16dbb2055610493eea1af20c50c7df2d1ab5f7"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{13}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:3e090a86d815b3b9d8f69737030da8c2c5d476a5dacd4b71cd41dad2f9d1bd36"
+    },
+    {
+      "latex": "\\frac{d^{2}}{dx^{2}}\\left(x^{14}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:906b67d7929cc8848203fa2290222844716292f0da4bfdce7851d8f4fcc7664f"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{15}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:e0816db868bb21ef1b729cb9704dfc13ca68f7059b2c934a2fc9ec2ef7a346fd"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{16}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:4f853bf831ed3b87421aafdae7d8a4398c9a40ef9be178085eea7c541c731c00"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{17}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:3c89cda86b6b42926b4531fb65c8acd96303964bcaca3f00b169b0dfc03c44ad"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{18}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:be13538cbee1ea68abba45f80c379d565b406f06005589c1695f46fbd7228b2b"
+    },
+    {
+      "latex": "\\frac{d^{2}}{dx^{2}}\\left(x^{19}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:dcffb588feb10fa23fd74dedd06fc0c39d650ea99c653f4fea50ea7b29baa961"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{20}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:2545f6334d8180de6022e967298f332c69d86b6f72eea74d9300a822696fb6e1"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{21}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:667b46639fce3cbee310a5f7c34aafa1246d98d1546e1f62b5e82a7effb43ca3"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{22}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:91c3541663a637874542ba92930f3504d1927f1d4339bed5961bbd061779c1e8"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{23}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:6d5f166bd4e29227a97a0eb0c5ceafa1eee6f78852ed3608f08c772ef26e376c"
+    },
+    {
+      "latex": "\\frac{d^{2}}{dx^{2}}\\left(x^{24}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:fe9664844fdf771c8ba716fc9ce2a6dff8a6206865d2ab001a25061584ae4166"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{25}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:abf99976cfcaf23db55d8e6ce69c37770fc2e4f45420afab7f0e129ba8692069"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{26}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:ea9fe71b9fc7f571888d6d76cc406472ccc53dd84236b020fc4688843d3d57ec"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{27}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:737aa5a0eb71d4b4596d39aa0360d84e5087c602e04fed2db160cb2d51e1e575"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{28}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:829fb2438b37fedf0ac13f63f29def06a3f89fd35207584e47eec3bccb924c75"
+    },
+    {
+      "latex": "\\frac{d^{2}}{dx^{2}}\\left(x^{29}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:72ced3f05e21fdf8f5c4630aa64e2f6b1d3e5eb5ccb05caffe7006032c34c0f7"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{30}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:a94070aa6c58556b332135f2c35df7b880d9cbee243518762adb4746ff415967"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{31}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:2652cfa8bcb803dc3565f3882ebab65700f8668888cb2782078cfa13537afb70"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{32}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:e1fa097cafd883ba1f78aec9de8c9f437f683ce4906d4e15cff2806a0379cf95"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{33}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:5f287319fd984e54023c05a23193b784e82228424bfcd6b3716028321cbcde6f"
+    },
+    {
+      "latex": "\\frac{d^{2}}{dx^{2}}\\left(x^{34}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:c5910183f8e254082be6331ecdd634212b0151fcbacea63b224ae6a1880a8350"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{35}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:fd9221029df90c2190590e442485a0d56a9ecf6a46e0e1fb15a85de65d42cb29"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{36}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:8d08963d48d649efb81692dacce9b134dd74cb0bc246d782db9ec7c81a0024b6"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{37}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:46cb1c228a1388e445bdd48343bd59029a50c46d862985f3152490e3ecd3fc45"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{38}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:92f7a0aee8fcab9f6f93b7f44d0a1742ce6c7c922ff852ad0419466acfe4de8b"
+    },
+    {
+      "latex": "\\frac{d^{2}}{dx^{2}}\\left(x^{39}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:bc1228d40fda0ed15fce9bb41df0f4d7434131df3f1cc5997147a8dec440c22d"
+    },
+    {
+      "latex": "\\frac{d^{3}}{dx^{3}}\\left(x^{40}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:fdd0c4a09c53ced983cb288735502c442c075dda9dc1f3ae53c002260a7ece98"
+    },
+    {
+      "latex": "\\frac{d^{4}}{dx^{4}}\\left(x^{41}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:9bae5012cde1f311a4be6637903f8c670b27478996b458d808b47a7b1e31388d"
+    },
+    {
+      "latex": "\\frac{d^{5}}{dx^{5}}\\left(x^{42}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:6984b681bcea43d1a5cd7b7d84dfdbec536f657e9f25281a96d93babe7866a42"
+    },
+    {
+      "latex": "\\frac{d^{1}}{dx^{1}}\\left(x^{43}\\sin x\\right)",
+      "ok": false,
+      "error": "SVG_VALIDATE_FAIL",
+      "key": "texsvg:v1:b65f678578a0355eccaab0bdff48429506716a0f364282dd29ba27952c2da82d"
+    }
+  ]
+}

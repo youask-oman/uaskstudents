@@ -2,6 +2,14 @@ export const normalizeProseMath = (content: unknown): string => {
     if (!content) return "";
     let text = typeof content === 'string' ? content : JSON.stringify(content);
 
+    // Canonicalize over-escaped math delimiters from persisted JSON/text payloads.
+    // Example: "\\(" should become "\(" before segmentation.
+    text = text
+        .replace(/\\\\\(/g, "\\(")
+        .replace(/\\\\\)/g, "\\)")
+        .replace(/\\\\\[/g, "\\[")
+        .replace(/\\\\\]/g, "\\]");
+
     // Check if it's a JSON array string ["...", "..."]
     if (text.trim().startsWith("[") && text.trim().endsWith("]")) {
         try {
@@ -27,9 +35,44 @@ export const normalizeProseMath = (content: unknown): string => {
     const lines = text.split("\n");
     const normalized = lines.map((line) => {
         const n = normalizeInlineDollars(line);
-        return autoFixMath(n);
+        const fixed = autoFixMath(n);
+        return wrapCommonNakedInlineLatex(fixed);
     });
     return normalized.join("\n");
+};
+
+const wrapCommonNakedInlineLatex = (line: string): string => {
+    let out = String(line || "");
+
+    // Render common naked inline commands when mixed with prose, e.g.
+    // "Final Answer: \boxed{y = x + 1}".
+    // Keep this conservative to avoid over-wrapping normal prose.
+    const patterns = [
+        /\\boxed\{[^{}]*\}/g,
+        /\\sqrt\{[^{}]*\}/g,
+        /\\frac\{[^{}]*\}\{[^{}]*\}/g,
+        /\\tfrac\{[^{}]*\}\{[^{}]*\}/g,
+    ];
+
+    for (const pattern of patterns) {
+        out = out.replace(pattern, (match, offset, src) => {
+            const start = Number(offset);
+            const before = start > 0 ? src[start - 1] : "";
+            const afterIndex = start + String(match).length;
+            const after = afterIndex < src.length ? src[afterIndex] : "";
+
+            // Skip if already inside inline/block delimiters.
+            if (before === "$" || after === "$") return match;
+            if (src.slice(Math.max(0, start - 2), start) === "\\(") return match;
+            if (src.slice(afterIndex, afterIndex + 2) === "\\)") return match;
+            if (src.slice(Math.max(0, start - 2), start) === "\\[") return match;
+            if (src.slice(afterIndex, afterIndex + 2) === "\\]") return match;
+
+            return `\\(${match}\\)`;
+        });
+    }
+
+    return out;
 };
 
 // Automatically prepend backslashes to known math commands if missing

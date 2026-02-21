@@ -125,14 +125,16 @@ const shouldRenderAsProse = (value: string): boolean => {
 const normalizeValueLabel = (value: string): string => (value || "").replace(/_/g, " ").trim();
 
 const wrapProblemMath = (value: string): string => {
-  const text = (value || "")
+  let text = (value || "")
     .trim()
     .replace(/\\\\\(/g, "\\(")
     .replace(/\\\\\)/g, "\\)")
     .replace(/\\\\\[/g, "\\[")
     .replace(/\\\\\]/g, "\\]");
+  text = text.replace(/\\text\{([^}]*)\}/g, "$1");
   if (!text) return "";
   if (text.includes("\\(") || text.includes("\\[") || text.includes("$")) return text;
+  if (/\\[a-zA-Z]+/.test(text)) return text;
 
   const inverseMatch = text.match(/^(Find\s+the\s+inverse\s+of\s+)(.+)$/i);
   if (inverseMatch) {

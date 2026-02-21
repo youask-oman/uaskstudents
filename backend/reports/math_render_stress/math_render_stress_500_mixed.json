@@ -1,0 +1,8 @@
+{
+  "timestamp_utc": "2026-02-21T08:07:21.498347+00:00",
+  "suite": "math_render_stress_500_mixed_words",
+  "total": 500,
+  "passed": 500,
+  "failed": 0,
+  "failures": []
+}

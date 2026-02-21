@@ -52,6 +52,61 @@ const safeSliceByCodePoints = (codePoints: string[], count: number): string => {
   return codePoints.slice(0, clamped).join("");
 };
 
+const isEscaped = (text: string, index: number): boolean => {
+  let count = 0;
+  let cursor = index - 1;
+  while (cursor >= 0 && text[cursor] === "\\") {
+    count += 1;
+    cursor -= 1;
+  }
+  return count % 2 === 1;
+};
+
+const clampToSafeMathBoundary = (text: string, desiredLen: number): number => {
+  const totalLen = text.length;
+  const target = Math.max(0, Math.min(totalLen, Math.floor(desiredLen)));
+  if (target >= totalLen) return totalLen;
+  if (target <= 0) return 0;
+
+  let inlineParenOpen = false; // \( ... \)
+  let blockBracketOpen = false; // \[ ... \]
+  let singleDollarOpen = false; // $ ... $
+  let doubleDollarOpen = false; // $$ ... $$
+  let lastSafe = 0;
+
+  for (let i = 0; i < target; i += 1) {
+    if (!isEscaped(text, i) && text.startsWith("\\(", i)) {
+      if (!blockBracketOpen && !doubleDollarOpen && !singleDollarOpen) inlineParenOpen = true;
+      i += 1;
+    } else if (!isEscaped(text, i) && text.startsWith("\\)", i)) {
+      if (inlineParenOpen) inlineParenOpen = false;
+      i += 1;
+    } else if (!isEscaped(text, i) && text.startsWith("\\[", i)) {
+      if (!inlineParenOpen && !doubleDollarOpen && !singleDollarOpen) blockBracketOpen = true;
+      i += 1;
+    } else if (!isEscaped(text, i) && text.startsWith("\\]", i)) {
+      if (blockBracketOpen) blockBracketOpen = false;
+      i += 1;
+    } else if (text[i] === "$" && !isEscaped(text, i) && !inlineParenOpen && !blockBracketOpen) {
+      if (text[i + 1] === "$" && !isEscaped(text, i + 1)) {
+        doubleDollarOpen = !doubleDollarOpen;
+        i += 1;
+      } else if (!doubleDollarOpen) {
+        singleDollarOpen = !singleDollarOpen;
+      }
+    }
+
+    if (!inlineParenOpen && !blockBracketOpen && !singleDollarOpen && !doubleDollarOpen) {
+      lastSafe = i + 1;
+    }
+  }
+
+  if (!inlineParenOpen && !blockBracketOpen && !singleDollarOpen && !doubleDollarOpen) {
+    return target;
+  }
+  return lastSafe;
+};
+
 export default function TypingPlaybackMessage({ messageId, fallbackContent, fallbackSegments }: TypingPlaybackMessageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,13 +192,16 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
         const text = serverText || effectiveFallbackText || "";
         const cpLen = Array.from(text).length;
         const serverVisible = Number.isFinite(Number(data.visible_len)) ? Number(data.visible_len) : 0;
-        const clampedVisible = Math.max(0, Math.min(cpLen, Math.floor(serverVisible)));
+        const serverComplete = Boolean(data.is_complete);
+        const clampedVisible = serverComplete
+          ? cpLen
+          : Math.max(0, Math.min(cpLen, Math.floor(serverVisible)));
         setFullText(text);
         setVisibleLen(clampedVisible);
         const parsedSpeed = Number(data.speed_cps);
         const nextSpeed = Number.isFinite(parsedSpeed) && parsedSpeed > 0 ? Math.floor(parsedSpeed) : 160;
         setSpeedCps(Math.max(10, Math.min(220, nextSpeed)));
-        setIsComplete(Boolean(data.is_complete) || clampedVisible >= cpLen);
+        setIsComplete(serverComplete || clampedVisible >= cpLen);
         lastAckLenRef.current = clampedVisible;
         baseVisibleRef.current = clampedVisible;
         startMsRef.current = Date.now();
@@ -220,7 +278,7 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
     };
   }, []);
 
-  const rendered = safeSliceByCodePoints(codePoints, visibleLen);
+  const rendered = safeSliceByCodePoints(codePoints, clampToSafeMathBoundary(fullText, visibleLen));
   const showSkip = !loading && !shouldBypassPlayback && !isComplete && visibleLen < totalLen;
 
   return (

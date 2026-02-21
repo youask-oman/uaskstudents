@@ -395,6 +395,32 @@ def _render_batch_display_markdown(
     return _normalize_markdown_spacing("\n\n---\n\n".join(section for section in sections if section))
 
 
+def _compact_assistant_structured(payload: Any) -> Any:
+    """
+    Canonicalize assistant structured payload by removing legacy duplicated
+    display blobs that must be derived at read time.
+    """
+    if isinstance(payload, dict):
+        out: Dict[str, Any] = {}
+        for key, value in payload.items():
+            if key in {"display_markdown", "rendered_content"}:
+                continue
+            out[key] = _compact_assistant_structured(value)
+        return out
+    if isinstance(payload, list):
+        return [_compact_assistant_structured(item) for item in payload]
+    return payload
+
+
+def _legacy_assistant_text(msg: ChatMessage) -> str:
+    raw = str(getattr(msg, "content", "") or "").strip()
+    if raw:
+        return raw
+    if str(getattr(msg, "role", "")).lower() == "assistant":
+        return _extract_assistant_content_for_playback(msg)
+    return ""
+
+
 def _reconcile_batch_solutions_with_questions(
     questions_json: List[Dict[str, Any]],
     payload_items: List[Dict[str, Any]],
@@ -4409,8 +4435,6 @@ async def solve_questions_batch(
             "question_count": len(questions_json),
             "questions": jsonable_encoder(questions_json),
             "solutions": safe_items,
-            "display_markdown": display_markdown,
-            "rendered_content": display_markdown,
             "final_answer": final_answer_preview,
             "final_answers": per_question_final_answers,
             "request_id": str(telemetry.get("request_id") or request_id),
@@ -4438,8 +4462,8 @@ async def solve_questions_batch(
         assistant_msg = ChatMessage(
             session_id=int(chat_session.id),
             role="assistant",
-            content=display_markdown or final_answer_preview,
-            structured_data=assistant_structured,
+            content="",
+            structured_data=_compact_assistant_structured(assistant_structured),
             telemetry=safe_telemetry if isinstance(safe_telemetry, dict) else None,
             model_used=str((telemetry or {}).get("model") or ""),
             tokens_used=int((telemetry or {}).get("total_tokens") or 0),
@@ -4518,8 +4542,8 @@ async def solve_questions_batch(
                 ChatMessage(
                     session_id=int(chat_session.id),
                     role="assistant",
-                    content=fallback_display_markdown or f"Batch solve complete for {len(safe_items)} question(s).",
-                    structured_data={
+                    content="",
+                    structured_data=_compact_assistant_structured({
                         "mode": "batch_text_solve",
                         "request_id": str(telemetry.get("request_id") or request_id),
                         "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
@@ -4529,13 +4553,11 @@ async def solve_questions_batch(
                         "questions": jsonable_encoder(questions_json),
                         "solutions": safe_items,
                         "solutions_count": len(safe_items),
-                        "display_markdown": fallback_display_markdown,
-                        "rendered_content": fallback_display_markdown,
                         "hide_from_tutor": True,
                         "question": jsonable_encoder(payload.get("question")) if isinstance(payload.get("question"), dict) else None,
                         "problem": jsonable_encoder(payload.get("problem")) if isinstance(payload.get("problem"), dict) else None,
                         "raw_user_extraction": jsonable_encoder(payload.get("raw_user_extraction")) if isinstance(payload.get("raw_user_extraction"), dict) else None,
-                    },
+                    }),
                 )
             )
             session.commit()
@@ -5234,8 +5256,8 @@ async def solve_problem(
         session.add(ChatMessage(
             session_id=new_chat.id, 
             role="assistant", 
-            content=cached_solution.get("solution", {}).get("final_answer", ""),
-            structured_data=cached_solution,
+            content="",
+            structured_data=_compact_assistant_structured(cached_solution),
             model_used=model_name,
             tokens_used=estimated_tokens # Respect image policy even for cache
         ))
@@ -5425,8 +5447,8 @@ async def solve_problem(
     assistant_msg = ChatMessage(
         session_id=new_chat.id,
         role="assistant",
-        content=assistant_content or "",
-        structured_data=solution_data,
+        content="",
+        structured_data=_compact_assistant_structured(solution_data),
         model_used=model_name,
         tokens_used=telemetry_data.get("total_tokens", 0),
         telemetry=telemetry_data
@@ -5513,8 +5535,8 @@ async def get_plan_links_removed(plan_id: int):
     ai_msg = ChatMessage(
         session_id=new_chat.id,
         role="assistant",
-        content=assistant_content,
-        structured_data=solution_data,
+        content="",
+        structured_data=_compact_assistant_structured(solution_data),
         model_used=model_name,
         tokens_used=final_tokens_count,
         telemetry=telemetry_data
@@ -5869,8 +5891,8 @@ async def solve_v3_endpoint(
     msg = ChatMessage(
         session_id=int(chat_session.id),
         role="assistant",
-        content=str(((answer_item.get("final_answer") or {}).get("answer_text")) or "Solution generated."),
-        structured_data=payload,
+        content="",
+        structured_data=_compact_assistant_structured(payload),
         telemetry=telemetry,
         model_used=telemetry.get("model"),
         tokens_used=int(telemetry.get("total_tokens") or 0),
@@ -6634,8 +6656,8 @@ async def solve_v3_endpoint(
         session.add(ChatMessage(
             session_id=new_chat.id,
             role="assistant",
-            content=final_answer,
-            structured_data=result,
+            content="",
+            structured_data=_compact_assistant_structured(result),
             model_used=(result or {}).get("_model") or os.environ.get("OPENAI_MODEL_DEFAULT") or "unknown_model",
             tokens_used=tokens_actual,
             telemetry=result.get("telemetry")
@@ -7401,14 +7423,12 @@ async def solve_v3_stream_endpoint(
                     if isinstance(payload.get("language"), dict)
                     else (trusted_ctx.get("preferred_response_language") or "English")
                 ),
-                "question_count": len(runtime_questions_json),
-                "questions": jsonable_encoder(runtime_questions_json),
-                "solutions": safe_items,
-                "display_markdown": display_markdown,
-                "rendered_content": display_markdown,
-                "final_answer": answer_text,
-                "final_answers": per_question_final_answers,
-                "request_id": str(telemetry.get("request_id") or request_id),
+                    "question_count": len(runtime_questions_json),
+                    "questions": jsonable_encoder(runtime_questions_json),
+                    "solutions": safe_items,
+                    "final_answer": answer_text,
+                    "final_answers": per_question_final_answers,
+                    "request_id": str(telemetry.get("request_id") or request_id),
                 "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
                 "tier": str(payload.get("tier") or body.tier or "").upper(),
                 "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
@@ -7441,8 +7461,8 @@ async def solve_v3_stream_endpoint(
             msg = ChatMessage(
                 session_id=int(session_row.id),
                 role="assistant",
-                content=display_markdown or answer_text,
-                structured_data=assistant_structured,
+                content="",
+                structured_data=_compact_assistant_structured(assistant_structured),
                 telemetry=telemetry,
                 model_used=telemetry.get("model"),
                 tokens_used=int(telemetry.get("total_tokens") or 0),
@@ -8857,8 +8877,8 @@ async def solve_v3_stream_endpoint(
                     session.commit()
                 
                 # --- Legacy compatibility for placeholder_msg ---
-                placeholder_msg.content = answer_text
-                placeholder_msg.structured_data = final_data
+                placeholder_msg.content = ""
+                placeholder_msg.structured_data = _compact_assistant_structured(final_data)
                 openai_telemetry["schema_valid"] = schema_valid
                 placeholder_msg.telemetry = openai_telemetry
                 placeholder_msg.tokens_used = openai_telemetry.get("total_tokens", 0)
@@ -10333,19 +10353,23 @@ async def get_session_details(session_id: int, session: Session = Depends(get_se
             ChatMessageSchema(
                 id=msg.id,
                 role=msg.role,
-                content=msg.content,
+                content=_legacy_assistant_text(msg),
                 display_markdown=(
-                    str((msg.structured_data or {}).get("display_markdown") or "").strip()
-                    if isinstance(msg.structured_data, dict)
+                    _extract_assistant_content_for_playback(msg)
+                    if str(msg.role or "").lower() == "assistant"
                     else None
-                ) or None,
+                ),
                 rendered_content=(
-                    str((msg.structured_data or {}).get("rendered_content") or "").strip()
-                    if isinstance(msg.structured_data, dict)
+                    _extract_assistant_content_for_playback(msg)
+                    if str(msg.role or "").lower() == "assistant"
                     else None
-                ) or None,
+                ),
                 media_url=getattr(msg, "media_url", None),
-                structured_data=msg.structured_data,
+                structured_data=(
+                    _compact_assistant_structured(msg.structured_data)
+                    if str(msg.role or "").lower() == "assistant"
+                    else msg.structured_data
+                ),
                 created_at=msg.created_at.isoformat(),
                 model_used=getattr(msg, "model_used", None),
                 tokens_used=getattr(msg, "tokens_used", None),
@@ -10884,8 +10908,8 @@ async def debug_seed_chat_session(
         ChatMessage(
             session_id=new_chat.id,
             role="assistant",
-            content="\n".join(content_lines),
-            structured_data=sample_solution,
+            content="",
+            structured_data=_compact_assistant_structured(sample_solution),
             model_used="debug",
             tokens_used=0,
             telemetry={"channel": "canvas_primary"},

@@ -74,6 +74,14 @@ function stripDangerousAttributes(svg) {
   return out;
 }
 
+function repairMalformedXmlAttributes(svg) {
+  let out = String(svg || "");
+  // sanitize-html can occasionally rewrite empty path data from d="" to d.
+  // In XML, bare attributes are invalid and break parsers.
+  out = out.replace(/<path([^>]*?)\sd(?=(\s|\/?>))/gi, "<path$1 d=\"\"");
+  return out;
+}
+
 export function sanitizeSvg(svg) {
   const stripped = stripDangerousAttributes(svg);
   const sanitized = sanitizeHtml(stripped, {
@@ -87,5 +95,5 @@ export function sanitizeSvg(svg) {
       return tag === "script" || tag === "foreignobject";
     },
   });
-  return sanitized;
+  return repairMalformedXmlAttributes(sanitized);
 }
