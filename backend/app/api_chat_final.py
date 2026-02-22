@@ -17,7 +17,7 @@ def chat_final_from_extracted(path: str = Query(..., description="Absolute or wo
         raise HTTPException(status_code=404, detail="file_not_found")
 
     try:
-        data = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+        data = json.loads(p.read_text(encoding="utf-8", errors="strict"))
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"invalid_json: {exc}")
 
@@ -25,4 +25,3 @@ def chat_final_from_extracted(path: str = Query(..., description="Absolute or wo
         raise HTTPException(status_code=400, detail="invalid_payload_root")
 
     return build_chat_final_payload(data)
-

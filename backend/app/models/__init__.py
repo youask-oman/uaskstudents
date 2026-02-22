@@ -1035,6 +1035,10 @@ class SolverOutputAttempt(SQLModel, table=True):
     extracted_answer: Optional[str] = Field(default=None, sa_column=Column(Text))
     raw_solution_text: str = Field(default="", sa_column=Column(Text)) # Primary output
     llm_raw_response: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # Full provider response dump
+    billing_breakdown_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    solve_mode: Optional[str] = Field(default=None, index=True)
+    charged_total_credits: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(20, 10), nullable=True))
+    selected_task_ids_json: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
     
     # Validation & Repair
     validation_json: Optional[dict] = Field(default=None, sa_column=Column(JSON)) # Successful parse
@@ -1067,6 +1071,19 @@ class SolverOutputAttempt(SQLModel, table=True):
     
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SolveDebugBlob(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True, index=True)
+    attempt_id: str = Field(index=True)
+    blob_type: str = Field(index=True)  # provider_raw_payload|provider_raw_text|raw_user_extraction|prompt_dump
+    content_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    content_text: Optional[str] = Field(default=None, sa_column=Column(Text))
+    sha256: Optional[str] = Field(default=None, index=True)
+    size_bytes: Optional[int] = Field(default=None, sa_column=Column(BigInteger))
+    stored_reason: str = Field(default="debug", index=True)  # error|debug|sample
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    retention_until: Optional[datetime] = Field(default=None)
 
 
 class SolutionShare(SQLModel, table=True):

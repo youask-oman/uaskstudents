@@ -223,6 +223,15 @@ export async function fetchWalletPrograms(limit = 50, offset = 0): Promise<Pagin
 export type CreditsEstimateResponse = {
     total_credits: number;
     per_question_credits: number;
+    context_credits?: number;
+    per_task_credits?: Record<string, number>;
+    bundle_factor?: number;
+    estimated_total_credits?: number;
+    selected_task_ids?: string[];
+    breakdown_reasons?: Record<string, string[]>;
+    solve_mode?: string;
+    tasks_truncated?: boolean;
+    tasks_truncated_from?: number | null;
     max_questions_allowed?: number | null;
     breakdown:
     | {
@@ -264,6 +273,13 @@ export async function fetchCreditsEstimate(payload: {
         verify: boolean;
         plot: boolean;
     };
+    original_input_text?: string;
+    context_text?: string;
+    tasks?: Array<{ task_id: string; task_text: string; order_index: number }>;
+    selected_task_ids?: string[];
+    user_action?: "confirm_selected" | "solve_one" | "combined_solution";
+    solve_mode?: "PER_TASK_STEPS" | "BUNDLE_COMBINED";
+    detection_confidence?: "high" | "medium" | "low";
 }): Promise<CreditsEstimateResponse> {
     const res = await fetchApi(`/api/v1/credits/estimate`, {
         method: "POST",

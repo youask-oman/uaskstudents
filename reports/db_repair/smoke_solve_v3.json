@@ -1,0 +1,7 @@
+{
+  "status_code": 200,
+  "provider": "ollama",
+  "model": "Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf",
+  "questions_count": 1,
+  "session_id": 18
+}

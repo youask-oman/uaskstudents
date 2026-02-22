@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-02-22T02:35:47.033533Z",
+  "request_id": "unicode-canonical-0939d1f1-6469-4ce7-b45f-cab7c1be5d40",
+  "attempt_id": "36d175c2-e070-4b61-aa54-b91b0441a4d9",
+  "session_id": 29,
+  "message_id": 53,
+  "route_used": "/api/v1/solve_v3_stream",
+  "unicode_roundtrip": {
+    "input_text": "QX) Unicode + plot check\nLet Y ~ Normal(?=50, ?=8).\nTasks:\n1) Compute P(44 ? Y ? 62).\n2) Plot the PDF on y ? [26, 74] with grid, legend, and title.",
+    "stored_question_text": "QX) Unicode + plot check\nLet Y ~ Normal(?=50, ?=8).\nTasks:\n1) Compute P(44 ? Y ? 62).\n2) Plot the PDF on y ? [26, 74] with grid, legend, and title.",
+    "exact_match": true,
+    "input_has_question_mark": true,
+    "stored_has_question_mark": true
+  },
+  "structured_data_keys": [
+    "attempt_id",
+    "billing",
+    "mode",
+    "question",
+    "request_id",
+    "schema_name",
+    "schema_version",
+    "selected_task_ids",
+    "solution",
+    "solve_meta",
+    "tasks"
+  ],
+  "forbidden_keys_present": [],
+  "tasks": [
+    {
+      "task_id": "t1",
+      "task_text": "Compute P(44 ? Y ? 62).",
+      "order_index": 1
+    },
+    {
+      "task_id": "t2",
+      "task_text": "Plot the PDF on y ? [26, 74] with grid, legend, and title.",
+      "order_index": 2
+    }
+  ],
+  "selected_task_ids": [
+    "t1",
+    "t2"
+  ],
+  "solution_final_answer": {
+    "answer_text": "0.7066",
+    "answer_latex": "\\boxed{0.7066}",
+    "values": [
+      {
+        "label": "boxed_1",
+        "value": 0.7066,
+        "value_latex": null
+      }
+    ],
+    "units": null
+  },
+  "solution_plot": {
+    "should_visualize": true,
+    "decision_reason": "graph_mode_forced",
+    "recipe": {
+      "kind": "function_or_geometry_2d",
+      "series": [],
+      "markers": [],
+      "style": {
+        "grid": true,
+        "axes": true,
+        "legend": true,
+        "labels": true
+      }
+    }
+  },
+  "plot_enforcement_ok": true,
+  "telemetry_has_raw_payload": true
+}

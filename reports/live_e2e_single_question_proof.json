@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-02-22T02:05:25.532738Z",
+  "route_used": "/api/v1/solve_v3_stream",
+  "requests": [
+    {
+      "name": "Q1",
+      "request_id": "66adf0f6-4fa2-4e2e-b76e-098bb3451a8f",
+      "attempt_id": "ee1d076e-7e71-476f-9eb2-70d863085468",
+      "session_id": 21,
+      "message_id": 37,
+      "checks": {
+        "questions_json_count": 8,
+        "task_ids": [],
+        "task_count": 0,
+        "one_session_save_only": true,
+        "one_attempt_save_only_by_request": true,
+        "one_attempt_save_only_in_session": true,
+        "one_assistant_message_save_only": true,
+        "message_count_total_in_session": 2
+      },
+      "counts": {
+        "session_rows": 1,
+        "attempt_rows_by_request": 1,
+        "attempt_rows_by_session": 1,
+        "assistant_message_rows": 1,
+        "message_rows_total": 2
+      },
+      "sse_meta": {
+        "provider": "openai",
+        "model": "gpt-5-mini",
+        "tier_requested": "short_steps",
+        "effective_tier": "short_steps"
+      }
+    },
+    {
+      "name": "Q2",
+      "request_id": "380b5189-e548-457e-9e02-eb575a8701ec",
+      "attempt_id": "6b8e0318-dd06-4753-83ae-f68d525fef93",
+      "session_id": 22,
+      "message_id": 39,
+      "checks": {
+        "questions_json_count": 8,
+        "task_ids": [],
+        "task_count": 0,
+        "one_session_save_only": true,
+        "one_attempt_save_only_by_request": true,
+        "one_attempt_save_only_in_session": true,
+        "one_assistant_message_save_only": true,
+        "message_count_total_in_session": 2
+      },
+      "counts": {
+        "session_rows": 1,
+        "attempt_rows_by_request": 1,
+        "attempt_rows_by_session": 1,
+        "assistant_message_rows": 1,
+        "message_rows_total": 2
+      },
+      "sse_meta": {
+        "provider": "openai",
+        "model": "gpt-5-mini",
+        "tier_requested": "short_steps",
+        "effective_tier": "short_steps"
+      }
+    }
+  ]
+}

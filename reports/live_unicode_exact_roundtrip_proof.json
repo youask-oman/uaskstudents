@@ -1,0 +1,12 @@
+{
+  "request_id": "unicode-canonical-6e5939e0-5bdc-4461-bbbf-f8dd7e6d168f",
+  "session_id": 30,
+  "message_id": 55,
+  "input_text": "QX) Unicode + plot check\nLet Y ~ Normal(μ=50, σ=8).\nTasks:\n1) Compute P(44 ≤ Y ≤ 62).\n2) Plot the PDF on y ∈ [26, 74] with grid, legend, and title.",
+  "stored_question_text": "QX) Unicode + plot check\nLet Y ~ Normal(μ=50, σ=8).\nTasks:\n1) Compute P(44 ≤ Y ≤ 62).\n2) Plot the PDF on y ∈ [26, 74] with grid, legend, and title.",
+  "exact_match": true,
+  "stored_contains_symbols": {
+    "?": false
+  },
+  "stored_has_question_mark": false
+}

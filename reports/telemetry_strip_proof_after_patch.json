@@ -1,0 +1,127 @@
+{
+  "request_id": "87020379-5700-4f89-8c64-40ccc47d733f",
+  "attempt_id": "4b2ecccd-46c0-4551-ac68-a2b7ce679f6d",
+  "session_id": 37,
+  "message_id": 69,
+  "route_used": "/api/v1/solve_v3_stream",
+  "telemetry_keys": [
+    "tier",
+    "model",
+    "provider",
+    "attempt_id",
+    "numpy_used",
+    "request_id",
+    "sympy_used",
+    "model_bound",
+    "schema_name",
+    "top_p_bound",
+    "input_tokens",
+    "schema_valid",
+    "total_tokens",
+    "output_tokens",
+    "provider_chain",
+    "questions_count",
+    "latency_ms_total",
+    "ollama_attempted",
+    "output_schema_id",
+    "repair_attempted",
+    "timeout_ms_bound",
+    "workload_billing",
+    "latency_ms_openai",
+    "prompt_binding_id",
+    "temperature_bound",
+    "billing_settlement",
+    "openai_calls_count",
+    "developer_prompt_id",
+    "providers_attempted",
+    "sympy_numpy_reports",
+    "global_system_prompt_id",
+    "local_sympy_numpy_enabled",
+    "ollama_fallback_to_openai",
+    "allow_auto_split_effective",
+    "max_questions_allowed_bound"
+  ],
+  "telemetry_raw_flags_provider_raw_text_provider_raw_payload_debug_blobs": "0|0|0",
+  "telemetry_saved": {
+    "request_id": "87020379-5700-4f89-8c64-40ccc47d733f",
+    "attempt_id": "4b2ecccd-46c0-4551-ac68-a2b7ce679f6d",
+    "tier": "SHORT_STEPS",
+    "questions_count": 1,
+    "allow_auto_split_effective": false,
+    "model": "Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf",
+    "provider": "ollama",
+    "input_tokens": 223,
+    "output_tokens": 438,
+    "total_tokens": 661,
+    "latency_ms_openai": 11753,
+    "latency_ms_total": 12441,
+    "schema_name": "solve_batch_free_v2",
+    "model_bound": "Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf",
+    "temperature_bound": 0.1,
+    "top_p_bound": 1.0,
+    "timeout_ms_bound": 60000,
+    "max_questions_allowed_bound": 15,
+    "prompt_binding_id": "5460b7aa-7733-4f61-bac5-456c83234baa",
+    "global_system_prompt_id": "global_system_prompt_batch_v1",
+    "developer_prompt_id": "solve_dev_free_v2",
+    "output_schema_id": "solve_batch_free_v2",
+    "openai_calls_count": 0,
+    "repair_attempted": false,
+    "schema_valid": true,
+    "sympy_numpy_reports": [
+      {
+        "question_id": "q1",
+        "sympy_used": true,
+        "numpy_used": true,
+        "parsed_expressions": 2,
+        "solved_equations": 1,
+        "differentiated": 1,
+        "integrated": 1,
+        "equivalence_checks": 1,
+        "numpy_finite_ratio": 1.0
+      }
+    ],
+    "sympy_used": true,
+    "numpy_used": true,
+    "local_sympy_numpy_enabled": true,
+    "provider_chain": [
+      "ollama",
+      "openai"
+    ],
+    "providers_attempted": [
+      "ollama"
+    ],
+    "ollama_attempted": true,
+    "ollama_fallback_to_openai": false,
+    "billing_settlement": {
+      "hold_id": 17,
+      "status": "settled",
+      "charged_total_credits": 4.0
+    },
+    "workload_billing": {
+      "billing_version": "work_units_v1",
+      "context_credits": 1.0,
+      "per_task_credits": {
+        "t1": 3.0
+      },
+      "bundle_factor": 0.85,
+      "estimated_total_credits": 4.0,
+      "charged_total_credits": 4.0,
+      "selected_task_ids": [
+        "t1"
+      ],
+      "breakdown_reasons": {
+        "t1": [
+          "base_task=1",
+          "graphing=+2"
+        ]
+      },
+      "original_input_hash": "b5deccb9a8d89617aded942ee66b83f982ca300d27c705925cd2b824d2211bd3"
+    }
+  },
+  "debug_blob_count_for_attempt": 0,
+  "attempt_raw_fields": {
+    "raw_solution_text_is_null": true,
+    "llm_raw_response_is_null": false
+  }
+}

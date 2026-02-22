@@ -49,6 +49,7 @@ from app.models import (
     ChatEditNoteV2, ChatEditCopyV2,
     LegalDocument, LegalAcceptance,
     SolutionShare,
+    SolveDebugBlob,
 )
 from app.utils.token_utils import count_tokens, count_messages_tokens
 from app.services.plot_sampling import process_visuals
@@ -400,16 +401,288 @@ def _compact_assistant_structured(payload: Any) -> Any:
     Canonicalize assistant structured payload by removing legacy duplicated
     display blobs that must be derived at read time.
     """
+    blocked_keys = {
+        "display_markdown",
+        "rendered_content",
+        "telemetry",
+        "_telemetry",
+        "provider_raw_text",
+        "provider_raw_payload",
+        "full_input_prompt",
+        "full_input_messages",
+        "ollama_prompt_dump_files",
+    }
     if isinstance(payload, dict):
         out: Dict[str, Any] = {}
         for key, value in payload.items():
-            if key in {"display_markdown", "rendered_content"}:
+            if key in blocked_keys:
                 continue
             out[key] = _compact_assistant_structured(value)
         return out
     if isinstance(payload, list):
         return [_compact_assistant_structured(item) for item in payload]
     return payload
+
+
+def _structured_data_canonical_enabled() -> bool:
+    return (os.getenv("STRUCTURED_DATA_CANONICAL_ENABLED", "true") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _normalize_graph_mode_value(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"on", "force_on"}:
+        return "on"
+    if raw == "off":
+        return "off"
+    return "auto"
+
+
+def _task_requires_plot(task_text: str) -> bool:
+    text = str(task_text or "").strip().lower()
+    if not text:
+        return False
+    triggers = (
+        "plot",
+        "graph",
+        "shade",
+        "mark",
+        "label",
+        "legend",
+        "grid",
+        "title",
+        "dashed",
+        "annotate",
+    )
+    return any(t in text for t in triggers)
+
+
+def _extract_axis_ranges_from_text(text: str) -> Dict[str, Any]:
+    src = str(text or "")
+    out: Dict[str, Any] = {}
+    x_match = re.search(r"x\s*(?:∈|in)\s*\[\s*([\-+]?\d+(?:\.\d+)?)\s*,\s*([\-+]?\d+(?:\.\d+)?)\s*\]", src, flags=re.IGNORECASE)
+    y_match = re.search(r"y\s*(?:∈|in)\s*\[\s*([\-+]?\d+(?:\.\d+)?)\s*,\s*([\-+]?\d+(?:\.\d+)?)\s*\]", src, flags=re.IGNORECASE)
+    if x_match:
+        out["x_range"] = [float(x_match.group(1)), float(x_match.group(2))]
+    if y_match:
+        out["y_range"] = [float(y_match.group(1)), float(y_match.group(2))]
+    return out
+
+
+def _extract_canonical_final_answer(solution_item: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(solution_item, dict):
+        return {"answer_text": "", "answer_latex": "", "values": [], "units": None}
+    final = solution_item.get("final_answer")
+    if isinstance(final, dict):
+        text = str(final.get("answer_text") or "").strip()
+        latex = str(final.get("answer_latex") or "").strip()
+        if text or latex:
+            return {
+                "answer_text": text or latex,
+                "answer_latex": latex or text,
+                "values": final.get("values") if isinstance(final.get("values"), list) else [],
+                "units": final.get("units"),
+            }
+    steps = solution_item.get("steps") if isinstance(solution_item.get("steps"), list) else []
+    for step in reversed(steps):
+        if not isinstance(step, dict):
+            continue
+        explanation = str(step.get("explanation") or "")
+        m = re.search(r"begin\s*[_\-\s]*final([\s\S]*?)end\s*[_\-\s]*final", explanation, flags=re.IGNORECASE)
+        if m:
+            candidate = m.group(1).strip()
+            if candidate:
+                return {"answer_text": candidate, "answer_latex": candidate, "values": [], "units": None}
+        math_latex = step.get("math_latex") if isinstance(step.get("math_latex"), list) else []
+        for expr in reversed(math_latex):
+            expr_s = str(expr or "").strip()
+            if expr_s:
+                return {"answer_text": expr_s, "answer_latex": expr_s, "values": [], "units": None}
+    return {"answer_text": "", "answer_latex": "", "values": [], "units": None}
+
+
+def _enforce_plot_in_payload(
+    payload: Dict[str, Any],
+    *,
+    graph_mode: str,
+    tasks: List[Dict[str, Any]],
+    question_text: str,
+) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+    gm = _normalize_graph_mode_value(graph_mode)
+    task_plot_required = any(_task_requires_plot(str((t or {}).get("task_text") or "")) for t in (tasks or []))
+    force_plot = gm == "on" or task_plot_required
+    if not force_plot:
+        return payload
+
+    recipe_ranges = _extract_axis_ranges_from_text(question_text)
+    items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        plot_obj = item.get("plot") if isinstance(item.get("plot"), dict) else {}
+        plot_obj["should_visualize"] = True
+        plot_obj["decision_reason"] = "graph_mode_forced" if gm == "on" else "task_requested_plot"
+        if not isinstance(plot_obj.get("recipe"), dict):
+            plot_obj["recipe"] = {
+                "kind": "function_or_geometry_2d",
+                **recipe_ranges,
+                "series": [],
+                "markers": [],
+                "style": {"grid": True, "axes": True, "legend": True, "labels": True},
+            }
+        item["plot"] = plot_obj
+    payload["items"] = items
+    return payload
+
+
+def _build_canonical_structured_data(
+    *,
+    runtime_questions_json: List[Dict[str, Any]],
+    safe_items: List[Dict[str, Any]],
+    task_parse: Dict[str, Any],
+    workload_billing: Dict[str, Any],
+    telemetry: Dict[str, Any],
+    body_tier: str,
+    request_id: str,
+    attempt_id: str,
+    requested_mode: str,
+) -> Dict[str, Any]:
+    q = runtime_questions_json[0] if runtime_questions_json else {}
+    item = safe_items[0] if safe_items else {}
+    final_answer = _extract_canonical_final_answer(item)
+    canonical: Dict[str, Any] = {
+        "schema_name": "solve_single_canonical_v1",
+        "schema_version": "v1",
+        "mode": "single_question_tasks_solve",
+        "request_id": str((telemetry or {}).get("request_id") or request_id),
+        "attempt_id": str((telemetry or {}).get("attempt_id") or attempt_id),
+        "question": {
+            "id": "q1",
+            "text": str(q.get("question_text") or ""),
+            "mode": str(q.get("mode") or "SOLVE"),
+            "graph_mode": str(q.get("graph_mode") or "AUTO"),
+            "domain_mode": str(q.get("domain_mode") or "reals"),
+        },
+        "tasks": jsonable_encoder(task_parse.get("tasks") or []),
+        "selected_task_ids": list(
+            task_parse.get("selected_task_ids")
+            or [str(t.get("task_id")) for t in (task_parse.get("tasks") or []) if isinstance(t, dict)]
+        ),
+        "solution": {
+            "question_id": "q1",
+            "steps": jsonable_encoder(item.get("steps") or []),
+            "final_answer": final_answer,
+            "plot": jsonable_encoder(item.get("plot") or {}),
+            "quality": jsonable_encoder(item.get("quality") or {}),
+            "warnings": jsonable_encoder(item.get("warnings") or []),
+        },
+        "billing": workload_billing,
+        "solve_meta": {
+            "provider": str((telemetry or {}).get("provider") or ""),
+            "model": str((telemetry or {}).get("model") or ""),
+            "tier_requested": str((body_tier or "")).upper() or "SHORT_STEPS",
+            "tier_effective": str((safe_items and "FREE") or (body_tier or "")).upper() or "FREE",
+            "requested_mode": str(requested_mode or "general"),
+            "output_format": "json_schema",
+            "prompt_binding_id": (telemetry or {}).get("prompt_binding_id"),
+            "global_system_prompt_id": (telemetry or {}).get("global_system_prompt_id"),
+            "developer_prompt_id": (telemetry or {}).get("developer_prompt_id"),
+            "output_schema_id": (telemetry or {}).get("output_schema_id"),
+            "solver_calls_count": 1,
+            "saved_items_count": 1,
+        },
+    }
+    return canonical
+
+
+def _store_debug_blobs_enabled() -> bool:
+    return (os.getenv("STORE_DEBUG_BLOBS_DEFAULT", "false") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _store_provider_raw_enabled() -> bool:
+    return (os.getenv("STORE_PROVIDER_RAW_DEFAULT", "false") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _debug_blob_retention_days() -> int:
+    raw = (os.getenv("DEBUG_BLOB_RETENTION_DAYS", "14") or "").strip()
+    try:
+        val = int(raw)
+        return max(1, min(val, 365))
+    except Exception:
+        return 14
+
+
+def _persist_debug_blob_refs(
+    *,
+    session: Session,
+    attempt_id: str,
+    telemetry: Dict[str, Any],
+    force_capture: bool = False,
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    src = dict(telemetry or {})
+    raw_payload = src.pop("provider_raw_payload", None)
+    raw_text = src.pop("provider_raw_text", None)
+    raw_prompt_files = src.pop("ollama_prompt_dump_files", None)
+    src.pop("full_input_prompt", None)
+    src.pop("full_input_messages", None)
+
+    capture_enabled = _store_debug_blobs_enabled() or _store_provider_raw_enabled() or force_capture
+    refs: List[Dict[str, Any]] = []
+    if not capture_enabled:
+        return src, refs
+
+    retention_until = datetime.utcnow() + timedelta(days=_debug_blob_retention_days())
+
+    def _add_blob(blob_type: str, content_json: Optional[Dict[str, Any]] = None, content_text: Optional[str] = None, stored_reason: str = "debug") -> None:
+        if content_json is None and not str(content_text or "").strip():
+            return
+        if content_json is not None:
+            payload_str = json.dumps(content_json, ensure_ascii=False, sort_keys=True)
+            size_bytes = len(payload_str.encode("utf-8"))
+            sha256 = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+        else:
+            txt = str(content_text or "")
+            size_bytes = len(txt.encode("utf-8"))
+            sha256 = hashlib.sha256(txt.encode("utf-8")).hexdigest()
+        blob = SolveDebugBlob(
+            attempt_id=str(attempt_id),
+            blob_type=blob_type,
+            content_json=content_json if isinstance(content_json, dict) else None,
+            content_text=None if isinstance(content_json, dict) else str(content_text or ""),
+            sha256=sha256,
+            size_bytes=size_bytes,
+            stored_reason=stored_reason,
+            retention_until=retention_until,
+        )
+        session.add(blob)
+        session.flush()
+        refs.append(
+            {
+                "blob_id": blob.id,
+                "blob_type": blob_type,
+                "sha256": sha256,
+                "size_bytes": size_bytes,
+                "stored_reason": stored_reason,
+            }
+        )
+
+    reason = "debug"
+    if not bool(src.get("schema_valid", True)) or bool(src.get("provider_error")):
+        reason = "error"
+    elif bool(src.get("repair_attempted")):
+        reason = "sample"
+
+    if isinstance(raw_payload, dict):
+        _add_blob("provider_raw_payload", content_json=raw_payload, stored_reason=reason)
+    if isinstance(raw_text, str) and raw_text.strip():
+        _add_blob("provider_raw_text", content_text=raw_text, stored_reason=reason)
+    if isinstance(raw_prompt_files, list) and raw_prompt_files:
+        _add_blob("prompt_dump", content_json={"files": raw_prompt_files}, stored_reason=reason)
+
+    if refs:
+        src["debug_blobs"] = refs
+    return src, refs
 
 
 def _legacy_assistant_text(msg: ChatMessage) -> str:
@@ -1214,6 +1487,14 @@ class SolveRequest(BaseModel):
         False,
         description="DEV/TEST only. Force solver failure for testing."
     )
+    # Single-question task bundle (workload billing)
+    original_input_text: Optional[str] = None
+    context_text: Optional[str] = None
+    tasks: Optional[List[Dict[str, Any]]] = None
+    selected_task_ids: Optional[List[str]] = None
+    user_action: Optional[str] = None  # confirm_selected | solve_one | combined_solution
+    solve_mode: Optional[str] = None   # PER_TASK_STEPS | BUNDLE_COMBINED
+    detection_confidence: Optional[str] = None
 
 from app.models import Plan, Subscription, UsageLedger
 from app.services.subscription_service import subscription_service
@@ -4110,6 +4391,14 @@ async def solve_questions_batch(
     user_id: int = Query(...),
     session: Session = Depends(get_session)
 ):
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "batch_disabled",
+            "message": "Batch question splitting is disabled. Submit one question to /api/v1/solve_v3_stream.",
+        },
+    )
+
     from app.services.solve.batch_tier_runtime import BatchSolveError, execute_batch_solve
     from app.services.credit_billing_service import CreditBillingError, credit_billing_service
 
@@ -4361,6 +4650,7 @@ async def solve_questions_batch(
         )
 
     created_session_id: Optional[int] = None
+    msg_telemetry: Dict[str, Any] = telemetry if isinstance(telemetry, dict) else {}
     try:
         normalized_tier = _normalize_tier_for_prompt_binding(body.tier)
         solve_tier_slug = _externalize_tier(normalized_tier)
@@ -4409,20 +4699,31 @@ async def solve_questions_batch(
         ).strip()
         if not final_answer_preview:
             final_answer_preview = f"Batch solve complete for {len(safe_items)} question(s)."
-        safe_telemetry = jsonable_encoder(telemetry if isinstance(telemetry, dict) else {})
+        force_debug_capture = bool(
+            not bool((telemetry or {}).get("schema_valid", True))
+            or bool((telemetry or {}).get("repair_attempted"))
+            or bool((telemetry or {}).get("provider_error"))
+        )
+        msg_telemetry, _debug_blob_refs = _persist_debug_blob_refs(
+            session=session,
+            attempt_id=str((telemetry or {}).get("attempt_id") or attempt_id),
+            telemetry=telemetry if isinstance(telemetry, dict) else {},
+            force_capture=force_debug_capture,
+        )
+        safe_telemetry = jsonable_encoder(msg_telemetry if isinstance(msg_telemetry, dict) else {})
         solve_meta = {
-            "request_id": str(telemetry.get("request_id") or request_id),
-            "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
-            "provider": str((telemetry or {}).get("provider") or ""),
-            "model": str((telemetry or {}).get("model") or ""),
+            "request_id": str((msg_telemetry or {}).get("request_id") or request_id),
+            "attempt_id": str((msg_telemetry or {}).get("attempt_id") or attempt_id),
+            "provider": str((msg_telemetry or {}).get("provider") or ""),
+            "model": str((msg_telemetry or {}).get("model") or ""),
             "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
             "tier_effective": str(payload.get("tier") or body.tier or "").upper(),
             "mode": "SOLVE",
             "output_format": "json_schema",
-            "prompt_binding_id": telemetry.get("prompt_binding_id") if isinstance(telemetry, dict) else None,
-            "global_system_prompt_id": telemetry.get("global_system_prompt_id") if isinstance(telemetry, dict) else None,
-            "developer_prompt_id": telemetry.get("developer_prompt_id") if isinstance(telemetry, dict) else None,
-            "output_schema_id": telemetry.get("output_schema_id") if isinstance(telemetry, dict) else None,
+            "prompt_binding_id": msg_telemetry.get("prompt_binding_id") if isinstance(msg_telemetry, dict) else None,
+            "global_system_prompt_id": msg_telemetry.get("global_system_prompt_id") if isinstance(msg_telemetry, dict) else None,
+            "developer_prompt_id": msg_telemetry.get("developer_prompt_id") if isinstance(msg_telemetry, dict) else None,
+            "output_schema_id": msg_telemetry.get("output_schema_id") if isinstance(msg_telemetry, dict) else None,
         }
         assistant_structured = {
             "mode": "batch_text_solve",
@@ -4437,8 +4738,8 @@ async def solve_questions_batch(
             "solutions": safe_items,
             "final_answer": final_answer_preview,
             "final_answers": per_question_final_answers,
-            "request_id": str(telemetry.get("request_id") or request_id),
-            "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
+            "request_id": str((msg_telemetry or {}).get("request_id") or request_id),
+            "attempt_id": str((msg_telemetry or {}).get("attempt_id") or attempt_id),
             "tier": str(payload.get("tier") or body.tier or "").upper(),
             "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
             "tier_effective": str(payload.get("tier") or body.tier or "").upper(),
@@ -4465,62 +4766,46 @@ async def solve_questions_batch(
             content="",
             structured_data=_compact_assistant_structured(assistant_structured),
             telemetry=safe_telemetry if isinstance(safe_telemetry, dict) else None,
-            model_used=str((telemetry or {}).get("model") or ""),
-            tokens_used=int((telemetry or {}).get("total_tokens") or 0),
+            model_used=str((msg_telemetry or {}).get("model") or ""),
+            tokens_used=int((msg_telemetry or {}).get("total_tokens") or 0),
         )
         session.add(user_msg)
         session.add(assistant_msg)
         try:
             session.commit()
             session.refresh(assistant_msg)
-            telemetry_provider = str((telemetry or {}).get("provider") or "").strip().lower()
-            tier_effective = str(payload.get("tier") or body.tier or "").upper()
-            provider_raw_text = str((telemetry or {}).get("provider_raw_text") or "")
-            provider_raw_payload = (telemetry or {}).get("provider_raw_payload")
-            use_exact_ollama_short_raw = (
-                telemetry_provider == "ollama"
-                and tier_effective == "SHORT_STEPS"
-                and provider_raw_text != ""
-            )
-            persisted_raw_solution_text = (
-                provider_raw_text if use_exact_ollama_short_raw else json.dumps(payload, ensure_ascii=False)
-            )
-            persisted_llm_raw_response = (
-                provider_raw_payload if isinstance(provider_raw_payload, dict) else None
-            )
-            if persisted_llm_raw_response is not None:
-                try:
-                    json.dumps(persisted_llm_raw_response, ensure_ascii=False)
-                except Exception:
-                    persisted_llm_raw_response = {
-                        "raw_payload_preview": str(provider_raw_payload)[:4000]
-                    }
+            persisted_raw_solution_text = None
+            persisted_llm_raw_response = None
             session.add(
                 SolverOutputAttempt(
-                    request_id=str(telemetry.get("request_id") or request_id),
-                    attempt_id=str(telemetry.get("attempt_id") or attempt_id),
+                    request_id=str((msg_telemetry or {}).get("request_id") or request_id),
+                    attempt_id=str((msg_telemetry or {}).get("attempt_id") or attempt_id),
                     user_id=user_id,
                     session_id=int(chat_session.id),
                     message_id=int(assistant_msg.id) if assistant_msg.id is not None else None,
                     output_format="json_schema",
                     attempt_number=1,
-                    provider=str((telemetry or {}).get("provider") or ""),
-                    model=str((telemetry or {}).get("model") or ""),
+                    provider=str((msg_telemetry or {}).get("provider") or ""),
+                    model=str((msg_telemetry or {}).get("model") or ""),
                     provider_model=(
-                        f"{str((telemetry or {}).get('provider') or '')}:{str((telemetry or {}).get('model') or '')}"
-                        if (telemetry or {}).get("provider") and (telemetry or {}).get("model")
+                        f"{str((msg_telemetry or {}).get('provider') or '')}:{str((msg_telemetry or {}).get('model') or '')}"
+                        if (msg_telemetry or {}).get("provider") and (msg_telemetry or {}).get("model")
                         else None
                     ),
                     input_text_raw=user_content,
-                    char_count=len(persisted_raw_solution_text),
+                    char_count=0,
                     extracted_answer=str((((safe_items[0] if safe_items else {}) or {}).get("final_answer") or {}).get("answer_text") or ""),
                     raw_solution_text=persisted_raw_solution_text,
                     llm_raw_response=persisted_llm_raw_response,
                     validation_json=assistant_structured,
-                    input_tokens=int((telemetry or {}).get("input_tokens") or 0),
-                    output_tokens=int((telemetry or {}).get("output_tokens") or 0),
-                    total_tokens=int((telemetry or {}).get("total_tokens") or 0),
-                    latency_ms=int((telemetry or {}).get("latency_ms_total") or 0) or None,
+                    billing_breakdown_json=workload_billing,
+                    solve_mode=str(body.solve_mode or ("BUNDLE_COMBINED" if body.user_action == "combined_solution" else "PER_TASK_STEPS")),
+                    charged_total_credits=float(workload_billing.get("charged_total_credits") or workload_billing.get("estimated_total_credits") or 0),
+                    selected_task_ids_json=list(task_parse.get("selected_task_ids") or []),
+                    input_tokens=int((msg_telemetry or {}).get("input_tokens") or 0),
+                    output_tokens=int((msg_telemetry or {}).get("output_tokens") or 0),
+                    total_tokens=int((msg_telemetry or {}).get("total_tokens") or 0),
+                    latency_ms=int((msg_telemetry or {}).get("latency_ms_total") or 0) or None,
                     prompt_meta={"questions_json": jsonable_encoder(questions_json)},
                     status="success",
                 )
@@ -4530,8 +4815,8 @@ async def solve_questions_batch(
             session.rollback()
             logger.exception(
                 "batch_session_message_persist_failed request_id=%s attempt_id=%s user_id=%s reason=%s",
-                str(telemetry.get("request_id") or request_id),
-                str(telemetry.get("attempt_id") or attempt_id),
+                str((msg_telemetry or {}).get("request_id") or request_id),
+                str((msg_telemetry or {}).get("attempt_id") or attempt_id),
                 user_id,
                 str(msg_exc),
             )
@@ -4565,8 +4850,8 @@ async def solve_questions_batch(
         session.rollback()
         logger.exception(
             "batch_session_persist_failed request_id=%s attempt_id=%s user_id=%s reason=%s",
-            str(telemetry.get("request_id") if isinstance(telemetry, dict) else request_id),
-            str(telemetry.get("attempt_id") if isinstance(telemetry, dict) else attempt_id),
+            str((msg_telemetry or {}).get("request_id") if isinstance(msg_telemetry, dict) else request_id),
+            str((msg_telemetry or {}).get("attempt_id") if isinstance(msg_telemetry, dict) else attempt_id),
             user_id,
             str(exc),
         )
@@ -4574,14 +4859,14 @@ async def solve_questions_batch(
     return SolveBatchResponse(
         ok=True,
         results=results,
-        request_id=str(telemetry.get("request_id") or request_id),
-        attempt_id=str(telemetry.get("attempt_id") or attempt_id),
+        request_id=str((msg_telemetry or {}).get("request_id") or request_id),
+        attempt_id=str((msg_telemetry or {}).get("attempt_id") or attempt_id),
         session_id=created_session_id,
         tier=str(payload.get("tier") or body.tier or ""),
         language=payload.get("language") if isinstance(payload.get("language"), dict) else None,
         items=payload.get("items") if isinstance(payload.get("items"), list) else None,
         payload=payload,
-        telemetry=telemetry,
+        telemetry=msg_telemetry if isinstance(msg_telemetry, dict) else telemetry,
     )
 
 @api_router.post("/uploads")
@@ -6983,195 +7268,17 @@ async def solve_v3_stream_endpoint(
 
     from app.services.solve.batch_tier_runtime import BatchSolveError, execute_batch_solve
 
-    raw_problem_text = (
+    raw_problem_text_exact = (
         body.question_text
         or body.confirmed_text
         or body.confirmed_markdown
         or body.text_query
         or ""
-    ).strip()
-    if not raw_problem_text:
+    )
+    if not str(raw_problem_text_exact).strip():
         raise HTTPException(status_code=400, detail="No input provided")
 
-    def _auto_split_questions_for_batch(text: str) -> List[str]:
-        re_mod = __import__("re")
-        src = (text or "").replace("\r", "").strip()
-        if not src:
-            return []
-        lines = [ln.rstrip() for ln in src.split("\n")]
-        non_empty = [ln for ln in lines if ln.strip()]
-        if not non_empty:
-            return []
-
-        req_anchor_re = re_mod.compile(r"\b(must\s+do\s+all\s+of\s+the\s+following|do\s+all\s+of\s+the\s+following|requirements\s*:|tasks\s*:)\b", re_mod.I)
-        bullet_re = re_mod.compile(r"^\s*[-*•]\s+")
-        num_re = re_mod.compile(r"^\s*\(?\d{1,3}\)?\s*[.)\-:]\s+")
-        alpha_re = re_mod.compile(r"^\s*\(?[a-zA-Z]\)?\s*[.)\-:]\s+")
-        imperative_re = re_mod.compile(
-            r"^\s*(write|state|derive|prove|show|compute|evaluate|justify|expand|find|verify|interpret|deduce|normalize|combine|define|determine|substitute|solve|describe|identify|report|list|use|parametrize)\b",
-            re_mod.I,
-        )
-        task_verb_re = re_mod.compile(
-            r"\b("
-            r"solve|find|determine|compute|evaluate|derive|state|report|identify|list|"
-            r"rewrite|express|factor|simplify|expand|transform|"
-            r"verify|check|confirm|justify|prove|"
-            r"format|arrange|order|standardize|interpret"
-            r")\b",
-            re_mod.I,
-        )
-
-        verb_to_class = {
-            "solve": "SOLVE",
-            "find": "SOLVE",
-            "determine": "SOLVE",
-            "compute": "SOLVE",
-            "evaluate": "SOLVE",
-            "derive": "SOLVE",
-            "state": "SOLVE",
-            "report": "SOLVE",
-            "identify": "SOLVE",
-            "list": "SOLVE",
-            "rewrite": "TRANSFORM",
-            "express": "TRANSFORM",
-            "factor": "TRANSFORM",
-            "simplify": "TRANSFORM",
-            "expand": "TRANSFORM",
-            "transform": "TRANSFORM",
-            "verify": "VERIFY",
-            "check": "VERIFY",
-            "confirm": "VERIFY",
-            "justify": "VERIFY",
-            "prove": "VERIFY",
-            "format": "FORMAT",
-            "arrange": "FORMAT",
-            "order": "FORMAT",
-            "standardize": "FORMAT",
-            "interpret": "FORMAT",
-        }
-
-        anchor_idx = -1
-        for idx, ln in enumerate(lines):
-            if req_anchor_re.search(ln or ""):
-                anchor_idx = idx
-                break
-
-        def _strip_marker(ln: str) -> str:
-            out = bullet_re.sub("", ln)
-            out = num_re.sub("", out)
-            out = alpha_re.sub("", out)
-            return out.strip()
-
-        def _parse_task_lines(task_lines: List[str]) -> List[str]:
-            tasks: List[str] = []
-            cur: List[str] = []
-            for ln in task_lines:
-                t = (ln or "").strip()
-                if not t:
-                    continue
-                explicit = bool(bullet_re.match(ln) or num_re.match(ln) or alpha_re.match(ln))
-                implicit = bool(imperative_re.match(t))
-                if explicit or implicit:
-                    if cur:
-                        merged = " ".join(x.strip() for x in cur if x.strip()).strip()
-                        if merged:
-                            tasks.append(merged)
-                    cur = [_strip_marker(ln) if explicit else t]
-                elif cur:
-                    cur.append(t)
-                else:
-                    cur = [t]
-            if cur:
-                merged = " ".join(x.strip() for x in cur if x.strip()).strip()
-                if merged:
-                    tasks.append(merged)
-            return tasks
-
-        if anchor_idx >= 0:
-            preamble = "\n".join([ln for ln in lines[:anchor_idx] if ln.strip()]).strip()
-            tasks = _parse_task_lines(lines[anchor_idx + 1 :])
-            if len(tasks) >= 2:
-                if preamble:
-                    return [f"{preamble}\n\n{task}".strip() for task in tasks]
-                return tasks
-
-        first_item_idx = -1
-        for idx, ln in enumerate(lines):
-            if num_re.match(ln or "") or alpha_re.match(ln or "") or bullet_re.match(ln or ""):
-                first_item_idx = idx
-                break
-        if first_item_idx > 0:
-            preamble = "\n".join([ln for ln in lines[:first_item_idx] if ln.strip()]).strip()
-            tasks = _parse_task_lines(lines[first_item_idx:])
-            if len(tasks) >= 2:
-                if preamble:
-                    return [f"{preamble}\n\n{task}".strip() for task in tasks]
-                return tasks
-
-        q_lines = [ln.strip() for ln in lines if ln.strip().endswith("?")]
-        if len(q_lines) >= 2:
-            return q_lines
-
-        # Step A/B/C fallback for paragraph-style multi-task prompts:
-        # - A: split into candidate segments and keep those with task verbs
-        # - B: normalize matched verb -> canonical class
-        # - C: derive cheap object/scope keys, then dedupe by (class, object, scope)
-        sentence_segments = [seg.strip() for seg in re_mod.split(r"(?<=[.?!;])\s+", src) if seg.strip()]
-        if sentence_segments:
-            preamble = sentence_segments[0]
-            candidate_segments = sentence_segments[1:] if len(sentence_segments) > 1 else sentence_segments
-
-            def _canonical_class(segment: str) -> str:
-                match = task_verb_re.search(segment or "")
-                if not match:
-                    return "OTHER"
-                return verb_to_class.get(match.group(1).lower(), "OTHER")
-
-            def _object_key(segment: str) -> str:
-                s = str(segment or "")
-                lower = s.lower()
-                m = re_mod.search(r"\bfor\s+([a-zA-Z][a-zA-Z0-9_]*)\b", s)
-                if m:
-                    return m.group(1).lower()
-                if "sin(" in lower:
-                    return "sin"
-                if "cos(" in lower:
-                    return "cos"
-                if "tan(" in lower:
-                    return "tan"
-                if re_mod.search(r"\bsolutions?\b|\broots?\b", lower):
-                    return "solutions"
-                if "marginal density" in lower:
-                    return "marginal_density"
-                if "conditional density" in lower:
-                    return "conditional_density"
-                if "cov(" in lower or "covariance" in lower:
-                    return "covariance"
-                if "corr(" in lower or "correlation" in lower:
-                    return "correlation"
-                return "general"
-
-            def _scope_key(segment: str) -> str:
-                lower = str(segment or "").lower()
-                if re_mod.search(r"\b[a-z]\s*in\s*\[", lower) or ("[0,2" in lower and ("pi" in lower or "π" in lower)):
-                    return "domain_restricted"
-                return "default"
-
-            deduped: List[str] = []
-            seen_keys: set[str] = set()
-            for seg in candidate_segments:
-                if not task_verb_re.search(seg):
-                    continue
-                key = f"{_canonical_class(seg)}|{_object_key(seg)}|{_scope_key(seg)}"
-                if key in seen_keys:
-                    continue
-                seen_keys.add(key)
-                deduped.append(seg)
-
-            if len(deduped) >= 2:
-                return [f"{preamble} {task}".strip() for task in deduped]
-
-        return [src]
+    raw_problem_text = raw_problem_text_exact
 
     def _input_looks_incomplete(text: str) -> bool:
         re_mod = __import__("re")
@@ -7179,10 +7286,9 @@ async def solve_v3_stream_endpoint(
         if len(src) < 12:
             return True
         lowered = src.lower()
-        if lowered.endswith(("...", "…", ":", ",", ";", " and", " or", " because")):
+        if lowered.endswith(("...", "???", ":", ",", ";", " and", " or", " because")):
             return True
         if re_mod.search(r"\b(must\s+do\s+all\s+of\s+the\s+following|requirements\s*:|tasks\s*:)\b", lowered):
-            # Anchor is present but no concrete task lines after it.
             parts = src.split("\n")
             anchor_found = False
             for ln in parts:
@@ -7192,7 +7298,6 @@ async def solve_v3_stream_endpoint(
                 if anchor_found and ln.strip():
                     return False
             return True
-        # Single short sentence without a full question/task signal.
         lines = [ln.strip() for ln in src.split("\n") if ln.strip()]
         if len(lines) == 1 and len(lines[0]) < 24 and "?" not in lines[0] and "=" not in lines[0]:
             return True
@@ -7203,63 +7308,72 @@ async def solve_v3_stream_endpoint(
     default_mode = "SOLVE"
     default_graph_mode = body.graph_mode or "AUTO"
 
-    incoming_questions_json = getattr(body, "questions_json", None)
-    if isinstance(incoming_questions_json, list) and incoming_questions_json:
-        runtime_questions_json = []
-        for idx, q in enumerate(incoming_questions_json, start=1):
-            qtext = str((q or {}).get("question_text") or "").strip()
-            if not qtext:
+    from app.services.solve.single_task_parser import parse_single_question_tasks, unicode_integrity_probe
+    task_parse = parse_single_question_tasks(raw_problem_text, max_tasks=15)
+    if isinstance(body.tasks, list) and body.tasks:
+        max_tasks = 15
+        incoming_tasks: List[Dict[str, Any]] = []
+        for idx, task in enumerate(body.tasks[:max_tasks], start=1):
+            if not isinstance(task, dict):
                 continue
-            runtime_questions_json.append(
+            incoming_tasks.append(
                 {
-                    "question_id": str((q or {}).get("question_id") or f"q{idx}"),
-                    "question_text": qtext,
-                    "mode": str((q or {}).get("mode") or default_mode),
-                    "graph_mode": str((q or {}).get("graph_mode") or default_graph_mode),
-                    "domain_mode": str((q or {}).get("domain_mode") or default_domain_mode),
+                    "task_id": f"t{idx}",
+                    "task_text": str(task.get("task_text") or ""),
+                    "order_index": idx,
                 }
             )
-        if not runtime_questions_json:
-            runtime_questions_json = [
-                {
-                    "question_id": str(body.question_id or "q1"),
-                    "question_text": raw_problem_text,
-                    "mode": default_mode,
-                    "graph_mode": default_graph_mode,
-                    "domain_mode": default_domain_mode,
-                }
-            ]
-    else:
-        split_texts = _auto_split_questions_for_batch(raw_problem_text)
-        runtime_questions_json = [
-            {
-                "question_id": f"q{idx}",
-                "question_text": qtext,
-                "mode": default_mode,
-                "graph_mode": default_graph_mode,
-                "domain_mode": default_domain_mode,
-            }
-            for idx, qtext in enumerate(split_texts, start=1)
-            if str(qtext or "").strip()
-        ]
-        if not runtime_questions_json:
-            runtime_questions_json = [
-                {
-                    "question_id": str(body.question_id or "q1"),
-                    "question_text": raw_problem_text,
-                    "mode": default_mode,
-                    "graph_mode": default_graph_mode,
-                    "domain_mode": default_domain_mode,
-                }
-            ]
+        raw_selected = [str(x) for x in (body.selected_task_ids or []) if str(x).strip()]
+        selected_ids = [t["task_id"] for t in incoming_tasks if not raw_selected or t["task_id"] in raw_selected]
+        task_parse = {
+            "has_tasks_header": bool(incoming_tasks),
+            "detected_task_count_raw": len(body.tasks),
+            "task_count_capped": len(incoming_tasks),
+            "tasks": incoming_tasks,
+            "omitted_count": max(0, len(body.tasks) - len(incoming_tasks)),
+            "selected_task_ids": selected_ids or [t["task_id"] for t in incoming_tasks],
+        }
+    unicode_probe = unicode_integrity_probe(raw_problem_text)
+
+    runtime_questions_json = [
+        {
+            "question_id": "q1",
+            "question_text": raw_problem_text,
+            "mode": default_mode,
+            "graph_mode": default_graph_mode,
+            "domain_mode": default_domain_mode,
+        }
+    ]
+
+    from app.services.llm.manager import get_llm_manager, get_configured_openai_model, get_configured_ollama_model
+    llm_manager = get_llm_manager()
+    configured_stream_provider = str(getattr(llm_manager, "primary_provider", "") or "openai").strip().lower()
+    configured_stream_model = get_configured_ollama_model() if configured_stream_provider == "ollama" else get_configured_openai_model()
+
+    logger.info(
+        "solve_v3_stream_route_guard request_id=%s detected_has_tasks_header=%s detected_task_count_raw=%s task_count_capped=%s final_question_count=%s final_route=%s unicode_integrity_check=%s first_offending_codepoint=%s",
+        request_id,
+        bool(task_parse.get("has_tasks_header")),
+        int(task_parse.get("detected_task_count_raw") or 0),
+        int(task_parse.get("task_count_capped") or 0),
+        1,
+        "solve_v3_stream",
+        bool(unicode_probe.get("unicode_integrity_check")),
+        unicode_probe.get("first_offending_codepoint"),
+    )
 
     async def _batch_stream():
         from app.services.credit_billing_service import CreditBillingError, credit_billing_service
+        from app.services.workload_credit_estimator import estimate_task_bundle_credits
+        from app.services.billing_feature_flags import is_billing_v2_enabled
+        from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+        from app.services.billing_exceptions import InsufficientCreditsError
+        from decimal import Decimal
         meta_data = {
             "request_id": request_id,
             "attempt_id": attempt_id,
-            "provider": "openai",
-            "model": get_configured_openai_model(),
+            "provider": configured_stream_provider,
+            "model": configured_stream_model,
             "tier_requested": str(body.tier or "short_steps").lower(),
             "effective_tier": str(body.tier or "short_steps").lower(),
             "type": "meta",
@@ -7275,32 +7389,60 @@ async def solve_v3_stream_endpoint(
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
             return
         reserve_result = None
+        billing_v2_hold_id = None
+        workload_billing = estimate_task_bundle_credits(
+            context_text=str(body.context_text or body.original_input_text or raw_problem_text),
+            tasks=list(task_parse.get("tasks") or []),
+            selected_task_ids=list(task_parse.get("selected_task_ids") or [t.get("task_id") for t in (task_parse.get("tasks") or []) if isinstance(t, dict)]),
+        )
         try:
-            try:
-                reserve_result = credit_billing_service.reserve_for_batch_solve(
-                    session=session,
-                    user_id=user_id,
-                    tier=body.tier or "SHORT_STEPS",
-                    mode=default_mode,
-                    modality="text",
-                    verify_requested=False,
-                    plot_requested=False,
-                    questions_json=runtime_questions_json,
-                    request_id=request_id,
-                    attempt_id=attempt_id,
-                    idempotency_key=getattr(body, "idempotency_key", None),
-                )
-                session.flush()
-            except CreditBillingError as exc:
-                err = {
-                    "code": exc.code,
-                    "message": str(exc),
-                    "request_id": request_id,
-                    "attempt_id": attempt_id,
-                    "details": exc.details,
-                }
-                yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
-                return
+            if is_billing_v2_enabled(user_id):
+                try:
+                    hold = billing_ledger_service_v2.create_hold(
+                        session=session,
+                        user_id=user_id,
+                        request_id=request_id,
+                        estimated_credits=Decimal(str(workload_billing.get("charged_total_credits") or workload_billing.get("estimated_total_credits") or 1)),
+                        attempt_id=attempt_id,
+                        idempotency_key=getattr(body, "idempotency_key", None),
+                    )
+                    billing_v2_hold_id = hold.hold_id
+                    session.commit()
+                except InsufficientCreditsError as exc:
+                    err = {
+                        "code": "insufficient_credits",
+                        "message": str(exc),
+                        "request_id": request_id,
+                        "attempt_id": attempt_id,
+                    }
+                    yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+                    return
+            else:
+                try:
+                    reserve_result = credit_billing_service.reserve_for_batch_solve(
+                        session=session,
+                        user_id=user_id,
+                        tier=body.tier or "SHORT_STEPS",
+                        mode=default_mode,
+                        modality="text",
+                        verify_requested=False,
+                        plot_requested=False,
+                        questions_json=runtime_questions_json,
+                        request_id=request_id,
+                        attempt_id=attempt_id,
+                        idempotency_key=getattr(body, "idempotency_key", None),
+                    )
+                    session.flush()
+                except CreditBillingError as exc:
+                    err = {
+                        "code": exc.code,
+                        "message": str(exc),
+                        "request_id": request_id,
+                        "attempt_id": attempt_id,
+                        "details": exc.details,
+                    }
+                    yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+                    return
 
             payload, telemetry = await execute_batch_solve(
                 session=session,
@@ -7313,8 +7455,14 @@ async def solve_v3_stream_endpoint(
                 preferred_response_language=(trusted_ctx.get("preferred_response_language") or "English"),
                 questions_json=runtime_questions_json,
                 allow_auto_split=(len(runtime_questions_json) > 1),
-                max_tasks_per_question=6,
+                max_tasks_per_question=15,
                 max_output_tokens=5000,
+            )
+            payload = _enforce_plot_in_payload(
+                payload,
+                graph_mode=default_graph_mode,
+                tasks=list(task_parse.get("tasks") or []),
+                question_text=raw_problem_text,
             )
             reconciled_items, reconcile_diag = _reconcile_batch_solutions_with_questions(
                 questions_json=runtime_questions_json,
@@ -7367,8 +7515,44 @@ async def solve_v3_stream_endpoint(
                         "status": release_status,
                         "error": str(settle_exc),
                     }
+            elif billing_v2_hold_id:
+                try:
+                    billing_ledger_service_v2.settle_hold(
+                        session=session,
+                        request_id=request_id,
+                        actual_credits=Decimal(str(workload_billing.get("charged_total_credits") or workload_billing.get("estimated_total_credits") or 1)),
+                        tier=str(body.tier or "SHORT_STEPS").upper(),
+                        provider_cost_usd=Decimal("0"),
+                        attempt_id=attempt_id,
+                        is_billable=True,
+                    )
+                    session.commit()
+                    settlement_summary = {
+                        "hold_id": billing_v2_hold_id,
+                        "status": "settled",
+                        "charged_total_credits": float(workload_billing.get("charged_total_credits") or workload_billing.get("estimated_total_credits") or 1),
+                    }
+                except Exception as settle_exc:
+                    session.rollback()
+                    try:
+                        billing_ledger_service_v2.release_hold(session, request_id=request_id, attempt_id=attempt_id)
+                        session.commit()
+                    except Exception:
+                        session.rollback()
+                    settlement_summary = {
+                        "hold_id": billing_v2_hold_id,
+                        "status": "settlement_failed_released",
+                        "error": str(settle_exc),
+                    }
             if isinstance(telemetry, dict):
-                telemetry = {**telemetry, "billing_settlement": settlement_summary}
+                telemetry = {**telemetry, "billing_settlement": settlement_summary, "workload_billing": workload_billing}
+            force_debug_capture = bool(not bool((telemetry or {}).get("schema_valid", True)) or bool((telemetry or {}).get("repair_attempted")))
+            msg_telemetry, debug_blob_refs = _persist_debug_blob_refs(
+                session=session,
+                attempt_id=str((telemetry or {}).get("attempt_id") or attempt_id),
+                telemetry=telemetry if isinstance(telemetry, dict) else {},
+                force_capture=force_debug_capture,
+            )
 
             session_row = ChatSession(
                 user_id=user_id,
@@ -7383,14 +7567,7 @@ async def solve_v3_stream_endpoint(
             session.commit()
             session.refresh(session_row)
 
-            question_lines = [
-                f"- ({str(q.get('question_id') or '').strip()}) {str(q.get('question_text') or '').strip()}"
-                for q in runtime_questions_json
-                if str(q.get("question_id") or "").strip() and str(q.get("question_text") or "").strip()
-            ]
-            user_content = "Batch Solve Request"
-            if question_lines:
-                user_content = f"{user_content}\n" + "\n".join(question_lines)
+            user_content = raw_problem_text
             session.add(
                 ChatMessage(
                     session_id=int(session_row.id),
@@ -7414,123 +7591,144 @@ async def solve_v3_stream_endpoint(
                 for entry in per_question_final_answers
                 if entry.get("question_id") and entry.get("answer_text")
             ).strip() or f"Batch solve complete for {len(safe_items)} question(s)."
-            safe_telemetry = jsonable_encoder(telemetry if isinstance(telemetry, dict) else {})
-            assistant_structured = {
-                "mode": "batch_text_solve",
-                "requested_mode": body.mode or "SOLVE",
-                "response_language": (
-                    (payload.get("language") or {}).get("response_language")
-                    if isinstance(payload.get("language"), dict)
-                    else (trusted_ctx.get("preferred_response_language") or "English")
-                ),
-                    "question_count": len(runtime_questions_json),
-                    "questions": jsonable_encoder(runtime_questions_json),
-                    "solutions": safe_items,
-                    "final_answer": answer_text,
-                    "final_answers": per_question_final_answers,
-                    "request_id": str(telemetry.get("request_id") or request_id),
-                "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
-                "tier": str(payload.get("tier") or body.tier or "").upper(),
-                "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
-                "tier_effective": str(payload.get("tier") or body.tier or "").upper(),
-                "output_format": "json_schema",
-                "hide_from_tutor": True,
-                "solve_meta": {
-                    "request_id": str(telemetry.get("request_id") or request_id),
-                    "attempt_id": str(telemetry.get("attempt_id") or attempt_id),
-                    "provider": str((telemetry or {}).get("provider") or ""),
-                    "model": str((telemetry or {}).get("model") or ""),
+            safe_telemetry = jsonable_encoder(msg_telemetry if isinstance(msg_telemetry, dict) else {})
+            if _structured_data_canonical_enabled():
+                assistant_structured = _build_canonical_structured_data(
+                    runtime_questions_json=runtime_questions_json,
+                    safe_items=safe_items,
+                    task_parse=task_parse,
+                    workload_billing=workload_billing,
+                    telemetry=msg_telemetry if isinstance(msg_telemetry, dict) else {},
+                    body_tier=str(body.tier or ""),
+                    request_id=request_id,
+                    attempt_id=attempt_id,
+                    requested_mode=str(body.mode or "general"),
+                )
+                canonical_final = ((assistant_structured.get("solution") or {}).get("final_answer") or {})
+                canonical_final_text = str(canonical_final.get("answer_latex") or canonical_final.get("answer_text") or "").strip()
+                if canonical_final_text:
+                    answer_text = canonical_final_text
+            else:
+                assistant_structured = {
+                    "mode": "single_question_tasks_solve",
+                    "requested_mode": body.mode or "SOLVE",
+                    "response_language": (
+                        (payload.get("language") or {}).get("response_language")
+                        if isinstance(payload.get("language"), dict)
+                        else (trusted_ctx.get("preferred_response_language") or "English")
+                    ),
+                        "question_count": len(runtime_questions_json),
+                        "questions": jsonable_encoder(runtime_questions_json),
+                        "solutions": safe_items,
+                        "final_answer": answer_text,
+                        "final_answers": per_question_final_answers,
+                        "request_id": str((msg_telemetry or {}).get("request_id") or request_id),
+                    "attempt_id": str((msg_telemetry or {}).get("attempt_id") or attempt_id),
+                    "tier": str(payload.get("tier") or body.tier or "").upper(),
                     "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
                     "tier_effective": str(payload.get("tier") or body.tier or "").upper(),
-                    "mode": "SOLVE",
                     "output_format": "json_schema",
-                    "prompt_binding_id": telemetry.get("prompt_binding_id") if isinstance(telemetry, dict) else None,
-                    "global_system_prompt_id": telemetry.get("global_system_prompt_id") if isinstance(telemetry, dict) else None,
-                    "developer_prompt_id": telemetry.get("developer_prompt_id") if isinstance(telemetry, dict) else None,
-                    "output_schema_id": telemetry.get("output_schema_id") if isinstance(telemetry, dict) else None,
-                },
-                "telemetry": safe_telemetry if isinstance(safe_telemetry, dict) else None,
-            }
-            if str(body.tier or "").upper() == "SHORT_STEPS":
-                if isinstance(payload.get("question"), dict):
-                    assistant_structured["question"] = jsonable_encoder(payload.get("question"))
-                if isinstance(payload.get("problem"), dict):
-                    assistant_structured["problem"] = jsonable_encoder(payload.get("problem"))
-                if isinstance(payload.get("raw_user_extraction"), dict):
-                    assistant_structured["raw_user_extraction"] = jsonable_encoder(payload.get("raw_user_extraction"))
+                    "hide_from_tutor": True,
+                    "tasks": jsonable_encoder(task_parse.get("tasks") or []),
+                    "tasks_meta": {
+                        "detected_task_count_raw": int(task_parse.get("detected_task_count_raw") or 0),
+                        "task_count_capped": int(task_parse.get("task_count_capped") or 0),
+                        "omitted_count": int(task_parse.get("omitted_count") or 0),
+                        "task_ids": [str(t.get("task_id")) for t in (task_parse.get("tasks") or []) if isinstance(t, dict)],
+                        "selected_task_ids": list(task_parse.get("selected_task_ids") or [str(t.get("task_id")) for t in (task_parse.get("tasks") or []) if isinstance(t, dict)]),
+                    },
+                    "billing": workload_billing,
+                    "solve_meta": {
+                        "request_id": str((msg_telemetry or {}).get("request_id") or request_id),
+                        "attempt_id": str((msg_telemetry or {}).get("attempt_id") or attempt_id),
+                        "provider": str((msg_telemetry or {}).get("provider") or ""),
+                        "model": str((msg_telemetry or {}).get("model") or ""),
+                        "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
+                        "tier_effective": str(payload.get("tier") or body.tier or "").upper(),
+                        "mode": "SOLVE",
+                        "output_format": "json_schema",
+                        "prompt_binding_id": msg_telemetry.get("prompt_binding_id") if isinstance(msg_telemetry, dict) else None,
+                        "global_system_prompt_id": msg_telemetry.get("global_system_prompt_id") if isinstance(msg_telemetry, dict) else None,
+                        "developer_prompt_id": msg_telemetry.get("developer_prompt_id") if isinstance(msg_telemetry, dict) else None,
+                        "output_schema_id": msg_telemetry.get("output_schema_id") if isinstance(msg_telemetry, dict) else None,
+                        "solver_calls_count": 1,
+                        "saved_items_count": 1,
+                    },
+                }
+                if str(body.tier or "").upper() == "SHORT_STEPS":
+                    if isinstance(payload.get("question"), dict):
+                        assistant_structured["question"] = jsonable_encoder(payload.get("question"))
+                    if isinstance(payload.get("problem"), dict):
+                        assistant_structured["problem"] = jsonable_encoder(payload.get("problem"))
+                    if isinstance(payload.get("raw_user_extraction"), dict):
+                        assistant_structured["raw_user_extraction"] = jsonable_encoder(payload.get("raw_user_extraction"))
             msg = ChatMessage(
                 session_id=int(session_row.id),
                 role="assistant",
                 content="",
                 structured_data=_compact_assistant_structured(assistant_structured),
-                telemetry=telemetry,
-                model_used=telemetry.get("model"),
-                tokens_used=int(telemetry.get("total_tokens") or 0),
+                telemetry=msg_telemetry if isinstance(msg_telemetry, dict) else {},
+                model_used=(msg_telemetry or {}).get("model"),
+                tokens_used=int((msg_telemetry or {}).get("total_tokens") or 0),
             )
             session.add(msg)
             session.commit()
             session.refresh(msg)
-            telemetry_provider = str((telemetry or {}).get("provider") or "").strip().lower()
-            tier_effective = str(payload.get("tier") or body.tier or "").upper()
-            provider_raw_text = str((telemetry or {}).get("provider_raw_text") or "")
-            provider_raw_payload = (telemetry or {}).get("provider_raw_payload")
-            use_exact_ollama_short_raw = (
-                telemetry_provider == "ollama"
-                and tier_effective == "SHORT_STEPS"
-                and provider_raw_text != ""
-            )
-            persisted_raw_solution_text = (
-                provider_raw_text if use_exact_ollama_short_raw else json.dumps(payload, ensure_ascii=False)
-            )
-            persisted_llm_raw_response = (
-                provider_raw_payload if isinstance(provider_raw_payload, dict) else None
-            )
-            if persisted_llm_raw_response is not None:
-                try:
-                    json.dumps(persisted_llm_raw_response, ensure_ascii=False)
-                except Exception:
-                    persisted_llm_raw_response = {
-                        "raw_payload_preview": str(provider_raw_payload)[:4000]
-                    }
+            persisted_raw_solution_text = None
+            persisted_llm_raw_response = None
             session.add(
                 SolverOutputAttempt(
-                    request_id=str(telemetry.get("request_id") or request_id),
-                    attempt_id=str(telemetry.get("attempt_id") or attempt_id),
+                    request_id=str((msg_telemetry or {}).get("request_id") or request_id),
+                    attempt_id=str((msg_telemetry or {}).get("attempt_id") or attempt_id),
                     user_id=user_id,
                     session_id=int(session_row.id),
                     message_id=int(msg.id) if msg.id is not None else None,
                     output_format="json_schema",
                     attempt_number=1,
-                    provider=str((telemetry or {}).get("provider") or ""),
-                    model=str((telemetry or {}).get("model") or ""),
+                    provider=str((msg_telemetry or {}).get("provider") or ""),
+                    model=str((msg_telemetry or {}).get("model") or ""),
                     provider_model=(
-                        f"{str((telemetry or {}).get('provider') or '')}:{str((telemetry or {}).get('model') or '')}"
-                        if (telemetry or {}).get("provider") and (telemetry or {}).get("model")
+                        f"{str((msg_telemetry or {}).get('provider') or '')}:{str((msg_telemetry or {}).get('model') or '')}"
+                        if (msg_telemetry or {}).get("provider") and (msg_telemetry or {}).get("model")
                         else None
                     ),
                     input_text_raw=user_content,
-                    char_count=len(persisted_raw_solution_text),
+                    char_count=0,
                     extracted_answer=answer_text,
                     raw_solution_text=persisted_raw_solution_text,
                     llm_raw_response=persisted_llm_raw_response,
                     validation_json=assistant_structured,
-                    input_tokens=int((telemetry or {}).get("input_tokens") or 0),
-                    output_tokens=int((telemetry or {}).get("output_tokens") or 0),
-                    total_tokens=int((telemetry or {}).get("total_tokens") or 0),
-                    latency_ms=int((telemetry or {}).get("latency_ms_total") or 0) or None,
+                    input_tokens=int((msg_telemetry or {}).get("input_tokens") or 0),
+                    output_tokens=int((msg_telemetry or {}).get("output_tokens") or 0),
+                    total_tokens=int((msg_telemetry or {}).get("total_tokens") or 0),
+                    latency_ms=int((msg_telemetry or {}).get("latency_ms_total") or 0) or None,
                     prompt_meta={"questions_json": jsonable_encoder(runtime_questions_json)},
                     status="success",
                 )
             )
             session.commit()
+            logger.info(
+                "solve_v3_stream_single_result request_id=%s final_question_count=%s solver_calls_count=%s saved_items_count=%s task_ids=%s",
+                request_id,
+                1,
+                1,
+                1,
+                [str(t.get("task_id")) for t in (task_parse.get("tasks") or []) if isinstance(t, dict)],
+            )
 
             yield f"event: delta\ndata: {json.dumps({'type': 'delta', 'text': json.dumps(payload, ensure_ascii=False)})}\n\n"
-            yield f"event: telemetry\ndata: {json.dumps({'telemetry': telemetry})}\n\n"
+            yield f"event: telemetry\ndata: {json.dumps({'telemetry': msg_telemetry}, ensure_ascii=False)}\n\n"
             yield f"event: done\ndata: {json.dumps({'ok': True, 'session_id': int(session_row.id), 'message_id': int(msg.id or 0)})}\n\n"
         except BatchSolveError as exc:
             if reserve_result and reserve_result.hold_id:
                 try:
                     credit_billing_service.release_hold_full(session=session, hold_id=reserve_result.hold_id)
+                    session.commit()
+                except Exception:
+                    session.rollback()
+            if billing_v2_hold_id:
+                try:
+                    billing_ledger_service_v2.release_hold(session, request_id=request_id, attempt_id=attempt_id)
                     session.commit()
                 except Exception:
                     session.rollback()
@@ -7549,6 +7747,12 @@ async def solve_v3_stream_endpoint(
                     session.commit()
                 except Exception:
                     session.rollback()
+            if billing_v2_hold_id:
+                try:
+                    billing_ledger_service_v2.release_hold(session, request_id=request_id, attempt_id=attempt_id)
+                    session.commit()
+                except Exception:
+                    session.rollback()
             err = {
                 "code": "stream_batch_failed",
                 "message": str(exc),
@@ -7557,7 +7761,11 @@ async def solve_v3_stream_endpoint(
             }
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
 
-    return StreamingResponse(_batch_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        _batch_stream(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={"Content-Type": "text/event-stream; charset=utf-8"},
+    )
 
     
     # Initialize TraceContext with solving phase
@@ -7600,7 +7808,11 @@ async def solve_v3_stream_endpoint(
                     yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': existing_attempt.failure_code or 'ambiguous_response', 'message': existing_attempt.error_message or 'Previous attempt failed', 'request_id': request_id}})}\n\n"
                 else:
                     yield f"event: done\ndata: {json.dumps({'type': 'done', 'ok': False, 'error': {'code': 'in_progress', 'message': 'Attempt already in progress', 'request_id': request_id}})}\n\n"
-            return StreamingResponse(_replay(), media_type="text/event-stream")
+            return StreamingResponse(
+                _replay(),
+                media_type="text/event-stream; charset=utf-8",
+                headers={"Content-Type": "text/event-stream; charset=utf-8"},
+            )
     
     # Phase 1: Create Attempt Record (Pending)
     try:
@@ -9222,6 +9434,14 @@ async def solve_batch_endpoint(
     user_id: int = Query(...),
     session: Session = Depends(get_session)
 ):
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "batch_disabled",
+            "message": "Batch solve is disabled. Submit one question to /api/v1/solve_v3_stream.",
+        },
+    )
+
     """
     Batch solve items with per-item tier application and credit deduction.
     """
@@ -9942,6 +10162,30 @@ def _extract_assistant_content_for_playback(msg: ChatMessage) -> str:
         return text.strip()
 
     structured = msg.structured_data if isinstance(msg.structured_data, dict) else {}
+    if isinstance(structured.get("solution"), dict) and isinstance(structured.get("question"), dict):
+        q_text = str((structured.get("question") or {}).get("text") or "").strip()
+        sol = structured.get("solution") or {}
+        lines: List[str] = []
+        if q_text:
+            lines.append(f"### Q1")
+            lines.append(q_text)
+        lines.append("")
+        lines.append("**Steps**")
+        steps = sol.get("steps") if isinstance(sol.get("steps"), list) else []
+        for idx, step in enumerate(steps, start=1):
+            if not isinstance(step, dict):
+                continue
+            explanation = str(step.get("explanation") or "").strip()
+            if explanation:
+                lines.append(f"{idx}. {explanation}")
+        final_obj = sol.get("final_answer") if isinstance(sol.get("final_answer"), dict) else {}
+        final_text = str(final_obj.get("answer_latex") or final_obj.get("answer_text") or "").strip()
+        if final_text:
+            lines.append("")
+            lines.append(f"**Answer:** {final_text}")
+        rendered = _sanitize("\n".join(lines))
+        if rendered:
+            return rendered
     solutions = structured.get("solutions")
     if isinstance(solutions, list) and solutions:
         questions = structured.get("questions") if isinstance(structured.get("questions"), list) else []

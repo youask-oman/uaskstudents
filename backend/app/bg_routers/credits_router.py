@@ -163,6 +163,14 @@ class CreditsEstimateRequest(BaseModel):
     graph_mode: Optional[str] = None
     include_attempt_fee: bool = False
     openai_call_expected: bool = False
+    # Single-question workload bundle (preferred)
+    original_input_text: Optional[str] = None
+    context_text: Optional[str] = None
+    tasks: Optional[List[Dict[str, Any]]] = None
+    selected_task_ids: Optional[List[str]] = None
+    user_action: Optional[str] = None
+    detection_confidence: Optional[str] = None
+    solve_mode: Optional[str] = None
 
 class CapChecks(BaseModel):
     daily_ok: bool
@@ -184,6 +192,16 @@ class CreditsEstimateResponse(BaseModel):
     pricing_version_plan: str
     pricing_version_token_config: Optional[int] = None
     max_questions_allowed: Optional[int] = None
+    # Workload-based fields (single-question with tasks)
+    context_credits: Optional[float] = None
+    per_task_credits: Optional[Dict[str, float]] = None
+    bundle_factor: Optional[float] = None
+    estimated_total_credits: Optional[float] = None
+    selected_task_ids: Optional[List[str]] = None
+    breakdown_reasons: Optional[Dict[str, List[str]]] = None
+    solve_mode: Optional[str] = None
+    tasks_truncated: Optional[bool] = None
+    tasks_truncated_from: Optional[int] = None
 
 
 class TransferRequest(BaseModel):
@@ -354,6 +372,49 @@ async def estimate_credits(
 
     per_question = base_cost + addons_cost
     total = per_question * body.question_count
+    workload_payload: Dict[str, Any] = {}
+    max_tasks_allowed = int(getattr(binding, "max_questions_allowed", 0) or 15)
+
+    # Workload-based estimate for single-question task bundles.
+    if body.tasks is not None or body.context_text is not None or body.original_input_text is not None:
+        from app.services.workload_credit_estimator import estimate_task_bundle_credits
+
+        raw_tasks = list(body.tasks or [])
+        selected_task_ids = [str(t) for t in (body.selected_task_ids or []) if str(t).strip()]
+        if not raw_tasks:
+            implicit_text = str(body.original_input_text or body.context_text or "")
+            raw_tasks = [{"task_id": "t1", "task_text": implicit_text, "order_index": 1}]
+            if not selected_task_ids:
+                selected_task_ids = ["t1"]
+
+        capped_tasks = raw_tasks[:max_tasks_allowed]
+        for idx, t in enumerate(capped_tasks, start=1):
+            t["task_id"] = f"t{idx}"
+            t["order_index"] = idx
+
+        if not selected_task_ids:
+            selected_task_ids = [str(t.get("task_id")) for t in capped_tasks if str(t.get("task_id") or "").strip()]
+
+        est = estimate_task_bundle_credits(
+            context_text=str(body.context_text or body.original_input_text or ""),
+            tasks=capped_tasks,
+            selected_task_ids=selected_task_ids,
+        )
+        # Blend with existing tier/addon cost as a floor.
+        workload_total = float(est.get("estimated_total_credits") or 0.0)
+        total = max(float(total), workload_total)
+        per_question = total
+        workload_payload = {
+            "context_credits": float(est.get("context_credits") or 0.0),
+            "per_task_credits": est.get("per_task_credits") or {},
+            "bundle_factor": float(est.get("bundle_factor") or 0.85),
+            "estimated_total_credits": float(est.get("estimated_total_credits") or total),
+            "selected_task_ids": est.get("selected_task_ids") or [],
+            "breakdown_reasons": est.get("breakdown_reasons") or {},
+            "solve_mode": (body.solve_mode or ("BUNDLE_COMBINED" if body.user_action == "combined_solution" else "PER_TASK_STEPS")),
+            "tasks_truncated": len(raw_tasks) > len(capped_tasks),
+            "tasks_truncated_from": len(raw_tasks) if len(raw_tasks) > len(capped_tasks) else None,
+        }
 
     # 4. Cap Checks
     # We need usage data. If no user, assume OK.
@@ -404,6 +465,15 @@ async def estimate_credits(
         pricing_version_plan=str(multipliers.version),
         pricing_version_token_config=token_config_version,
         max_questions_allowed=(int(getattr(binding, "max_questions_allowed", 0) or 0) or None),
+        context_credits=workload_payload.get("context_credits"),
+        per_task_credits=workload_payload.get("per_task_credits"),
+        bundle_factor=workload_payload.get("bundle_factor"),
+        estimated_total_credits=workload_payload.get("estimated_total_credits"),
+        selected_task_ids=workload_payload.get("selected_task_ids"),
+        breakdown_reasons=workload_payload.get("breakdown_reasons"),
+        solve_mode=workload_payload.get("solve_mode"),
+        tasks_truncated=workload_payload.get("tasks_truncated"),
+        tasks_truncated_from=workload_payload.get("tasks_truncated_from"),
     )
 
 

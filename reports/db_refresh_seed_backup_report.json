@@ -1,0 +1,44 @@
+{
+  "docker": {
+    "restarted": true,
+    "services": [
+      "postgres",
+      "redis",
+      "orchestrator",
+      "worker",
+      "worker_whatsapp"
+    ]
+  },
+  "pyc_cleanup": {
+    "remaining_pyc_files": 0
+  },
+  "db_refresh": {
+    "reset_mode": "NUKE",
+    "reset_via": "python -m scripts.dev_recreate_db_and_seed --confirm RESET_DEV_DB",
+    "migrations_head": "20260222_add_solve_debug_blob",
+    "seed_run": "python -m scripts.seed_production --env DEV --dev-fixtures",
+    "seed_files_present": true,
+    "note": "Verifier reports one legacy constraint warning on prompt_bindings unique constraint; seed row counts and forbidden-table checks passed."
+  },
+  "post_seed_operational_tables": {
+    "chatsession": 0,
+    "chatmessage": 0,
+    "solveroutputattempt": 0,
+    "requestevent": 0,
+    "usagelog": 0,
+    "payment": 0,
+    "invoice": 0,
+    "subscription": 0,
+    "billingledger": 0
+  },
+  "backups": {
+    "custom_dump": "backups/db_full_20260221_190127.dump",
+    "schema_sql": "backups/db_schema_20260221_190127.sql",
+    "verification": {
+      "pg_restore_list_ok": true,
+      "schema_contains_create_table": true,
+      "schema_contains_alembic_version": true
+    },
+    "custom_dump_toc": "backups/db_full_20260221_190127.list.txt"
+  }
+}

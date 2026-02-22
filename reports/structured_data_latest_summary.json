@@ -1,0 +1,40 @@
+{
+  "message_id": 49,
+  "session_id": 27,
+  "top_level_keys": [
+    "attempt_id",
+    "billing",
+    "final_answer",
+    "final_answers",
+    "hide_from_tutor",
+    "mode",
+    "output_format",
+    "problem",
+    "question",
+    "question_count",
+    "questions",
+    "raw_user_extraction",
+    "request_id",
+    "requested_mode",
+    "response_language",
+    "solutions",
+    "solve_meta",
+    "tasks",
+    "tasks_meta",
+    "telemetry",
+    "tier",
+    "tier_effective",
+    "tier_requested"
+  ],
+  "has_telemetry_inside_structured": true,
+  "tasks_count": 4,
+  "selected_task_ids": [
+    "t1",
+    "t2",
+    "t3",
+    "t4"
+  ],
+  "question_count": 1,
+  "request_id": "retest-4b739942-b453-428c-b45f-8e5c242d36ce",
+  "attempt_id": "2d1f61ef-2f7d-4483-a12c-f0a86d903981"
+}

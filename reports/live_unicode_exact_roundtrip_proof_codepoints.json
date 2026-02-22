@@ -1,0 +1,17 @@
+{
+  "request_id": "unicode-canonical-cc017af7-4fbd-4d98-84be-20c058f2dc8a",
+  "session_id": 31,
+  "message_id": 57,
+  "exact_match": true,
+  "stored_contains_symbols": {
+    "?": true
+  },
+  "stored_has_question_mark": false,
+  "input_codepoints": [
+    "0x3bc",
+    "0x3c3",
+    "0x2264",
+    "0x2208"
+  ],
+  "stored_snippet": "QX) Unicode + plot check\nLet Y ~ Normal(μ=50, σ=8).\nTasks:\n1) Compute P(44 ≤ Y ≤ 62).\n2) Plot the PDF on y ∈ [26, 74] with grid, legend, and title."
+}

@@ -1,0 +1,804 @@
+{
+  "message_id": 51,
+  "session_id": 28,
+  "created_at": "2026-02-22 02:22:17.870577",
+  "structured_data": {
+    "mode": "single_question_tasks_solve",
+    "requested_mode": "general",
+    "response_language": "English",
+    "question_count": 1,
+    "questions": [
+      {
+        "question_id": "q1",
+        "question_text": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+        "mode": "SOLVE",
+        "graph_mode": "on",
+        "domain_mode": "reals"
+      }
+    ],
+    "solutions": [
+      {
+        "question_id": "q1",
+        "question_index": 1,
+        "mode": "SOLVE",
+        "problem": {
+          "original_text": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+          "normalized_text": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+          "detected_tasks": [
+            "solve"
+          ],
+          "extra": []
+        },
+        "classification": {
+          "grade_band": "college_intro",
+          "domain": "other",
+          "topic": "ollama_text_extraction",
+          "difficulty": "medium"
+        },
+        "steps": [
+          {
+            "index": 1,
+            "title": "Step 1",
+            "explanation": "begin_solution\nbegin_steps\n1) Solve for (x, y).\n Add the two equations to eliminate \\( y \\):\n \\[\n (2x + y) + (x - y) = 7 + 1\n \\]\n Simplify:\n \\[\n 3x = 8\n \\]\n Divide by 3:\n \\[\n x = \\frac{8}{3}\n \\]",
+            "math_latex": [
+              "\\( y \\)",
+              "\\[\n (2x + y) + (x - y) = 7 + 1\n \\]",
+              "\\[\n 3x = 8\n \\]",
+              "\\[\n x = \\frac{8}{3}\n \\]"
+            ]
+          },
+          {
+            "index": 2,
+            "title": "Step 2",
+            "explanation": "Substitute \\( x = \\frac{8}{3} \\) into the second equation \\( x - y = 1 \\):\n \\[\n \\frac{8}{3} - y = 1\n \\]\n Subtract \\(\\frac{8}{3}\\) from both sides:\n \\[\n -y = 1 - \\frac{8}{3}\n \\]\n Convert 1 to a fraction with a common denominator:\n \\[\n -y = \\frac{3}{3} - \\frac{8}{3}\n \\]\n Simplify:\n \\[\n -y = -\\frac{5}{3}\n \\]\n Multiply by -1:\n \\[\n y = \\frac{5}{3}\n \\]",
+            "math_latex": [
+              "\\( x = \\frac{8}{3} \\)",
+              "\\( x - y = 1 \\)",
+              "\\[\n \\frac{8}{3} - y = 1\n \\]",
+              "\\(\\frac{8}{3}\\)",
+              "\\[\n -y = 1 - \\frac{8}{3}\n \\]",
+              "\\[\n -y = \\frac{3}{3} - \\frac{8}{3}\n \\]",
+              "\\[\n -y = -\\frac{5}{3}\n \\]",
+              "\\[\n y = \\frac{5}{3}\n \\]"
+            ]
+          },
+          {
+            "index": 3,
+            "title": "Step 3",
+            "explanation": "So, the solution is:\n \\[\n (x, y) = \\left( \\frac{8}{3}, \\frac{5}{3} \\right)\n \\]",
+            "math_latex": [
+              "\\[\n (x, y) = \\left( \\frac{8}{3}, \\frac{5}{3} \\right)\n \\]"
+            ]
+          },
+          {
+            "index": 4,
+            "title": "Step 4",
+            "explanation": "2) Check the solution in both equations.\n Substitute \\( x = \\frac{8}{3} \\) and \\( y = \\frac{5}{3} \\) into the first equation \\( 2x + y = 7 \\):\n \\[\n 2 \\left( \\frac{8}{3} \\right) + \\frac{5}{3} = \\frac{16}{3} + \\frac{5}{3} = \\frac{21}{3} = 7\n \\]\n The solution satisfies the first equation.",
+            "math_latex": [
+              "\\( x = \\frac{8}{3} \\)",
+              "\\( y = \\frac{5}{3} \\)",
+              "\\( 2x + y = 7 \\)",
+              "\\[\n 2 \\left( \\frac{8}{3} \\right) + \\frac{5}{3} = \\frac{16}{3} + \\frac{5}{3} = \\frac{21}{3} = 7\n \\]"
+            ]
+          },
+          {
+            "index": 5,
+            "title": "Step 5",
+            "explanation": "Substitute \\( x = \\frac{8}{3} \\) and \\( y = \\frac{5}{3} \\) into the second equation \\( x - y = 1 \\):\n \\[\n \\frac{8}{3} - \\frac{5}{3} = \\frac{3}{3} = 1\n \\]\n The solution satisfies the second equation.",
+            "math_latex": [
+              "\\( x = \\frac{8}{3} \\)",
+              "\\( y = \\frac{5}{3} \\)",
+              "\\( x - y = 1 \\)",
+              "\\[\n \\frac{8}{3} - \\frac{5}{3} = \\frac{3}{3} = 1\n \\]"
+            ]
+          },
+          {
+            "index": 6,
+            "title": "Step 6",
+            "explanation": "3) Find the x- and y-intercepts of each line.\n For the first equation \\( 2x + y = 7 \\):\n - x-intercept: Set \\( y = 0 \\):\n \\[\n 2x + 0 = 7 \\implies 2x = 7 \\implies x = \\frac{7}{2}\n \\]\n So, the x-intercept is \\( \\left( \\frac{7}{2}, 0 \\right) \\).\n - y-intercept: Set \\( x = 0 \\):\n \\[\n 2(0) + y = 7 \\implies y = 7\n \\]\n So, the y-intercept is \\( (0, 7) \\).",
+            "math_latex": [
+              "\\( 2x + y = 7 \\)",
+              "\\( y = 0 \\)",
+              "\\[\n 2x + 0 = 7 \\implies 2x = 7 \\implies x = \\frac{7}{2}\n \\]",
+              "\\( \\left( \\frac{7}{2}, 0 \\right) \\)",
+              "\\( x = 0 \\)",
+              "\\[\n 2(0) + y = 7 \\implies y = 7\n \\]",
+              "\\( (0, 7) \\)"
+            ]
+          },
+          {
+            "index": 7,
+            "title": "Step 7",
+            "explanation": "For the second equation \\( x - y = 1 \\):\n - x-intercept: Set \\( y = 0 \\):\n \\[\n x - 0 = 1 \\implies x = 1\n \\]\n So, the x-intercept is \\( (1, 0) \\).\n - y-intercept: Set \\( x = 0 \\):\n \\[\n 0 - y = 1 \\implies y = -1\n \\]\n So, the y-intercept is \\( (0, -1) \\).",
+            "math_latex": [
+              "\\( x - y = 1 \\)",
+              "\\( y = 0 \\)",
+              "\\[\n x - 0 = 1 \\implies x = 1\n \\]",
+              "\\( (1, 0) \\)",
+              "\\( x = 0 \\)",
+              "\\[\n 0 - y = 1 \\implies y = -1\n \\]",
+              "\\( (0, -1) \\)"
+            ]
+          },
+          {
+            "index": 8,
+            "title": "Step 8",
+            "explanation": "4) Plot both lines and mark the intersection on \\( x \\in [-2, 6] \\), \\( y \\in [-2, 10] \\).\n - For \\( 2x + y = 7 \\):\n - Plot the points \\( \\left( \\frac{7}{2}, 0 \\right) \\) and \\( (0, 7) \\).\n - For \\( x - y = 1 \\):\n - Plot the points \\( (1, 0) \\) and \\( (0, -1) \\).",
+            "math_latex": [
+              "\\( x \\in [-2, 6] \\)",
+              "\\( y \\in [-2, 10] \\)",
+              "\\( 2x + y = 7 \\)",
+              "\\( \\left( \\frac{7}{2}, 0 \\right) \\)",
+              "\\( (0, 7) \\)",
+              "\\( x - y = 1 \\)",
+              "\\( (1, 0) \\)",
+              "\\( (0, -1) \\)"
+            ]
+          },
+          {
+            "index": 9,
+            "title": "Step 9",
+            "explanation": "The intersection point is \\( \\left( \\frac{8}{3}, \\frac{5}{3} \\right) \\).",
+            "math_latex": [
+              "\\( \\left( \\frac{8}{3}, \\frac{5}{3} \\right) \\)"
+            ]
+          },
+          {
+            "index": 10,
+            "title": "Step 10",
+            "explanation": "begin_final\n\\[\n\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}\n\\]\nend_final\nend_solution",
+            "math_latex": [
+              "\\[\n\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}\n\\]"
+            ]
+          }
+        ],
+        "final_answer": {
+          "answer_text": "\\left( \\frac{8}{3}, \\frac{5}{3} \\right)",
+          "answer_latex": "\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}",
+          "values": [],
+          "units": null
+        },
+        "refusal": {
+          "is_refusal": false,
+          "reason": null,
+          "safe_next_step": null
+        },
+        "quality": {
+          "confidence": 0.62,
+          "common_mistakes": []
+        },
+        "assumptions": [],
+        "clarification": {
+          "needs_clarification": false,
+          "note": null,
+          "questions": []
+        },
+        "plot": {
+          "should_visualize": false,
+          "decision_reason": "Plot omitted for compact tier response.",
+          "recipe": null
+        }
+      }
+    ],
+    "final_answer": "q1: \\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}",
+    "final_answers": [
+      {
+        "question_id": "q1",
+        "answer_text": "\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}"
+      }
+    ],
+    "request_id": "retest-80f163a9-d44c-4e7c-8305-453d2fc9cdbc",
+    "attempt_id": "ee695571-8181-4fa7-a45d-96b2b327852e",
+    "tier": "FREE",
+    "tier_requested": "SHORT_STEPS",
+    "tier_effective": "FREE",
+    "output_format": "json_schema",
+    "hide_from_tutor": true,
+    "tasks": [
+      {
+        "task_id": "t1",
+        "task_text": "Solve for (x, y).",
+        "order_index": 1
+      },
+      {
+        "task_id": "t2",
+        "task_text": "Check the solution in both equations.",
+        "order_index": 2
+      },
+      {
+        "task_id": "t3",
+        "task_text": "Find the x- and y-intercepts of each line.",
+        "order_index": 3
+      },
+      {
+        "task_id": "t4",
+        "task_text": "Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+        "order_index": 4
+      }
+    ],
+    "tasks_meta": {
+      "detected_task_count_raw": 4,
+      "task_count_capped": 4,
+      "omitted_count": 0,
+      "task_ids": [
+        "t1",
+        "t2",
+        "t3",
+        "t4"
+      ],
+      "selected_task_ids": [
+        "t1",
+        "t2",
+        "t3",
+        "t4"
+      ]
+    },
+    "billing": {
+      "billing_version": "work_units_v1",
+      "context_credits": 1.0,
+      "per_task_credits": {
+        "t1": 1.0,
+        "t2": 2.0,
+        "t3": 1.0,
+        "t4": 3.0
+      },
+      "bundle_factor": 0.85,
+      "estimated_total_credits": 7.0,
+      "charged_total_credits": 7.0,
+      "selected_task_ids": [
+        "t1",
+        "t2",
+        "t3",
+        "t4"
+      ],
+      "breakdown_reasons": {
+        "t1": [
+          "base_task=1"
+        ],
+        "t2": [
+          "base_task=1",
+          "verify_or_justify=+1"
+        ],
+        "t3": [
+          "base_task=1"
+        ],
+        "t4": [
+          "base_task=1",
+          "graphing=+2"
+        ]
+      },
+      "original_input_hash": "ff469131dafe8ac8c15fdbf5731bf6ad1a46e4a2d16c0ea0d309cd615a4b7336"
+    },
+    "solve_meta": {
+      "request_id": "retest-80f163a9-d44c-4e7c-8305-453d2fc9cdbc",
+      "attempt_id": "ee695571-8181-4fa7-a45d-96b2b327852e",
+      "provider": "ollama",
+      "model": "Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf",
+      "tier_requested": "SHORT_STEPS",
+      "tier_effective": "FREE",
+      "mode": "SOLVE",
+      "output_format": "json_schema",
+      "prompt_binding_id": "5460b7aa-7733-4f61-bac5-456c83234baa",
+      "global_system_prompt_id": "global_system_prompt_batch_v1",
+      "developer_prompt_id": "solve_dev_free_v2",
+      "output_schema_id": "solve_batch_free_v2",
+      "solver_calls_count": 1,
+      "saved_items_count": 1
+    },
+    "question": {
+      "id": "q1",
+      "text": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+      "mode": "SOLVE"
+    },
+    "problem": {
+      "original_text": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+      "recognized_text": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+      "statement": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10]."
+    },
+    "raw_user_extraction": {
+      "sections": [
+        {
+          "label": "main",
+          "heading": "main",
+          "steps": [
+            {
+              "index": 1,
+              "kind": "work",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "begin_solution\nbegin_steps\n1) Solve for (x, y).\n Add the two equations to eliminate"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( y \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n (2x + y) + (x - y) = 7 + 1\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "Simplify:"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n 3x = 8\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "Divide by 3:"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n x = \\frac{8}{3}\n \\]"
+                }
+              ],
+              "raw": "begin_solution\nbegin_steps\n1) Solve for (x, y).\n Add the two equations to eliminate \\( y \\):\n \\[\n (2x + y) + (x - y) = 7 + 1\n \\]\n Simplify:\n \\[\n 3x = 8\n \\]\n Divide by 3:\n \\[\n x = \\frac{8}{3}\n \\]"
+            },
+            {
+              "index": 2,
+              "kind": "work",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "Substitute"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x = \\frac{8}{3} \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "into the second equation"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x - y = 1 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n \\frac{8}{3} - y = 1\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "Subtract"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\(\\frac{8}{3}\\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "from both sides:"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n -y = 1 - \\frac{8}{3}\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "Convert 1 to a fraction with a common denominator:"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n -y = \\frac{3}{3} - \\frac{8}{3}\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "Simplify:"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n -y = -\\frac{5}{3}\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "Multiply by -1:"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n y = \\frac{5}{3}\n \\]"
+                }
+              ],
+              "raw": "Substitute \\( x = \\frac{8}{3} \\) into the second equation \\( x - y = 1 \\):\n \\[\n \\frac{8}{3} - y = 1\n \\]\n Subtract \\(\\frac{8}{3}\\) from both sides:\n \\[\n -y = 1 - \\frac{8}{3}\n \\]\n Convert 1 to a fraction with a common denominator:\n \\[\n -y = \\frac{3}{3} - \\frac{8}{3}\n \\]\n Simplify:\n \\[\n -y = -\\frac{5}{3}\n \\]\n Multiply by -1:\n \\[\n y = \\frac{5}{3}\n \\]"
+            },
+            {
+              "index": 3,
+              "kind": "conclusion",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "So, the solution is:"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n (x, y) = \\left( \\frac{8}{3}, \\frac{5}{3} \\right)\n \\]"
+                }
+              ],
+              "raw": "So, the solution is:\n \\[\n (x, y) = \\left( \\frac{8}{3}, \\frac{5}{3} \\right)\n \\]"
+            },
+            {
+              "index": 4,
+              "kind": "work",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "2) Check the solution in both equations.\n Substitute"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x = \\frac{8}{3} \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "and"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( y = \\frac{5}{3} \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "into the first equation"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( 2x + y = 7 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n 2 \\left( \\frac{8}{3} \\right) + \\frac{5}{3} = \\frac{16}{3} + \\frac{5}{3} = \\frac{21}{3} = 7\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "The solution satisfies the first equation."
+                }
+              ],
+              "raw": "2) Check the solution in both equations.\n Substitute \\( x = \\frac{8}{3} \\) and \\( y = \\frac{5}{3} \\) into the first equation \\( 2x + y = 7 \\):\n \\[\n 2 \\left( \\frac{8}{3} \\right) + \\frac{5}{3} = \\frac{16}{3} + \\frac{5}{3} = \\frac{21}{3} = 7\n \\]\n The solution satisfies the first equation."
+            },
+            {
+              "index": 5,
+              "kind": "work",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "Substitute"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x = \\frac{8}{3} \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "and"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( y = \\frac{5}{3} \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "into the second equation"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x - y = 1 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n \\frac{8}{3} - \\frac{5}{3} = \\frac{3}{3} = 1\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "The solution satisfies the second equation."
+                }
+              ],
+              "raw": "Substitute \\( x = \\frac{8}{3} \\) and \\( y = \\frac{5}{3} \\) into the second equation \\( x - y = 1 \\):\n \\[\n \\frac{8}{3} - \\frac{5}{3} = \\frac{3}{3} = 1\n \\]\n The solution satisfies the second equation."
+            },
+            {
+              "index": 6,
+              "kind": "conclusion",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "3) Find the x- and y-intercepts of each line.\n For the first equation"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( 2x + y = 7 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":\n - x-intercept: Set"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( y = 0 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n 2x + 0 = 7 \\implies 2x = 7 \\implies x = \\frac{7}{2}\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "So, the x-intercept is"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( \\left( \\frac{7}{2}, 0 \\right) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ".\n - y-intercept: Set"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x = 0 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n 2(0) + y = 7 \\implies y = 7\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "So, the y-intercept is"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( (0, 7) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "."
+                }
+              ],
+              "raw": "3) Find the x- and y-intercepts of each line.\n For the first equation \\( 2x + y = 7 \\):\n - x-intercept: Set \\( y = 0 \\):\n \\[\n 2x + 0 = 7 \\implies 2x = 7 \\implies x = \\frac{7}{2}\n \\]\n So, the x-intercept is \\( \\left( \\frac{7}{2}, 0 \\right) \\).\n - y-intercept: Set \\( x = 0 \\):\n \\[\n 2(0) + y = 7 \\implies y = 7\n \\]\n So, the y-intercept is \\( (0, 7) \\)."
+            },
+            {
+              "index": 7,
+              "kind": "conclusion",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "For the second equation"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x - y = 1 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":\n - x-intercept: Set"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( y = 0 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n x - 0 = 1 \\implies x = 1\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "So, the x-intercept is"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( (1, 0) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ".\n - y-intercept: Set"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x = 0 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n 0 - y = 1 \\implies y = -1\n \\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "So, the y-intercept is"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( (0, -1) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "."
+                }
+              ],
+              "raw": "For the second equation \\( x - y = 1 \\):\n - x-intercept: Set \\( y = 0 \\):\n \\[\n x - 0 = 1 \\implies x = 1\n \\]\n So, the x-intercept is \\( (1, 0) \\).\n - y-intercept: Set \\( x = 0 \\):\n \\[\n 0 - y = 1 \\implies y = -1\n \\]\n So, the y-intercept is \\( (0, -1) \\)."
+            },
+            {
+              "index": 8,
+              "kind": "work",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "4) Plot both lines and mark the intersection on"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x \\in [-2, 6] \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ","
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( y \\in [-2, 10] \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ".\n - For"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( 2x + y = 7 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":\n - Plot the points"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( \\left( \\frac{7}{2}, 0 \\right) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "and"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( (0, 7) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ".\n - For"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( x - y = 1 \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": ":\n - Plot the points"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( (1, 0) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "and"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( (0, -1) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "."
+                }
+              ],
+              "raw": "4) Plot both lines and mark the intersection on \\( x \\in [-2, 6] \\), \\( y \\in [-2, 10] \\).\n - For \\( 2x + y = 7 \\):\n - Plot the points \\( \\left( \\frac{7}{2}, 0 \\right) \\) and \\( (0, 7) \\).\n - For \\( x - y = 1 \\):\n - Plot the points \\( (1, 0) \\) and \\( (0, -1) \\)."
+            },
+            {
+              "index": 9,
+              "kind": "work",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "The intersection point is"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\( \\left( \\frac{8}{3}, \\frac{5}{3} \\right) \\)"
+                },
+                {
+                  "kind": "text",
+                  "content": "."
+                }
+              ],
+              "raw": "The intersection point is \\( \\left( \\frac{8}{3}, \\frac{5}{3} \\right) \\)."
+            },
+            {
+              "index": 10,
+              "kind": "work",
+              "blocks": [
+                {
+                  "kind": "text",
+                  "content": "begin_final"
+                },
+                {
+                  "kind": "math",
+                  "content": "\\[\n\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}\n\\]"
+                },
+                {
+                  "kind": "text",
+                  "content": "end_final\nend_solution"
+                }
+              ],
+              "raw": "begin_final\n\\[\n\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}\n\\]\nend_final\nend_solution"
+            }
+          ],
+          "final_answer": "\\( (0, -1) \\)",
+          "incomplete": true,
+          "incomplete_diag": {
+            "reasons": [
+              "ends_mid_word_or_sentence"
+            ],
+            "details": {
+              "math_delimiters": {
+                "\\[": 16,
+                "\\]": 16,
+                "\\(": 29,
+                "\\)": 29,
+                "$$": 0
+              },
+              "tail_len": 240
+            },
+            "tail": "\n - For \\( x - y = 1 \\):\n - Plot the points \\( (1, 0) \\) and \\( (0, -1) \\).\n\n The intersection point is \\( \\left( \\frac{8}{3}, \\frac{5}{3} \\right) \\).\n\nbegin_final\n\\[\n\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}\n\\]\nend_final\nend_solution"
+          }
+        }
+      ],
+      "global_final_answer": "\\( (0, -1) \\)",
+      "warnings": [
+        {
+          "type": "section_incomplete",
+          "section": "main",
+          "reasons": [
+            "ends_mid_word_or_sentence"
+          ],
+          "tail": "\n - For \\( x - y = 1 \\):\n - Plot the points \\( (1, 0) \\) and \\( (0, -1) \\).\n\n The intersection point is \\( \\left( \\frac{8}{3}, \\frac{5}{3} \\right) \\).\n\nbegin_final\n\\[\n\\boxed{\\left( \\frac{8}{3}, \\frac{5}{3} \\right)}\n\\]\nend_final\nend_solution"
+        }
+      ],
+      "meta": {
+        "cleaned_chars": 2152
+      },
+      "question": {
+        "id": "q1",
+        "text": "Q4) 2x2 system + line intersection plot\nSolve the system:\n2x + y = 7\nx - y = 1\nTasks:\n1) Solve for (x, y).\n2) Check the solution in both equations.\n3) Find the x- and y-intercepts of each line.\n4) Plot both lines and mark the intersection on x ? [-2, 6], y ? [-2, 10].",
+        "mode": "SOLVE"
+      }
+    }
+  }
+}

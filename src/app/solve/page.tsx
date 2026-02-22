@@ -38,13 +38,6 @@ import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/ui/ToastProvider";
 import { fetchApi } from "@/lib/api";
-import {
-    buildSolveBatchPayload,
-    getSolveBatchCap,
-    mapSolveBatchErrorMessage,
-    resolveSolveBatchMode,
-    resolveSolveBatchTier,
-} from "@/lib/solve-batch";
 import { SolveBatchResponse, SolveBatchResponseSchema } from "@/lib/contracts";
 
 interface ChatSession {
@@ -74,6 +67,12 @@ interface ClarifierOption {
 interface ClarifierQuestion {
     question: string;
     options: ClarifierOption[];
+}
+
+interface TaskBundleTask {
+    task_id: string;
+    task_text: string;
+    order_index: number;
 }
 
 interface VoiceArtifact {
@@ -633,6 +632,9 @@ export default function DashboardPage() {
     const [suggestedSplits, setSuggestedSplits] = useState<string[]>([]);
     const [multiQuestionConfirmed, setMultiQuestionConfirmed] = useState(false);
     const [confirmedBatchQuestions, setConfirmedBatchQuestions] = useState<string[]>([]);
+    const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+    const [taskBundleTasks, setTaskBundleTasks] = useState<TaskBundleTask[]>([]);
+    const [taskUserAction, setTaskUserAction] = useState<"confirm_selected" | "solve_one" | "combined_solution">("confirm_selected");
     const [mathValidityConfirmed, setMathValidityConfirmed] = useState(false);
 
     // Input mode state
@@ -976,23 +978,45 @@ export default function DashboardPage() {
             : isRequestTooLarge
                 ? "Request too large for AI context. Please shorten."
                 : hasMultipleQuestions
-                    ? "Multiple questions detected. One at a time please."
+                    ? "Multiple tasks detected. Confirm task selection before solving."
                     : null;
 
     const router = useRouter();
     const walletReady = walletLoaded && !walletError && !!walletSummary;
     const readyWallet = walletReady ? walletSummary : null;
-    const estimatedQuestionCount = activeTab === "text"
-        ? Math.max(1, multiQuestionResult.suggestedSplits.length || 1)
-        : 1;
+    const estimatedQuestionCount = 1;
     const estimatedSolveCost = useMemo(() => {
         if (!estimate) return null;
-        return estimate.per_question_credits * estimatedQuestionCount;
-    }, [estimate, estimatedQuestionCount]);
+        return Number(estimate.estimated_total_credits ?? estimate.total_credits ?? estimate.per_question_credits ?? 0);
+    }, [estimate]);
     const maxQuestionsAllowed = useMemo(() => {
         const raw = Number(estimate?.max_questions_allowed ?? 0);
         return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : null;
     }, [estimate?.max_questions_allowed]);
+    const currentTaskBundle = useMemo(() => {
+        const maxTasks = Math.max(1, maxQuestionsAllowed ?? 15);
+        const splitsForTasks = activeTab === "text"
+            ? (suggestedSplits.length > 0 ? suggestedSplits : multiQuestionResult.suggestedSplits)
+            : [];
+        const cleanedSplits = (splitsForTasks || [])
+            .map((s) => String(s || "").trim())
+            .filter((s) => s.length > 0);
+        const effective = cleanedSplits.length > 0 ? cleanedSplits : [String(query || "")];
+        const capped = effective.slice(0, maxTasks);
+        const tasks: TaskBundleTask[] = capped.map((taskText, idx) => ({
+            task_id: `t${idx + 1}`,
+            task_text: taskText,
+            order_index: idx + 1,
+        }));
+        const selected = selectedTaskIds.length > 0 ? selectedTaskIds : tasks.map((t) => t.task_id);
+        return {
+            context_text: extractSharedContext(query) || query,
+            tasks,
+            selected_task_ids: selected.filter((id) => tasks.some((t) => t.task_id === id)),
+            tasks_truncated: effective.length > capped.length,
+            tasks_truncated_from: effective.length > capped.length ? effective.length : null,
+        };
+    }, [activeTab, suggestedSplits, multiQuestionResult.suggestedSplits, query, selectedTaskIds, maxQuestionsAllowed]);
     const estimateBreakdown = useMemo(() => {
         if (!estimate?.breakdown) return undefined;
         const raw = estimate.breakdown as Record<string, unknown>;
@@ -1061,6 +1085,13 @@ export default function DashboardPage() {
                             input_type: inputType,
                             asset_type: assetType,
                             question_count: estimatedQuestionCount,
+                            original_input_text: query,
+                            context_text: currentTaskBundle.context_text,
+                            tasks: currentTaskBundle.tasks,
+                            selected_task_ids: currentTaskBundle.selected_task_ids,
+                            user_action: taskUserAction,
+                            solve_mode: taskUserAction === "combined_solution" ? "BUNDLE_COMBINED" : "PER_TASK_STEPS",
+                            detection_confidence: multiQuestionResult.confidence as "high" | "medium" | "low",
                             addons: {
                                 ocr: activeTab === "snap",
                                 voice: activeTab === "voice",
@@ -1088,7 +1119,7 @@ export default function DashboardPage() {
         return () => {
             active = false;
         };
-    }, [tokenPolicyReady, walletReady, readyWallet, activeTab, estimatedQuestionCount, graphMode]);
+    }, [tokenPolicyReady, walletReady, readyWallet, activeTab, estimatedQuestionCount, graphMode, query, currentTaskBundle, taskUserAction, multiQuestionResult.confidence]);
 
     useEffect(() => {
         if (!readyWallet) return;
@@ -1116,6 +1147,13 @@ export default function DashboardPage() {
                     input_type: inputType,
                     asset_type: activeTab === "snap" ? "image" : "none",
                     question_count: estimatedQuestionCount,
+                    original_input_text: query,
+                    context_text: currentTaskBundle.context_text,
+                    tasks: currentTaskBundle.tasks,
+                    selected_task_ids: currentTaskBundle.selected_task_ids,
+                    user_action: taskUserAction,
+                    solve_mode: taskUserAction === "combined_solution" ? "BUNDLE_COMBINED" : "PER_TASK_STEPS",
+                    detection_confidence: multiQuestionResult.confidence as "high" | "medium" | "low",
                     addons: {
                         ocr: activeTab === "snap",
                         voice: activeTab === "voice",
@@ -1129,7 +1167,7 @@ export default function DashboardPage() {
             }
         };
         void runEstimate();
-    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount, graphMode, tierFeatureGates.allow_plot, isPlotLockedByTier]);
+    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount, graphMode, tierFeatureGates.allow_plot, isPlotLockedByTier, query, currentTaskBundle, taskUserAction, multiQuestionResult.confidence]);
 
     useEffect(() => {
         if (isPlotLockedByTier && graphMode !== "off") {
@@ -1547,177 +1585,42 @@ export default function DashboardPage() {
         return `${context}\n\n${formattedQuestions}`.trim();
     };
 
+    const buildTaskBundleFromText = useCallback((inputText: string, splits: string[]) => {
+        const maxTasks = Math.max(1, maxQuestionsAllowed ?? 15);
+        const cleanedSplits = (splits || [])
+            .map((s) => String(s || "").trim())
+            .filter((s) => s.length > 0);
+        const effective = cleanedSplits.length > 0 ? cleanedSplits : [String(inputText || "")];
+        const capped = effective.slice(0, maxTasks);
+        const tasks: TaskBundleTask[] = capped.map((taskText, idx) => ({
+            task_id: `t${idx + 1}`,
+            task_text: taskText,
+            order_index: idx + 1,
+        }));
+        return {
+            context_text: extractSharedContext(inputText) || inputText,
+            tasks,
+            selected_task_ids: tasks.map((t) => t.task_id),
+            tasks_truncated: effective.length > capped.length,
+            tasks_truncated_from: effective.length > capped.length ? effective.length : null,
+        };
+    }, [maxQuestionsAllowed]);
+
+    useEffect(() => {
+        if (!query) {
+            setTaskBundleTasks([]);
+            setSelectedTaskIds([]);
+            return;
+        }
+        const bundle = buildTaskBundleFromText(query, multiQuestionResult.suggestedSplits || []);
+        setTaskBundleTasks(bundle.tasks);
+        setSelectedTaskIds(bundle.selected_task_ids);
+    }, [query, multiQuestionResult.suggestedSplits, buildTaskBundleFromText]);
+
     const handleSolveTextBatch = async (questionsToSolve: string[], sharedContext?: string) => {
-        if (isSolving) return;
-        const userId = localStorage.getItem("user_id") || "1";
-        const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
-        const batchMode = resolveSolveBatchMode(selectedSolveTier, requestedMode);
-        const batchTier = resolveSolveBatchTier(selectedSolveTier);
-        const cap = maxQuestionsAllowed ?? getSolveBatchCap(batchMode);
-        const trimmedQuestions = questionsToSolve.map((q) => q.trim()).filter((q) => q.length > 0);
-
-        if (trimmedQuestions.length === 0) {
-            pushToast({
-                type: "error",
-                title: "Nothing to solve",
-                message: "No valid questions were detected for batch solve.",
-            });
-            return;
-        }
-
-        if (trimmedQuestions.length > cap) {
-            const message = mapSolveBatchErrorMessage("TOO_MANY_QUESTIONS", cap);
-            pushToast({
-                type: "error",
-                title: "Selection too large",
-                message,
-            });
-            return;
-        }
-
-        const batchStart = Date.now();
-        setIsSolving(true);
-        setSolveStartTime(batchStart);
-        setCurrentStage("Executing Solver");
-        setCurrentStageKey("executing_solver");
-        setStreamingActive(false);
-        setStreamingTelemetry(null);
-        setStreamingMeta(null);
-        setLastSolveError(null);
-        setBatchSolveResult(null);
-        resetPipeline("executing_solver");
-        hydrateOverlayPersistence({
-            startTimeMs: batchStart,
-            currentStage: "executing_solver",
-            streamingActive: false,
-        });
-
-        let stageTick: number | null = null;
-        const stageStart = Date.now();
-        stageTick = window.setInterval(() => {
-            const elapsedSec = Math.floor((Date.now() - stageStart) / 1000);
-            const estimatedCurrent = Math.min(trimmedQuestions.length, Math.max(1, elapsedSec + 1));
-            setPipelineStages(prev =>
-                prev.map(step =>
-                    step.key === "executing_solver"
-                        ? { ...step, status: "active", description: t("solvingProgress", { current: estimatedCurrent, total: trimmedQuestions.length }) }
-                        : step
-                )
-            );
-        }, 1000);
-
-        try {
-            const normalizeQuestionForBatch = (q: string): string => {
-                const raw = String(q || "").trim();
-                const ctx = String(sharedContext || "").trim();
-                if (!ctx) return raw;
-                const startsWithQuestionHeader =
-                    /^(?:question\s*\d+\b|q\d+\b|\d+[.)]\s+|part\s*\(?[a-zivx0-9]+\)?\b)/i.test(raw);
-                const contextLooksLikeQuestionHeader =
-                    /(?:\bquestion\s*\d+\b|\bmultiple[-\s]*choice\b|\bfinal answer\b)/i.test(ctx);
-                if (startsWithQuestionHeader || contextLooksLikeQuestionHeader) return raw;
-                if (raw.toLowerCase().startsWith(ctx.toLowerCase())) return raw;
-                return `${ctx} ${raw}`.trim();
-            };
-
-            const payload = buildSolveBatchPayload({
-                selectedQuestions: trimmedQuestions.map((text, index) => ({
-                    question_id: `q${index + 1}`,
-                    text: normalizeQuestionForBatch(text),
-                })),
-                mode: batchMode,
-                tier: batchTier,
-            });
-            const createIdempotencyKey = () =>
-                typeof crypto !== "undefined" && "randomUUID" in crypto
-                    ? crypto.randomUUID()
-                    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-            const response = await fetchApi(`/api/v1/solve_questions_batch?user_id=${encodeURIComponent(userId)}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                    tier: selectedSolveTier,
-                    mode: "SOLVE",
-                    graph_mode: (isPlotLockedByTier || !tierFeatureGates.allow_plot) ? "OFF" : graphMode.toUpperCase(),
-                    domain_mode: "reals",
-                    preferred_response_language: "English",
-                    questions_json: payload.questions.map((q, idx) => ({
-                        question_id: q.question_id || `q${idx + 1}`,
-                        question_text: q.text,
-                    })),
-                    idempotency_key: createIdempotencyKey(),
-                }),
-            });
-
-            const raw = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                const errorObj = raw?.error && typeof raw.error === "object" ? raw.error : null;
-                const detailObj = raw?.detail && typeof raw.detail === "object" ? raw.detail : null;
-                const detail = detailObj || errorObj || raw;
-                const code =
-                    (typeof detail?.code === "string" ? detail.code : undefined) ||
-                    (typeof errorObj?.code === "string" ? errorObj.code : undefined);
-                const detailPayload =
-                    (detailObj?.details && typeof detailObj.details === "object" ? detailObj.details : null) ||
-                    (errorObj?.details && typeof errorObj.details === "object" ? errorObj.details : null) ||
-                    (detail?.details && typeof detail.details === "object" ? detail.details : null);
-                const requestId =
-                    detail?.request_id ||
-                    errorObj?.request_id ||
-                    raw?.request_id ||
-                    undefined;
-                const maxAllowed = typeof detail?.max_allowed === "number" ? detail.max_allowed : cap;
-                let message = mapSolveBatchErrorMessage(code, maxAllowed, detailPayload);
-                let title = "Batch solve failed";
-                if (response.status === 402) {
-                    title = "Insufficient credits";
-                    message = "Not enough credits. Please buy credits and retry.";
-                } else if (response.status === 409) {
-                    title = "Already processed";
-                    message = "This request was already processed. No additional charge applied.";
-                } else if (response.status >= 500) {
-                    title = "Provider timeout";
-                    message = "Provider timeout. You were NOT charged. Retry with a new request.";
-                }
-                pushToast({
-                    type: "error",
-                    title,
-                    message: requestId ? `${message} (request_id: ${requestId})` : message,
-                });
-                return;
-            }
-
-            const parsed = SolveBatchResponseSchema.parse(raw);
-            setBatchSolveResult(parsed);
-
-            markPipelineCompleted();
-            setShowSplitModal(false);
-            pushToast({
-                type: "success",
-                title: "Batch solve complete",
-                message: `Solved ${trimmedQuestions.length} question(s) in one request.`,
-            });
-            const batchSessionId = parsed.session_id != null ? String(parsed.session_id) : "";
-            if (batchSessionId) {
-                const target = (selectedSolveTier === "FINAL" || selectedSolveTier === "SHORT_STEPS")
-                    ? `/chat_final/${batchSessionId}`
-                    : `/edit/${batchSessionId}`;
-                setTimeout(() => router.push(target), 350);
-            }
-        } catch (err) {
-            pushToast({
-                type: "error",
-                title: "Batch solve failed",
-                message: (err as Error).message || "Request failed.",
-            });
-        } finally {
-            if (stageTick !== null) window.clearInterval(stageTick);
-            clearPersistedSolveOverlayState();
-            setIsSolving(false);
-            setSolveStartTime(null);
-        }
+        // Batch solve is disabled. Route as a single question request with the original content.
+        const combined = buildConfirmedInputText(questionsToSolve, sharedContext);
+        await handleSolve(combined);
     };
 
     const handleSolve = async (textOverride?: string, featureOverrides?: Record<string, unknown>) => {
@@ -1757,23 +1660,16 @@ export default function DashboardPage() {
         }
 
         if (activeTab === "text") {
-            const splitCandidates = (
-                multiQuestionConfirmed && confirmedBatchQuestions.length > 0
-                    ? confirmedBatchQuestions
-                    : autoSplitQuestions(textToSolve)
-            )
+            const splitCandidates = autoSplitQuestions(textToSolve)
                 .map((q) => q.trim())
                 .filter((q) => q.length > 0);
-
+            setSuggestedSplits(splitCandidates);
             if (!multiQuestionConfirmed && splitCandidates.length > 1) {
-                setSuggestedSplits(splitCandidates);
+                const bundle = buildTaskBundleFromText(textToSolve, splitCandidates);
+                setTaskBundleTasks(bundle.tasks);
+                setSelectedTaskIds(bundle.selected_task_ids);
+                setTaskUserAction("confirm_selected");
                 setShowSplitModal(true);
-                return;
-            }
-
-            if (multiQuestionConfirmed && splitCandidates.length > 1) {
-                const sharedContext = extractSharedContext(textToSolve);
-                await handleSolveTextBatch(splitCandidates, sharedContext);
                 return;
             }
         }
@@ -1829,6 +1725,13 @@ export default function DashboardPage() {
                 source_type,
                 source_id,
                 question_text,
+                original_input_text,
+                context_text,
+                tasks,
+                selected_task_ids,
+                user_action,
+                solve_mode,
+                detection_confidence,
                 ...featureOverrideFeatures
             } = overridePayload;
             const features = {
@@ -1850,6 +1753,17 @@ export default function DashboardPage() {
                         credentials: 'include',
                         body: JSON.stringify({
                             confirmed_text: textToSolve,
+                            original_input_text: String(original_input_text || textToSolve),
+                            context_text: String(context_text || currentTaskBundle.context_text || textToSolve),
+                            tasks: (Array.isArray(tasks) ? tasks : currentTaskBundle.tasks),
+                            selected_task_ids: (
+                                Array.isArray(selected_task_ids) && selected_task_ids.length > 0
+                                    ? selected_task_ids
+                                    : currentTaskBundle.selected_task_ids
+                            ),
+                            user_action: String(user_action || taskUserAction || "confirm_selected"),
+                            solve_mode: String(solve_mode || (taskUserAction === "combined_solution" ? "BUNDLE_COMBINED" : "PER_TASK_STEPS")),
+                            detection_confidence: String(detection_confidence || multiQuestionResult.confidence || "low"),
                             requested_mode: requestedMode,
                             tier: mapTierToApi(selectedSolveTier),
                             source_type,
@@ -2160,7 +2074,7 @@ export default function DashboardPage() {
                                 <div className="absolute right-4 top-4 z-10">
                                     <p className="inline-flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
                                         <span className="material-symbols-outlined text-[14px]">rule</span>
-                                        Max questions per request: <span className="font-black">{maxQuestionsAllowed}</span>
+                                        Max Tasks per Question: <span className="font-black">{maxQuestionsAllowed}</span>
                                     </p>
                                 </div>
                             )}
@@ -3465,36 +3379,40 @@ export default function DashboardPage() {
                 isOpen={showSplitModal}
                 onClose={() => setShowSplitModal(false)}
                 onDismiss={() => {
-                    const forceAll = suggestedSplits
-                        .map((q) => q.trim())
-                        .filter((q) => q.length > 0);
-                    if (forceAll.length === 0) {
-                        setShowSplitModal(false);
-                        return;
-                    }
-                    const sharedContext = extractSharedContext(query);
-                    const formatted = buildConfirmedInputText(forceAll, sharedContext);
-                    setConfirmedBatchQuestions(forceAll);
+                    const bundle = buildTaskBundleFromText(query, suggestedSplits);
+                    setTaskBundleTasks(bundle.tasks);
+                    setSelectedTaskIds(bundle.selected_task_ids);
+                    setTaskUserAction("combined_solution");
+                    setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
                     setMathValidityConfirmed(false);
                     setInputError(null);
-                    setMathModeEnabled(false);
-                    setQuery(formatted);
                     setShowSplitModal(false);
                 }}
                 splits={suggestedSplits}
+                perTaskCredits={estimate?.per_task_credits}
+                totalEstimatedCredits={estimate?.estimated_total_credits ?? estimate?.total_credits ?? null}
+                combinedModeMessage={"Solving as one combined solution. Pricing remains workload-based."}
                 onSelectQuestion={(question) => {
-                    const sharedContext = extractSharedContext(query);
-                    const selectedText = buildConfirmedInputText([question], sharedContext);
-                    setMathModeEnabled(false);
-                    setQuery(selectedText);
+                    const bundle = buildTaskBundleFromText(query, suggestedSplits);
+                    const picked = bundle.tasks.find((t) => t.task_text === question) || bundle.tasks[0];
+                    const pickedId = picked ? [picked.task_id] : bundle.selected_task_ids.slice(0, 1);
+                    setTaskBundleTasks(bundle.tasks);
+                    setSelectedTaskIds(pickedId);
+                    setTaskUserAction("solve_one");
                     setConfirmedBatchQuestions([]);
-                    setMultiQuestionConfirmed(false);
+                    setMultiQuestionConfirmed(true);
                     setMathValidityConfirmed(false);
                     setShowSplitModal(false);
+                    setTimeout(() => {
+                        void handleSolve();
+                    }, 0);
                 }}
                 onConfirmSingleQuestion={() => {
-                    setMathModeEnabled(false);
+                    const bundle = buildTaskBundleFromText(query, suggestedSplits);
+                    setTaskBundleTasks(bundle.tasks);
+                    setSelectedTaskIds(bundle.selected_task_ids);
+                    setTaskUserAction("combined_solution");
                     setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
                     setShowSplitModal(false);
@@ -3504,14 +3422,17 @@ export default function DashboardPage() {
                         .map((q) => q.trim())
                         .filter((q) => q.length > 0);
                     if (picked.length === 0) return;
-                    const sharedContext = extractSharedContext(query);
-                    const formatted = buildConfirmedInputText(picked, sharedContext);
-                    setConfirmedBatchQuestions(picked);
+                    const bundle = buildTaskBundleFromText(query, suggestedSplits);
+                    const selectedIds = bundle.tasks
+                        .filter((t) => picked.includes(t.task_text))
+                        .map((t) => t.task_id);
+                    setTaskBundleTasks(bundle.tasks);
+                    setSelectedTaskIds(selectedIds.length > 0 ? selectedIds : bundle.selected_task_ids);
+                    setTaskUserAction("confirm_selected");
+                    setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
                     setMathValidityConfirmed(false);
                     setInputError(null);
-                    setMathModeEnabled(false);
-                    setQuery(formatted);
                     setShowSplitModal(false);
                 }}
             />

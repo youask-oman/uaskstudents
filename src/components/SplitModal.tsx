@@ -1,8 +1,8 @@
 /**
- * Split Questions Modal
+ * Task Split Modal
  * 
- * Modal that shows auto-split suggestions when multiple questions are detected.
- * Allows user to select one question to solve or review the split.
+ * Modal that shows detected tasks for a single question.
+ * Allows user to select task subset and review workload-based credits.
  */
 
 'use client';
@@ -17,7 +17,7 @@ interface SplitModalProps {
     /** Dismiss handler for top-right X button */
     onDismiss?: () => void;
     /** Original input text */
-    /** Suggested split questions */
+    /** Suggested split tasks */
     splits: string[];
     /** Handler when user selects a question to solve */
     onSelectQuestion: (question: string, index: number) => void;
@@ -25,6 +25,9 @@ interface SplitModalProps {
     onConfirmSingleQuestion?: () => void;
     /** Handler to confirm selected questions and return to input */
     onConfirmSelectedQuestions?: (selectedQuestions: string[]) => void;
+    perTaskCredits?: Record<string, number>;
+    totalEstimatedCredits?: number | null;
+    combinedModeMessage?: string | null;
 }
 
 export default function SplitModal({
@@ -35,6 +38,9 @@ export default function SplitModal({
     onSelectQuestion,
     onConfirmSingleQuestion,
     onConfirmSelectedQuestions,
+    perTaskCredits,
+    totalEstimatedCredits,
+    combinedModeMessage,
 }: SplitModalProps) {
     const [selectedIndexes, setSelectedIndexes] = React.useState<Set<number>>(new Set());
 
@@ -56,6 +62,13 @@ export default function SplitModal({
         .sort((a, b) => a - b)
         .map((idx) => splits[idx])
         .filter(Boolean);
+    const liveSelectedTaskCost = React.useMemo(() => {
+        const sum = Array.from(selectedIndexes).reduce((acc, idx) => {
+            const taskId = `t${idx + 1}`;
+            return acc + Number(perTaskCredits?.[taskId] ?? 0);
+        }, 0);
+        return sum;
+    }, [selectedIndexes, perTaskCredits]);
 
     if (!isOpen) return null;
 
@@ -69,8 +82,8 @@ export default function SplitModal({
                             <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">call_split</span>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Multiple Questions Detected</h2>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Select one or more questions to add back to input</p>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Tasks Detected</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Select one or more tasks to solve in this single question</p>
                         </div>
                     </div>
                     <button
@@ -86,7 +99,7 @@ export default function SplitModal({
                     {splits.length > 0 ? (
                         <>
                             <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-                                We detected {splits.length} separate questions. Choose what you want to include:
+                                We detected {splits.length} tasks. Choose what you want to solve:
                             </p>
                             <div className="space-y-3">
                                 {splits.map((question, idx) => (
@@ -102,7 +115,7 @@ export default function SplitModal({
                                                     ? "bg-primary border-primary text-white"
                                                     : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-transparent"
                                                     }`}
-                                                aria-label={`Select question ${idx + 1}`}
+                                                aria-label={`Select task ${idx + 1}`}
                                             >
                                                 <span className="material-symbols-outlined text-sm">check</span>
                                             </button>
@@ -113,6 +126,9 @@ export default function SplitModal({
                                                 <p className="text-sm text-slate-700 dark:text-slate-200 line-clamp-3">
                                                     {question}
                                                 </p>
+                                            </div>
+                                            <div className="px-2 py-1 text-[11px] font-bold rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300">
+                                                {Number(perTaskCredits?.[`t${idx + 1}`] ?? 0).toFixed(1)} cr
                                             </div>
                                             <button
                                                 type="button"
@@ -135,10 +151,10 @@ export default function SplitModal({
                                 <span className="material-symbols-outlined text-3xl text-amber-600 dark:text-amber-400">edit_note</span>
                             </div>
                             <p className="text-slate-600 dark:text-slate-300 mb-2">
-                                We couldn&apos;t automatically split your input.
+                                We couldn&apos;t automatically detect tasks.
                             </p>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Please manually separate your questions and solve them one at a time.
+                                You can continue as one combined solution.
                             </p>
                         </div>
                     )}
@@ -147,7 +163,7 @@ export default function SplitModal({
                 {/* Footer */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Tip: Solving one question at a time gives more accurate results
+                        Pricing is workload-based by selected tasks.
                     </p>
                     <div className="flex gap-3">
                         {splits.length > 1 && onConfirmSelectedQuestions && (
@@ -160,6 +176,11 @@ export default function SplitModal({
                                 Confirm selected ({selectedQuestions.length})
                             </button>
                         )}
+                        {(typeof totalEstimatedCredits === "number" || liveSelectedTaskCost > 0) && (
+                            <span className="px-3 py-2 text-xs font-bold rounded-lg border border-blue-300 bg-blue-50 text-blue-700">
+                                Total estimated cost: {(typeof totalEstimatedCredits === "number" ? totalEstimatedCredits : liveSelectedTaskCost).toFixed(1)} credits
+                            </span>
+                        )}
                         <button
                             onClick={onClose}
                             className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -170,10 +191,15 @@ export default function SplitModal({
                             onClick={onConfirmSingleQuestion || onClose}
                             className="px-4 py-2 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
                         >
-                            This is one question
+                            Solve as one combined solution
                         </button>
                     </div>
                 </div>
+                {combinedModeMessage && (
+                    <div className="px-6 pb-4 text-xs text-slate-500">
+                        {combinedModeMessage}
+                    </div>
+                )}
             </div>
         </div>
     );

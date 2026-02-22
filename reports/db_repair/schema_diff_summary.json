@@ -1,0 +1,106 @@
+{
+  "current_db": "uask_db",
+  "expected_db": "uask_db_models_20260221_154703",
+  "tables_only_in_current": [
+    "alembic_version",
+    "solvedebugblob"
+  ],
+  "tables_only_in_expected": [],
+  "columns_only_in_current_count": 10,
+  "columns_only_in_expected_count": 0,
+  "columns_changed_count": 0,
+  "columns_only_in_current_sample": [
+    {
+      "table": "alembic_version",
+      "column": "version_num",
+      "current": [
+        "character varying",
+        "NO",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "attempt_id",
+      "current": [
+        "character varying",
+        "NO",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "blob_type",
+      "current": [
+        "character varying",
+        "NO",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "content_json",
+      "current": [
+        "json",
+        "YES",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "content_text",
+      "current": [
+        "text",
+        "YES",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "created_at",
+      "current": [
+        "timestamp without time zone",
+        "NO",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "id",
+      "current": [
+        "character varying",
+        "NO",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "retention_until",
+      "current": [
+        "timestamp without time zone",
+        "YES",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "sha256",
+      "current": [
+        "character varying",
+        "NO",
+        null
+      ]
+    },
+    {
+      "table": "solvedebugblob",
+      "column": "size_bytes",
+      "current": [
+        "integer",
+        "NO",
+        null
+      ]
+    }
+  ],
+  "columns_only_in_expected_sample": [],
+  "columns_changed_sample": []
+}

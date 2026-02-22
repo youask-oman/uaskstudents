@@ -1,0 +1,27 @@
+Q1) Calculus + Function Sketch (solve, then plot)
+Let f(x) = x^3 - 6x^2 + 9x + 1.
+
+Tasks:
+1) Find all critical points of f(x) and classify each as local max, local min, or neither.
+2) Find all inflection point(s) of f(x).
+3) Find the x-intercepts (real roots) of f(x) to at least 3 decimal places.
+4) Draw a plot of f(x) on the interval x ∈ [-1, 6] with:
+   - the curve y = f(x)
+   - marked critical points and inflection point(s) (distinct markers)
+   - labeled x-intercepts (approx values)
+   - axes lines (x=0 and y=0), grid, and a legend
+
+
+Q2) Trig equation on an interval (solve, then plot)
+Solve for x on 0 ≤ x < 2π:
+2 sin^2(x) - 3 sin(x) + 1 = 0.
+
+Tasks:
+1) Rewrite as a quadratic in sin(x), solve for sin(x), and keep only valid sine values in [-1, 1].
+2) Find all solutions x in [0, 2π) in exact form (standard angles).
+3) Verify each solution by substitution into the original equation.
+4) Draw a plot on x ∈ [0, 2π] with:
+   - y = 2 sin^2(x) - 3 sin(x) + 1
+   - the x-axis (y=0)
+   - marked solution points (roots) on the curve
+   - title, axis labels, grid, and a legend

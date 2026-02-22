@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-02-22T02:13:28.280388Z",
+  "route_used": "/api/v1/solve_v3_stream",
+  "requests": [
+    {
+      "name": "Q1",
+      "request_id": "b10666f6-7497-45d2-9fef-2b8082bd389c",
+      "attempt_id": "25b56246-9610-42c6-8d31-9d001878273f",
+      "session_id": 23,
+      "message_id": 41,
+      "mode": "single_question_tasks_solve",
+      "checks": {
+        "questions_json_count": 1,
+        "task_ids": [
+          "t1",
+          "t2"
+        ],
+        "task_count": 2,
+        "selected_task_ids": [
+          "t1",
+          "t2"
+        ],
+        "one_session_save_only": true,
+        "one_attempt_save_only_by_request": true,
+        "one_attempt_save_only_in_session": true,
+        "one_assistant_message_save_only": true,
+        "message_count_total_in_session": 2
+      },
+      "counts": {
+        "session_rows": 1,
+        "attempt_rows_by_request": 1,
+        "attempt_rows_by_session": 1,
+        "assistant_message_rows": 1,
+        "message_rows_total": 2
+      },
+      "sse_meta": {
+        "provider": "ollama",
+        "model": "Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf",
+        "tier_requested": "short_steps",
+        "effective_tier": "short_steps"
+      }
+    },
+    {
+      "name": "Q2",
+      "request_id": "e6a96757-c7e7-4090-bba7-15fd9fec2885",
+      "attempt_id": "e8c5c528-c8eb-49a2-894b-e433097f2e0a",
+      "session_id": 24,
+      "message_id": 43,
+      "mode": "single_question_tasks_solve",
+      "checks": {
+        "questions_json_count": 1,
+        "task_ids": [
+          "t1",
+          "t2"
+        ],
+        "task_count": 2,
+        "selected_task_ids": [
+          "t1",
+          "t2"
+        ],
+        "one_session_save_only": true,
+        "one_attempt_save_only_by_request": true,
+        "one_attempt_save_only_in_session": true,
+        "one_assistant_message_save_only": true,
+        "message_count_total_in_session": 2
+      },
+      "counts": {
+        "session_rows": 1,
+        "attempt_rows_by_request": 1,
+        "attempt_rows_by_session": 1,
+        "assistant_message_rows": 1,
+        "message_rows_total": 2
+      },
+      "sse_meta": {
+        "provider": "ollama",
+        "model": "Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf",
+        "tier_requested": "short_steps",
+        "effective_tier": "short_steps"
+      }
+    }
+  ]
+}

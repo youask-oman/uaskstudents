@@ -1,0 +1,9 @@
+{
+  "tables_only_in_current": [
+    "alembic_version"
+  ],
+  "tables_only_in_expected": [],
+  "columns_only_in_current_count": 1,
+  "columns_only_in_expected_count": 0,
+  "columns_changed_count": 0
+}
