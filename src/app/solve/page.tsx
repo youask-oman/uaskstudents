@@ -141,13 +141,6 @@ interface VoiceFeatures {
     voice_transcript_confidence?: number;
 }
 
-interface DebugAttemptDetails {
-    billing?: {
-        credits_charged?: number;
-        credits_after?: number;
-    };
-}
-
 const ALL_SOLVE_TIERS: SolveTier[] = ["SHORT_STEPS", "FINAL", "STANDARD", "RESEARCH"];
 
 const formatBatchFinalAnswer = (value: unknown): string => {
@@ -575,7 +568,6 @@ const mapBackendEventToOverlayStage = (raw: string | undefined | null): SolveOve
 export default function DashboardPage() {
     const { pushToast } = useToast();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
-    const devToolsEnabled = process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === "true";
     const mapTierToApi = (tier: SolveTier) => {
         if (tier === "SHORT_STEPS") return "short_steps";
         if (tier === "FINAL") return "final";
@@ -589,25 +581,12 @@ export default function DashboardPage() {
         if (raw === "research" || raw === "enterprise") return "RESEARCH";
         return tier || "-";
     };
-    const formatDebugNumber = (value?: number) => (value === undefined ? "-" : Number(value));
     const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [query, setQuery] = useState("sqrt(x+5) = x - 1");
     const [isSolving, setIsSolving] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState<ActiveUser[]>([]);
     const [isPublic, setIsPublic] = useState(false);
-    const [debugSimTokens, setDebugSimTokens] = useState({
-        input_tokens: 2000,
-        output_tokens: 1000,
-        cached_tokens: 250,
-        model: "gpt-5-mini",
-        provider: "openai_simulated",
-    });
-    const [debugForceError, setDebugForceError] = useState(false);
-    const [reuseIdempotencyKey, setReuseIdempotencyKey] = useState(true);
-    const [lastIdempotencyKey, setLastIdempotencyKey] = useState<string | null>(null);
-    const [stayOnSolveResult, setStayOnSolveResult] = useState(false);
-    const [debugAttemptDetails, setDebugAttemptDetails] = useState<DebugAttemptDetails | null>(null);
     const [lastSolveError, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string; details?: unknown } | null>(null);
     const [batchSolveResult, setBatchSolveResult] = useState<SolveBatchResponse | null>(null);
 
@@ -636,6 +615,8 @@ export default function DashboardPage() {
     const [taskBundleTasks, setTaskBundleTasks] = useState<TaskBundleTask[]>([]);
     const [taskUserAction, setTaskUserAction] = useState<"confirm_selected" | "solve_one" | "combined_solution">("confirm_selected");
     const [mathValidityConfirmed, setMathValidityConfirmed] = useState(false);
+    const [taskConfirmSnapshot, setTaskConfirmSnapshot] = useState<string | null>(null);
+    const [requiresTaskReconfirm, setRequiresTaskReconfirm] = useState(false);
 
     // Input mode state
 
@@ -674,10 +655,6 @@ export default function DashboardPage() {
     const [streamingActive, setStreamingActive] = useState(false);
     const [streamingTelemetry, setStreamingTelemetry] = useState<StreamingTelemetry | null>(null);
     const [streamingMeta, setStreamingMeta] = useState<StreamingRuntimeMeta | null>(null);
-    const [runtimeDebugMeta, setRuntimeDebugMeta] = useState<StreamingRuntimeMeta | null>(null);
-    const [showRuntimeDebug, setShowRuntimeDebug] = useState(false);
-    const [runtimeDebugLoading, setRuntimeDebugLoading] = useState(false);
-    const [runtimeDebugError, setRuntimeDebugError] = useState<string | null>(null);
     const [solveStartTime, setSolveStartTime] = useState<number | null>(null);
 
     // Phase 1: Clarification States
@@ -733,6 +710,53 @@ export default function DashboardPage() {
             }))
         );
     }, []);
+
+    useEffect(() => {
+        if (!isSolving) return;
+
+        const interval = setInterval(() => {
+            let nextActiveKey: SolveOverlayStageKey | null = null;
+
+            setPipelineStages((prev) => {
+                if (!prev.length) return prev;
+                if (prev.some((step) => step.status === "failed")) return prev;
+
+                const activeIdx = prev.findIndex((step) => step.status === "active");
+                const nextIdx = activeIdx >= 0 ? (activeIdx + 1) % prev.length : 0;
+
+                let allCompletedAfterMark = true;
+                const marked = prev.map((step, idx) => {
+                    if (idx === activeIdx) return { ...step, status: "completed" as const };
+                    if (step.status !== "completed") allCompletedAfterMark = false;
+                    return step;
+                });
+
+                if (allCompletedAfterMark && nextIdx === 0) {
+                    nextActiveKey = SOLVE_STAGE_ORDER[0];
+                    return marked.map((step, idx) => ({
+                        ...step,
+                        status: idx === 0 ? "active" : "pending",
+                    }));
+                }
+
+                nextActiveKey = (SOLVE_STAGE_ORDER[nextIdx] || SOLVE_STAGE_ORDER[0]) as SolveOverlayStageKey;
+                return marked.map((step, idx) => {
+                    if (idx === nextIdx) return { ...step, status: "active" };
+                    if (step.status === "completed") return step;
+                    return { ...step, status: "pending" };
+                });
+            });
+
+            if (nextActiveKey) {
+                setCurrentStageKey(nextActiveKey);
+                const stageMeta = buildSolvePipelineStages().find((s) => s.key === nextActiveKey);
+                if (stageMeta) setCurrentStage(stageMeta.label);
+                hydrateOverlayPersistence({ currentStage: nextActiveKey });
+            }
+        }, 7000);
+
+        return () => clearInterval(interval);
+    }, [hydrateOverlayPersistence, isSolving]);
 
     // SSE / Polling Event Listener
     useEffect(() => {
@@ -970,16 +994,13 @@ export default function DashboardPage() {
         ? tokenEstimate.tokens > textInputMaxTokens || query.length > textInputMaxChars
         : true;
     const isRequestTooLarge = !requestFit.fits;
-    const hasMultipleQuestions = !multiQuestionConfirmed && multiQuestionResult.isMultiple && multiQuestionResult.confidence !== 'low';
     const tokenBlockReason = !tokenPolicyReady
         ? "Token policy unavailable. Please refresh."
         : isInputTooLong
             ? "Input too long. Please split into smaller parts."
             : isRequestTooLarge
                 ? "Request too large for AI context. Please shorten."
-                : hasMultipleQuestions
-                    ? "Multiple tasks detected. Confirm task selection before solving."
-                    : null;
+                : null;
 
     const router = useRouter();
     const walletReady = walletLoaded && !walletError && !!walletSummary;
@@ -1050,6 +1071,12 @@ export default function DashboardPage() {
     const creditBlockReason = readyWallet && estimatedSolveCost != null && !hasEnoughCredits
         ? `Insufficient credits. Need ${estimatedSolveCost.toFixed(2)} credits.`
         : null;
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (!readyWallet?.user_id) return;
+        localStorage.setItem("user_id", String(readyWallet.user_id));
+    }, [readyWallet?.user_id]);
 
     useEffect(() => {
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
@@ -1452,7 +1479,9 @@ export default function DashboardPage() {
     };
 
     const handleAudioUpload = async (blob: Blob) => {
-        const userId = localStorage.getItem("user_id") || "1";
+        const storedUserId = localStorage.getItem("user_id");
+        const normalizedStoredUserId = storedUserId && /^\d+$/.test(storedUserId) ? storedUserId : null;
+        const userId = String(readyWallet?.user_id ?? normalizedStoredUserId ?? "1");
         try {
             // 1. Create Session
             const sessionRes = await fetch('/api/v1/voice/sessions', {
@@ -1553,26 +1582,6 @@ export default function DashboardPage() {
         }
     };
 
-    const handleDebugRuntimeMeta = async () => {
-        if (isSolving) return;
-        const userId = localStorage.getItem("user_id") || "1";
-        const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
-
-        setRuntimeDebugLoading(true);
-        setRuntimeDebugError(null);
-        try {
-            const runtimeMeta = await fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode);
-            setRuntimeDebugMeta(runtimeMeta);
-            setShowRuntimeDebug(true);
-        } catch (err) {
-            console.error("[RUNTIME_DEBUG] Failed to load solve runtime metadata:", err);
-            setRuntimeDebugError((err as Error).message || "Failed to fetch runtime metadata");
-            setShowRuntimeDebug(true);
-        } finally {
-            setRuntimeDebugLoading(false);
-        }
-    };
-
     const formatQuestionsForInput = (questions: string[]): string =>
         questions
             .map((question, index) => `${index + 1}) ${question.trim()}`)
@@ -1610,12 +1619,25 @@ export default function DashboardPage() {
         if (!query) {
             setTaskBundleTasks([]);
             setSelectedTaskIds([]);
+            setTaskConfirmSnapshot(null);
+            setRequiresTaskReconfirm(false);
             return;
         }
         const bundle = buildTaskBundleFromText(query, multiQuestionResult.suggestedSplits || []);
         setTaskBundleTasks(bundle.tasks);
         setSelectedTaskIds(bundle.selected_task_ids);
     }, [query, multiQuestionResult.suggestedSplits, buildTaskBundleFromText]);
+
+    useEffect(() => {
+        const snap = String(taskConfirmSnapshot || "").trim();
+        const now = String(query || "").trim();
+        if (!snap) return;
+        if (now !== snap) {
+            setRequiresTaskReconfirm(true);
+            setMultiQuestionConfirmed(false);
+            if (inputError) setInputError(null);
+        }
+    }, [query, taskConfirmSnapshot, inputError]);
 
     const handleSolveTextBatch = async (questionsToSolve: string[], sharedContext?: string) => {
         // Batch solve is disabled. Route as a single question request with the original content.
@@ -1644,6 +1666,30 @@ export default function DashboardPage() {
             : "";
         const textToSolve = textOverride ?? (mathFieldValue.trim() ? mathFieldValue : query);
 
+        if (activeTab === "text") {
+            const splitCandidates = autoSplitQuestions(textToSolve)
+                .map((q) => q.trim())
+                .filter((q) => q.length > 0);
+            setSuggestedSplits(splitCandidates);
+            const mustReconfirm = requiresTaskReconfirm && splitCandidates.length > 1;
+            if ((!multiQuestionConfirmed || mustReconfirm) && splitCandidates.length > 1) {
+                const bundle = buildTaskBundleFromText(textToSolve, splitCandidates);
+                setTaskBundleTasks(bundle.tasks);
+                setSelectedTaskIds(bundle.selected_task_ids);
+                setTaskUserAction("confirm_selected");
+                setInputError(null);
+                if (mustReconfirm) {
+                    pushToast({
+                        title: "Input changed",
+                        message: "Input changed, please reconfirm tasks.",
+                        type: "info",
+                    });
+                }
+                setShowSplitModal(true);
+                return;
+            }
+        }
+
         const validationError = validateMathQuery(textToSolve);
         const isOverridableError = validationError === INPUT_ERROR_BLOCKED || validationError === INPUT_ERROR_NOT_MATH;
 
@@ -1655,21 +1701,6 @@ export default function DashboardPage() {
                 }
             } else {
                 setInputError(validationError);
-                return;
-            }
-        }
-
-        if (activeTab === "text") {
-            const splitCandidates = autoSplitQuestions(textToSolve)
-                .map((q) => q.trim())
-                .filter((q) => q.length > 0);
-            setSuggestedSplits(splitCandidates);
-            if (!multiQuestionConfirmed && splitCandidates.length > 1) {
-                const bundle = buildTaskBundleFromText(textToSolve, splitCandidates);
-                setTaskBundleTasks(bundle.tasks);
-                setSelectedTaskIds(bundle.selected_task_ids);
-                setTaskUserAction("confirm_selected");
-                setShowSplitModal(true);
                 return;
             }
         }
@@ -1707,10 +1738,7 @@ export default function DashboardPage() {
         try {
             const streamCandidates = ["/api/v1/solve_v3_stream"];
             const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
-            const idempotencyKey = (devToolsEnabled && reuseIdempotencyKey && lastIdempotencyKey)
-                ? lastIdempotencyKey
-                : createIdempotencyKey();
-            setLastIdempotencyKey(idempotencyKey);
+            const idempotencyKey = createIdempotencyKey();
 
             void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
                 .then((runtimeMeta) => {
@@ -1779,11 +1807,7 @@ export default function DashboardPage() {
                             graph_mode: (isPlotLockedByTier || !tierFeatureGates.allow_plot) ? "off" : graphMode,
                             attach_to_step_id: attachToStepId,
                             force_validity: mathValidityConfirmed,
-                            idempotency_key: idempotencyKey,
-                            ...(devToolsEnabled ? {
-                                debug_simulated_tokens: debugSimTokens,
-                                debug_force_error: debugForceError
-                            } : {})
+                            idempotency_key: idempotencyKey
                         })
                     });
                     break;
@@ -1862,24 +1886,7 @@ export default function DashboardPage() {
                                     clearPersistedSolveOverlayState();
                                     setStreamingActive(false);
                                     markPipelineCompleted();
-                                    if (devToolsEnabled && stayOnSolveResult) {
-                                        if (streamingMeta?.attempt_id) {
-                                            try {
-                                                const attemptRes = await fetch(`/api/v1/attempt/${streamingMeta.attempt_id}`, {
-                                                    method: "GET",
-                                                    credentials: "include",
-                                                });
-                                                if (attemptRes.ok) {
-                                                    const attemptPayload = await attemptRes.json();
-                                                    setDebugAttemptDetails(attemptPayload);
-                                                }
-                                            } catch {
-                                                // ignore debug fetch failures
-                                            }
-                                        }
-                                    } else {
-                                        setTimeout(() => router.push(resolveSessionRoute(data.session_id)), 500);
-                                    }
+                                    setTimeout(() => router.push(resolveSessionRoute(data.session_id)), 500);
                                 } else if (data.error?.code === "ambiguous_response") {
                                     localStorage.removeItem("uask.activeAttemptId");
                                     localStorage.removeItem("uask.activeQuery");
@@ -2601,18 +2608,6 @@ export default function DashboardPage() {
                                             </div>
                                         </div>
 
-                                        <div className="mt-8 flex justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={handleDebugRuntimeMeta}
-                                                disabled={isSolving || runtimeDebugLoading}
-                                                className="flex items-center gap-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg font-semibold transition-colors text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                <span className="material-symbols-outlined text-sm">bug_report</span>
-                                                {runtimeDebugLoading ? "Loading..." : "Debug"}
-                                            </button>
-                                        </div>
-
                                         {/* Live Math Preview */}
                                         <div className="mt-6">
                                             <LiveMathPreview content={query} />
@@ -3110,170 +3105,9 @@ export default function DashboardPage() {
                 </section>
             )}
 
-            {devToolsEnabled && (
-                <section className="max-w-7xl mx-auto px-4 pb-10">
-                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 text-sm">
-                        <div className="flex items-center justify-between gap-4 mb-3">
-                            <h3 className="font-semibold text-slate-900 dark:text-slate-100">Simulated Solve Debug (DEV)</h3>
-                            <div className="text-xs text-slate-500">Controlled tokens, idempotency, and error simulation</div>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                            <label className="text-xs text-slate-600 dark:text-slate-300">
-                                Input Tokens
-                                <input
-                                    type="number"
-                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
-                                    value={debugSimTokens.input_tokens}
-                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, input_tokens: Number(e.target.value) }))}
-                                />
-                            </label>
-                            <label className="text-xs text-slate-600 dark:text-slate-300">
-                                Output Tokens
-                                <input
-                                    type="number"
-                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
-                                    value={debugSimTokens.output_tokens}
-                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, output_tokens: Number(e.target.value) }))}
-                                />
-                            </label>
-                            <label className="text-xs text-slate-600 dark:text-slate-300">
-                                Cached Tokens
-                                <input
-                                    type="number"
-                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
-                                    value={debugSimTokens.cached_tokens}
-                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, cached_tokens: Number(e.target.value) }))}
-                                />
-                            </label>
-                            <label className="text-xs text-slate-600 dark:text-slate-300">
-                                Model
-                                <input
-                                    type="text"
-                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
-                                    value={debugSimTokens.model}
-                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, model: e.target.value }))}
-                                />
-                            </label>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                            <label className="text-xs text-slate-600 dark:text-slate-300">
-                                Provider
-                                <input
-                                    type="text"
-                                    className="mt-1 w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1"
-                                    value={debugSimTokens.provider}
-                                    onChange={(e) => setDebugSimTokens((prev) => ({ ...prev, provider: e.target.value }))}
-                                />
-                            </label>
-                            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-6">
-                                <input
-                                    type="checkbox"
-                                    checked={debugForceError}
-                                    onChange={(e) => setDebugForceError(e.target.checked)}
-                                />
-                                Force Error
-                            </label>
-                            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-6">
-                                <input
-                                    type="checkbox"
-                                    checked={reuseIdempotencyKey}
-                                    onChange={(e) => setReuseIdempotencyKey(e.target.checked)}
-                                />
-                                Reuse Idempotency Key
-                            </label>
-                            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-6">
-                                <input
-                                    type="checkbox"
-                                    checked={stayOnSolveResult}
-                                    onChange={(e) => setStayOnSolveResult(e.target.checked)}
-                                />
-                                Stay On Result
-                            </label>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 dark:text-slate-300">
-                            <div>
-                                <div>Attempt ID: {streamingMeta?.attempt_id || "-"}</div>
-                                <div>Request ID: {streamingMeta?.request_id || "-"}</div>
-                                <div>Tier Selected (UI): {normalizeTierLabel(selectedSolveTier)}</div>
-                                <div>
-                                    Tier: {normalizeTierLabel(streamingMeta?.tier_effective || streamingMeta?.effective_tier)}
-                                    {" / requested "}
-                                    {normalizeTierLabel(streamingMeta?.tier_requested)}
-                                </div>
-                                <div>Credits Charged: {formatDebugNumber(debugAttemptDetails?.billing?.credits_charged)}</div>
-                                <div>Credits After: {formatDebugNumber(debugAttemptDetails?.billing?.credits_after)}</div>
-                                <div>Error Code: {lastSolveError?.code ?? "-"}</div>
-                                <div>Error Request ID: {lastSolveError?.request_id ?? "-"}</div>
-                                <div>Error Message: {lastSolveError?.message ?? "-"}</div>
-                            </div>
-                            <div>
-                                <div>Input Tokens: {streamingTelemetry?.input_tokens ?? "-"}</div>
-                                <div>Output Tokens: {streamingTelemetry?.output_tokens ?? "-"}</div>
-                                <div>Cached Tokens: {streamingTelemetry?.cached_tokens ?? "-"}</div>
-                                <div>Total Tokens: {streamingTelemetry?.total_tokens ?? "-"}</div>
-                                <div>Model: {streamingTelemetry?.model ?? "-"}</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            )}
-
             <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-slate-200 dark:border-slate-800 text-center">
                 <p className="text-slate-400 text-xs font-medium">© {new Date().getFullYear()} YouAsk AI LLM Math Solver Labs. All rights reserved.</p>
             </footer>
-
-            {
-                showRuntimeDebug && (
-                    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-                        <div className="w-full max-w-xl rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-xl">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Solve Runtime Debug</h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRuntimeDebug(false)}
-                                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                            {runtimeDebugError ? (
-                                <p className="text-xs text-red-500">{runtimeDebugError}</p>
-                            ) : (
-                                <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-                                    <div>
-                                        Tier Selected (UI): {normalizeTierLabel(selectedSolveTier)}
-                                    </div>
-                                    <div>
-                                        Tier Effective: {normalizeTierLabel(runtimeDebugMeta?.effective_tier || runtimeDebugMeta?.tier_effective || selectedSolveTier)}
-                                    </div>
-                                    <div>
-                                        Tier Requested: {normalizeTierLabel(runtimeDebugMeta?.tier_requested || selectedSolveTier)}
-                                    </div>
-                                    <div>Mode: {runtimeDebugMeta?.mode_family || "SOLVE"}</div>
-                                    <div>LLM Provider: {runtimeDebugMeta?.provider || "openai"}</div>
-                                    <div>Model: {runtimeDebugMeta?.model || "unknown"}</div>
-                                    <div>Prompt Binding ID: {runtimeDebugMeta?.prompt_binding_id || "-"}</div>
-                                    <div>Global System Prompt ID: {runtimeDebugMeta?.global_system_prompt_id || "-"}</div>
-                                    <div>Developer Prompt ID: {runtimeDebugMeta?.developer_prompt_id || "-"}</div>
-                                    <div>Output Schema ID: {runtimeDebugMeta?.output_schema_id || "-"}</div>
-                                    <div>Request ID: {runtimeDebugMeta?.request_id || "-"}</div>
-                                    {runtimeDebugMeta?.token_config && (
-                                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                                            <div className="font-semibold mb-1">Token Config:</div>
-                                            <div>Max Output: {runtimeDebugMeta.token_config.max_output_tokens ?? "Auto"}</div>
-                                            <div>Max Input: {runtimeDebugMeta.token_config.max_input_tokens ?? "Auto"}</div>
-                                            <div>Temp: {runtimeDebugMeta.token_config.temperature ?? "Default"}</div>
-                                            <div>Top P: {runtimeDebugMeta.token_config.top_p ?? "Default"}</div>
-                                            <div>Timeout: {runtimeDebugMeta.token_config.timeout_ms ? `${runtimeDebugMeta.token_config.timeout_ms}ms` : "Default"}</div>
-                                            <div>Trim: {runtimeDebugMeta.token_config.trim_strategy ?? "None"}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )
-            }
 
             {
                 isSolving && (
@@ -3361,12 +3195,6 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="text-right text-xs text-slate-200/70">
                                     <div>{currentStage || pipelineStages.find((stage) => stage.status === "active")?.label || "Preparing Engine"}</div>
-                                    <button
-                                        onClick={() => setShowRuntimeDebug(true)}
-                                        className="mt-1 border-b border-dashed border-white/40 text-slate-100 hover:text-white"
-                                    >
-                                        ▶ {t("debugRuntime")}
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -3385,6 +3213,8 @@ export default function DashboardPage() {
                     setTaskUserAction("combined_solution");
                     setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
+                    setTaskConfirmSnapshot(String(query || "").trim());
+                    setRequiresTaskReconfirm(false);
                     setMathValidityConfirmed(false);
                     setInputError(null);
                     setShowSplitModal(false);
@@ -3393,6 +3223,7 @@ export default function DashboardPage() {
                 perTaskCredits={estimate?.per_task_credits}
                 totalEstimatedCredits={estimate?.estimated_total_credits ?? estimate?.total_credits ?? null}
                 combinedModeMessage={"Solving as one combined solution. Pricing remains workload-based."}
+                reconfirmMessage={requiresTaskReconfirm ? "You changed the question after confirmation. Please confirm again to recalculate credits." : null}
                 onSelectQuestion={(question) => {
                     const bundle = buildTaskBundleFromText(query, suggestedSplits);
                     const picked = bundle.tasks.find((t) => t.task_text === question) || bundle.tasks[0];
@@ -3402,7 +3233,10 @@ export default function DashboardPage() {
                     setTaskUserAction("solve_one");
                     setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
+                    setTaskConfirmSnapshot(String(query || "").trim());
+                    setRequiresTaskReconfirm(false);
                     setMathValidityConfirmed(false);
+                    setInputError(null);
                     setShowSplitModal(false);
                     setTimeout(() => {
                         void handleSolve();
@@ -3415,6 +3249,9 @@ export default function DashboardPage() {
                     setTaskUserAction("combined_solution");
                     setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
+                    setTaskConfirmSnapshot(String(query || "").trim());
+                    setRequiresTaskReconfirm(false);
+                    setInputError(null);
                     setShowSplitModal(false);
                 }}
                 onConfirmSelectedQuestions={(selectedQuestions) => {
@@ -3431,6 +3268,8 @@ export default function DashboardPage() {
                     setTaskUserAction("confirm_selected");
                     setConfirmedBatchQuestions([]);
                     setMultiQuestionConfirmed(true);
+                    setTaskConfirmSnapshot(String(query || "").trim());
+                    setRequiresTaskReconfirm(false);
                     setMathValidityConfirmed(false);
                     setInputError(null);
                     setShowSplitModal(false);

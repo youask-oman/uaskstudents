@@ -6,7 +6,7 @@ TokenPolicyDefault = Tuple[int, str]
 
 TOKEN_POLICY_DEFAULTS: Dict[str, TokenPolicyDefault] = {
     "tokens.text.input_max": (1800, "Max input tokens for text solve"),
-    "tokens.text.input_max_chars": (3000, "Max input characters for text solve"),
+    "tokens.text.input_max_chars": (5500, "Max input characters for text solve"),
     "tokens.text.output_max_minimal_solve": (700, "Max output tokens for minimal solve"),
     "tokens.text.output_max_minimal_study": (1200, "Max output tokens for minimal study"),
     "tokens.text.output_max_detailed_solve": (4500, "Max output tokens for detailed solve"),

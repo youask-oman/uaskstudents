@@ -17,6 +17,7 @@ def update_tokens():
     print(f"Connecting to DB: {os.environ.get('DATABASE_URL', 'default')}")
     with Session(engine) as session:
         updates = {
+            "tokens.text.input_max_chars": "5500",
             "tokens.text.output_max_detailed_solve": "3000",
             "tokens.text.output_max_detailed_study": "3500",
             "tokens.text.output_retry_cap_detailed_solve": "3200",

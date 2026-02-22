@@ -13,7 +13,7 @@
 | tokens.request.expected_output_budget | 1200 | Expected output tokens for request fit |
 | tokens.request.system_and_schema_budget | 3500 | Estimated system+schema tokens |
 | tokens.text.input_max | 1800 | Max input tokens for text solve |
-| tokens.text.input_max_chars | 3000 | Max input characters for text solve |
+| tokens.text.input_max_chars | 5500 | Max input characters for text solve |
 | tokens.text.output_max_detailed_solve | 3000 | Max output tokens for detailed solve |
 | tokens.text.output_max_detailed_study | 3500 | Max output tokens for detailed study |
 | tokens.text.output_max_minimal_solve | 700 | Max output tokens for minimal solve |

@@ -319,7 +319,6 @@ export default function SolutionStepsBlock({
   const hasShortSections = shortPaper && Array.isArray(shortSections) && shortSections.length > 0;
   const hasShortSource = shortPaper && Array.isArray(shortSource?.sections) && shortSource.sections.length > 0;
   const hasPlaybackSource =
-    shortPaper &&
     typeof playbackMessageId === "string" &&
     playbackMessageId.trim().length > 0 &&
     typeof playbackFallbackContent === "string" &&
@@ -360,7 +359,7 @@ export default function SolutionStepsBlock({
       }
       return true;
     });
-  }, [shortSource?.sections, currentProblemText]);
+  }, [shortSource, currentProblemText]);
 
   if (finalHandwritten) {
     const finalValue = displayAnswerLatex || displayAnswerText || result || "";
@@ -376,29 +375,30 @@ export default function SolutionStepsBlock({
     );
   }
 
-  if (hasShortSections) {
-    if (hasPlaybackSource) {
-      return (
-        <div className={styles.stepsBlock} ref={rootRef}>
-          {(originalProblem || normalizedProblem) && (
-            <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
-              <div style={problemTextStyle}>
-                <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
-              </div>
-            </SectionRow>
-          )}
-          <SectionRow label="SOLUTION" id={`${sectionId}-playback-solution`} hideLabel={false}>
-            <div data-playback-source={playbackSource || "unknown"}>
-              <TypingPlaybackMessage
-                messageId={String(playbackMessageId)}
-                fallbackContent={playbackContent}
-                fallbackSegments={playbackSegments}
-              />
+  if (hasPlaybackSource) {
+    return (
+      <div className={styles.stepsBlock} ref={rootRef}>
+        {(originalProblem || normalizedProblem || shortSource?.question) && (
+          <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
+            <div style={problemTextStyle}>
+              <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || shortSource?.question || "")} mode="prose" />
             </div>
           </SectionRow>
-        </div>
-      );
-    }
+        )}
+        <SectionRow label="SOLUTION" id={`${sectionId}-playback-solution`} hideLabel={false}>
+          <div data-playback-source={playbackSource || "unknown"}>
+            <TypingPlaybackMessage
+              messageId={String(playbackMessageId)}
+              fallbackContent={playbackContent}
+              fallbackSegments={playbackSegments}
+            />
+          </div>
+        </SectionRow>
+      </div>
+    );
+  }
+
+  if (hasShortSections) {
     return (
       <div className={styles.stepsBlock} ref={rootRef}>
         {(originalProblem || normalizedProblem) && (
@@ -466,28 +466,6 @@ export default function SolutionStepsBlock({
   }
 
   if (hasShortSource) {
-    if (hasPlaybackSource) {
-      return (
-        <div className={styles.stepsBlock} ref={rootRef}>
-          {(originalProblem || normalizedProblem || shortSource?.question) && (
-            <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
-              <div style={problemTextStyle}>
-                <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || shortSource?.question || "")} mode="prose" />
-              </div>
-            </SectionRow>
-          )}
-          <SectionRow label="SOLUTION" id={`${sectionId}-playback-solution`} hideLabel={false}>
-            <div data-playback-source={playbackSource || "unknown"}>
-              <TypingPlaybackMessage
-                messageId={String(playbackMessageId)}
-                fallbackContent={playbackContent}
-                fallbackSegments={playbackSegments}
-              />
-            </div>
-          </SectionRow>
-        </div>
-      );
-    }
     const globalFinal = (shortSource?.global_final_answer || "").trim();
     return (
       <div className={styles.stepsBlock} ref={rootRef}>

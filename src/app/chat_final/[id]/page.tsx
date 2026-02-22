@@ -360,13 +360,14 @@ const buildInitialPages = (
   }
 
   if ((solution && (solution.steps.length > 0 || solution.result)) || (isShortTier && shortSource?.sections?.length)) {
+    const shortResult = shortSource?.global_final_answer || solution?.result;
     blocks.push({
       id: "steps-block",
       type: "steps",
-      steps: isShortTier ? [] : (localSympy ? [] : (solution?.steps || [])),
-      shortSections: isShortTier ? undefined : (localSympy ? undefined : solution?.shortSections),
+      steps: localSympy ? [] : (solution?.steps || []),
+      shortSections: localSympy ? undefined : solution?.shortSections,
       shortSource: isShortTier ? shortSource || undefined : undefined,
-      result: isShortTier ? shortSource?.global_final_answer : solution?.result,
+      result: isShortTier ? shortResult : solution?.result,
       finalAnswer: localSympy && solution?.finalAnswer
         ? { ...solution.finalAnswer, values: [] }
         : (isShortTier ? undefined : solution?.finalAnswer),
@@ -377,10 +378,10 @@ const buildInitialPages = (
       normalizedProblem: localSympy ? undefined : solution?.normalizedProblem,
       commonMistakes: isShortTier ? undefined : solution?.commonMistakes,
       autocorrectApplied: isShortTier ? undefined : solution?.autocorrectApplied,
-      playbackMessageId: isShortTier ? shortPlayback?.messageId : undefined,
-      playbackFallbackContent: isShortTier ? shortPlayback?.assistantContent : undefined,
-      playbackSegments: isShortTier ? shortPlayback?.segments : undefined,
-      playbackSource: isShortTier ? shortPlayback?.source : undefined,
+      playbackMessageId: shortPlayback?.messageId,
+      playbackFallbackContent: shortPlayback?.assistantContent,
+      playbackSegments: shortPlayback?.segments,
+      playbackSource: shortPlayback?.source,
     });
   }
 
@@ -652,8 +653,8 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
     [session?.messages, solveTier]
   );
   const shortPlaybackSource = useMemo(
-    () => (solveTier === "SHORT_STEPS" ? extractAssistantPlaybackSource(session?.messages || []) : null),
-    [session?.messages, solveTier]
+    () => extractAssistantPlaybackSource(session?.messages || []),
+    [session?.messages]
   );
   useEffect(() => {
     if (!shortPlaybackSource) return;
