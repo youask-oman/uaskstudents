@@ -68,25 +68,25 @@ const clampToSafeMathBoundary = (text: string, desiredLen: number): number => {
   if (target >= totalLen) return totalLen;
   if (target <= 0) return 0;
 
-  let inlineParenOpen = false; // \( ... \)
-  let blockBracketOpen = false; // \[ ... \]
+  let inlineParenOpen = false; // \( ... \) or ( ... )
+  let blockBracketOpen = false; // \[ ... \] or [ ... ]
   let singleDollarOpen = false; // $ ... $
   let doubleDollarOpen = false; // $$ ... $$
   let lastSafe = 0;
 
   for (let i = 0; i < target; i += 1) {
-    if (!isEscaped(text, i) && text.startsWith("\\(", i)) {
+    if (!isEscaped(text, i) && (text.startsWith("\\(", i) || text[i] === "(")) {
       if (!blockBracketOpen && !doubleDollarOpen && !singleDollarOpen) inlineParenOpen = true;
-      i += 1;
-    } else if (!isEscaped(text, i) && text.startsWith("\\)", i)) {
+      if (text.startsWith("\\(", i)) i += 1;
+    } else if (!isEscaped(text, i) && (text.startsWith("\\)", i) || text[i] === ")")) {
       if (inlineParenOpen) inlineParenOpen = false;
-      i += 1;
-    } else if (!isEscaped(text, i) && text.startsWith("\\[", i)) {
+      if (text.startsWith("\\)", i)) i += 1;
+    } else if (!isEscaped(text, i) && (text.startsWith("\\[", i) || text[i] === "[")) {
       if (!inlineParenOpen && !doubleDollarOpen && !singleDollarOpen) blockBracketOpen = true;
-      i += 1;
-    } else if (!isEscaped(text, i) && text.startsWith("\\]", i)) {
+      if (text.startsWith("\\[", i)) i += 1;
+    } else if (!isEscaped(text, i) && (text.startsWith("\\]", i) || text[i] === "]")) {
       if (blockBracketOpen) blockBracketOpen = false;
-      i += 1;
+      if (text.startsWith("\\]", i)) i += 1;
     } else if (text[i] === "$" && !isEscaped(text, i) && !inlineParenOpen && !blockBracketOpen) {
       if (text[i + 1] === "$" && !isEscaped(text, i + 1)) {
         doubleDollarOpen = !doubleDollarOpen;

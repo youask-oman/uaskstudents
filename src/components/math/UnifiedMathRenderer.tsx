@@ -101,17 +101,14 @@ const useMathSvgBatch = (jobs: Array<{ key: string; latex: string; inline: boole
         const run = async () => {
             setLoading(true);
             try {
-                const response = await fetch("/api/v1/math/render", {
+                const response = await fetch("/api/math/svg/batch", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         items: pending.map((job) => ({
-                            latex: job.latex,
-                            display_mode: !job.inline,
-                            macros: {},
-                            scale: 1.0,
+                            tex: job.latex,
+                            display: !job.inline,
                         })),
-                        options: { font: "tex", sanitize: true, return_metrics: true },
                     }),
                     signal: controller.signal,
                 });
@@ -123,7 +120,7 @@ const useMathSvgBatch = (jobs: Array<{ key: string; latex: string; inline: boole
                         const row = payload.results[i];
                         next[pending[i].key] = {
                             ok: Boolean(row?.ok),
-                            key: row?.key,
+                            key: pending[i].key,
                             svg: typeof row?.svg === "string" ? row.svg : undefined,
                         };
                     }
@@ -276,7 +273,7 @@ const MathSegment = ({
         return renderFallback(cleanValue);
     }
 
-    const Wrapper: React.ElementType = inline ? "span" : "div";
+    const Wrapper: React.ElementType = "span";
     if (dynamic) {
         return <Wrapper suppressHydrationWarning>{renderFallback(cleanValue)}</Wrapper>;
     }
@@ -366,37 +363,35 @@ export default function UnifiedMathRenderer({
     if (!raw) return null;
 
     if (!isMounted) {
-        const Wrapper: React.ElementType = mode === "inline" ? "span" : "div";
         return (
-            <Wrapper className={className} suppressHydrationWarning />
+            <span className={className} style={{ display: mode === "inline" ? "inline" : "block" }} suppressHydrationWarning />
         );
     }
 
     if (dynamic) {
-        const Wrapper: React.ElementType = mode === "inline" ? "span" : "div";
+        const display = mode === "inline" ? "inline" : "block";
         const streamValue = mode === "prose" ? normalized : stripped;
         return (
-            <Wrapper className={className} style={{ whiteSpace: mode === "prose" ? "pre-wrap" : undefined }}>
+            <span className={className} style={{ display, whiteSpace: mode === "prose" ? "pre-wrap" : undefined }}>
                 {streamValue}
-            </Wrapper>
+            </span>
         );
     }
 
     if (mode === "inline" || mode === "block") {
         const value = debounced || stripped;
         const inline = mode === "inline";
-        const Wrapper: React.ElementType = inline ? "span" : "div";
         const singleKey = buildMathKey(value, inline);
 
         return (
-            <Wrapper className={className}>
+            <span className={className} style={{ display: inline ? "inline" : "block" }}>
                 <MathSegment value={value} inline={inline} dynamic={dynamic} result={renderMap[singleKey]} />
-            </Wrapper>
+            </span>
         );
     }
 
     return (
-        <div className={className} style={{ whiteSpace: "pre-wrap" }}>
+        <span className={className} style={{ display: "block", whiteSpace: "pre-wrap" }}>
             {segments.map((segment, index) => {
                 if (segment.type === "text") {
                     return (
@@ -428,6 +423,6 @@ export default function UnifiedMathRenderer({
             })}
             {loading ? <span className="math-streaming-tail" /> : null}
             {tail ? <span className="math-streaming-tail">{tail}</span> : null}
-        </div>
+        </span>
     );
 }

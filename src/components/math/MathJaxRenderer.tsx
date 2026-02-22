@@ -39,13 +39,13 @@ export default function MathJaxRenderer({
     }
 
     return (
-        <div className={className}>
+        <span className={className} style={{ display: "block" }}>
             <MathRendererSwitch
                 content={content}
                 mode={mode}
                 dynamic={dynamic}
                 idKey={idKey}
             />
-        </div>
+        </span>
     );
 }

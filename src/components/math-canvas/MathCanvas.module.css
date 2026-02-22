@@ -129,7 +129,7 @@
   margin: 10px 0 18px;
   border: 1px solid var(--border-color);
   border-radius: 14px;
-  padding: 12px;
+  padding: 20px;
   background: var(--sidebar-bg);
 }
 
@@ -582,12 +582,12 @@
 
 .paperContent {
   display: grid;
-  gap: 14px;
+  gap: 20px;
 }
 
 .paperBlocksStack {
   display: grid;
-  gap: 14px;
+  gap: 20px;
 }
 
 .paperBlockWrap {
@@ -797,7 +797,7 @@
   height: 100%;
   border-radius: 14px;
   border: 1px solid #c7def8;
-  padding: 14px;
+  padding: 20px;
   text-align: center;
   background: linear-gradient(180deg, #f7fbff 0%, var(--latex-bg) 100%);
   display: grid;
@@ -1944,7 +1944,7 @@
   position: relative;
 }
 
-.confidenceRingWrap > .material-symbols-outlined {
+.confidenceRingWrap>.material-symbols-outlined {
   position: absolute;
   color: #0891b2;
   font-size: 14px;
@@ -2314,12 +2314,14 @@
 }
 
 @keyframes tutorDots {
+
   0%,
   80%,
   100% {
     transform: translateY(0);
     opacity: 0.4;
   }
+
   40% {
     transform: translateY(-2px);
     opacity: 1;
@@ -2331,6 +2333,7 @@
     transform: translateX(-14px);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -2342,6 +2345,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2666,6 +2670,7 @@
 }
 
 @media (max-width: 1023px) {
+
   .leftSidebar,
   .rightSidebar {
     width: auto;
@@ -3078,7 +3083,7 @@
   font-size: 15px;
 }
 
-.paperPageShortPaper .stepsBlock > .stepRow:last-child {
+.paperPageShortPaper .stepsBlock>.stepRow:last-child {
   margin: 24px -32px 0;
   padding: 22px 32px 24px;
   background: transparent;
@@ -3086,18 +3091,18 @@
   border-top: 1px solid #dbe3ee;
 }
 
-.paperPageShortPaper .stepsBlock > .stepRow:last-child .stepLabel {
+.paperPageShortPaper .stepsBlock>.stepRow:last-child .stepLabel {
   background: #e5e7eb;
   border-color: #d1d5db;
   color: #111827;
 }
 
-.paperPageShortPaper .stepsBlock > .stepRow:last-child .stepValue,
-.paperPageShortPaper .stepsBlock > .stepRow:last-child .stepValue * {
+.paperPageShortPaper .stepsBlock>.stepRow:last-child .stepValue,
+.paperPageShortPaper .stepsBlock>.stepRow:last-child .stepValue * {
   color: #111827 !important;
 }
 
-.paperPageShortPaper .stepsBlock > .stepRow:last-child .blockActionButton {
+.paperPageShortPaper .stepsBlock>.stepRow:last-child .blockActionButton {
   border-color: #d1d5db;
   background: #ffffff;
   color: #111827;

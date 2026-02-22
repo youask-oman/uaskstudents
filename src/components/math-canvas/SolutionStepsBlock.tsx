@@ -703,26 +703,28 @@ export default function SolutionStepsBlock({
           {!hideStepLabels ? <span className={styles.stepLabel}>STEP {step.k || index + 1}</span> : null}
           <div className={styles.stepValue} style={hideStepLabels ? { gridColumn: "1 / -1" } : undefined}>
             {editingStepIndex !== index ? (
-              <span className={styles.stepTitleTag}>
-                {step.titleRichHtml ? (
-                  <div
-                    className={styles.richTextElementContent}
-                    style={{ fontWeight: 700, display: "inline-block" }}
-                    dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(step.titleRichHtml) }}
-                  />
-                ) : (
-                  <strong>{!isGenericStepTitle(step.title, index) ? step.title : `Step ${step.k || index + 1}`}</strong>
-                )}
-              </span>
+              !isGenericStepTitle(step.title, index) ? (
+                <span className={styles.stepTitleTag}>
+                  {step.titleRichHtml ? (
+                    <div
+                      className={styles.richTextElementContent}
+                      style={{ fontWeight: 700, display: "inline-block" }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(step.titleRichHtml) }}
+                    />
+                  ) : (
+                    <strong>{step.title}</strong>
+                  )}
+                </span>
+              ) : null
             ) : null}
             {editingStepIndex === index ? (
-                <div className={styles.inlineEditWrap}>
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Step Title</div>
-                    <div data-testid={`step-title-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 60, minHeight: 60 }}>
-                      <RichTextElementEditor
-                        key={`${sectionId}-step-title-editor-${index}`}
-                        elementId={`${sectionId}-step-title-${index}`}
+              <div className={styles.inlineEditWrap}>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Step Title</div>
+                  <div data-testid={`step-title-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 60, minHeight: 60 }}>
+                    <RichTextElementEditor
+                      key={`${sectionId}-step-title-editor-${index}`}
+                      elementId={`${sectionId}-step-title-${index}`}
                       initialText={stepDraft.title || ""}
                       initialHtml={stepDraft.titleRichHtml}
                       initialJson={stepDraft.titleRichJson}
@@ -731,13 +733,13 @@ export default function SolutionStepsBlock({
                       onRequestClose={handleStepEditorRequestClose}
                     />
                   </div>
-                  </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Explanation / Body</div>
-                    <div data-testid={`step-explanation-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 140 }}>
-                      <RichTextElementEditor
-                        key={`${sectionId}-step-explanation-editor-${index}`}
-                        elementId={`${sectionId}-step-explanation-${index}`}
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Explanation / Body</div>
+                  <div data-testid={`step-explanation-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 140 }}>
+                    <RichTextElementEditor
+                      key={`${sectionId}-step-explanation-editor-${index}`}
+                      elementId={`${sectionId}-step-explanation-${index}`}
                       initialText={stepDraft.explanation || ""}
                       initialHtml={stepDraft.explanationRichHtml}
                       initialJson={stepDraft.explanationRichJson}
@@ -746,13 +748,13 @@ export default function SolutionStepsBlock({
                       onRequestClose={handleStepEditorRequestClose}
                     />
                   </div>
-                  </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Main Math / LaTeX</div>
-                    <div data-testid={`step-math-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 100, minHeight: 80 }}>
-                      <RichTextElementEditor
-                        key={`${sectionId}-step-math-editor-${index}`}
-                        elementId={`${sectionId}-step-math-${index}`}
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase" }}>Main Math / LaTeX</div>
+                  <div data-testid={`step-math-editor-wrap-${sectionId}-${index}`} className={styles.inlineEditRichText} style={{ height: 100, minHeight: 80 }}>
+                    <RichTextElementEditor
+                      key={`${sectionId}-step-math-editor-${index}`}
+                      elementId={`${sectionId}-step-math-${index}`}
                       initialText={stepDraft.mathLatex || ""}
                       initialHtml={stepDraft.mathRichHtml}
                       initialJson={stepDraft.mathRichJson}

@@ -51,8 +51,11 @@ export default function MathSvg({ tex, display, className }: MathSvgProps) {
         return json.svg as string;
       })
       .then((svgRaw) => {
+        // MathJax uses xlink:href and specific IDs. We must allow these.
         const sanitized = DOMPurify.sanitize(svgRaw, {
           USE_PROFILES: { svg: true, svgFilters: true },
+          ADD_ATTR: ["xlink:href", "xmlns:xlink", "target"],
+          ADD_TAGS: ["use"],
         });
         responseCache.set(key, sanitized);
         setState({ status: "ready", svg: sanitized });
@@ -87,9 +90,9 @@ export default function MathSvg({ tex, display, className }: MathSvgProps) {
 
   if (display) {
     return (
-      <div
+      <span
         className={className}
-        style={{ overflowX: "auto", maxWidth: "100%" }}
+        style={{ display: "block", overflowX: "auto", maxWidth: "100%", color: "inherit", fill: "currentColor" }}
         dangerouslySetInnerHTML={{ __html: state.svg }}
       />
     );
@@ -98,7 +101,7 @@ export default function MathSvg({ tex, display, className }: MathSvgProps) {
   return (
     <span
       className={className}
-      style={{ display: "inline-block", verticalAlign: "middle" }}
+      style={{ display: "inline-block", verticalAlign: "middle", color: "inherit", fill: "currentColor" }}
       dangerouslySetInnerHTML={{ __html: state.svg }}
     />
   );
