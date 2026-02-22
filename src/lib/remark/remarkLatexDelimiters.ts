@@ -26,6 +26,18 @@ function looksLikeBracketMath(value: string): boolean {
   return hasEquals && hasMathOperator;
 }
 
+function looksLikeParenMath(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  if (v.length <= 2) return false;
+  if (TEX_COMMAND_RE.test(v)) return true;
+  if (/[\^_]/.test(v)) return true;
+  if (/^[A-Za-z](?:'+)?\([^)]+\)$/.test(v)) return true; // f(x), f'(x), g''(t)
+  if (/[=<>]/.test(v) && /[A-Za-z0-9]/.test(v)) return true;
+  if (/\b[a-zA-Z]\s*[+\-*/]\s*\d+/.test(v)) return true;
+  return false;
+}
+
 function nextMatch(text: string, from: number): null | {
   start: number;
   end: number;
@@ -34,7 +46,7 @@ function nextMatch(text: string, from: number): null | {
 } {
   const patterns: Array<{
     regex: RegExp;
-    id: "escaped_block" | "escaped_inline" | "bracket";
+    id: "escaped_block" | "escaped_inline" | "bracket" | "paren" | "paren_wrapped_fn";
     kind: "inline" | "block";
     accept?: (tex: string) => boolean;
   }> = [
@@ -45,6 +57,17 @@ function nextMatch(text: string, from: number): null | {
       id: "bracket",
       kind: "inline",
       accept: (tex) => looksLikeBracketMath(tex),
+    },
+    {
+      regex: /\(([^()\n]+?)\)/g,
+      id: "paren",
+      kind: "inline",
+      accept: (tex) => looksLikeParenMath(tex),
+    },
+    {
+      regex: /\(\s*([A-Za-z](?:'+)?\([^)]+\))\s*\)/g,
+      id: "paren_wrapped_fn",
+      kind: "inline",
     },
   ];
 

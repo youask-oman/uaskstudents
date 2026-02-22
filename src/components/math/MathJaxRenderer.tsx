@@ -2,6 +2,7 @@
 
 import React from "react";
 import MathRendererSwitch from "./MathRendererSwitch";
+import MarkdownMathContent from "@/components/math/MarkdownMathContent";
 
 export type MathJaxRenderMode = "prose" | "block" | "inline";
 
@@ -20,6 +21,10 @@ export default function MathJaxRenderer({
     dynamic,
     idKey,
 }: MathJaxRendererProps) {
+    if (mode === "prose") {
+        return <MarkdownMathContent content={content} className={className} />;
+    }
+
     if (mode === "inline") {
         return (
             <span className={className}>
