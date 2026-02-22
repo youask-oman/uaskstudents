@@ -100,24 +100,24 @@ def load_solve_v2_config(session: Session) -> SolveV2Config:
         tier_policy = copy.deepcopy(DEFAULT_TIER_POLICY)
 
     return SolveV2Config(
-        system_prompt_id=_system_config_value(session, "SOLVE_SYSTEM_PROMPT_ID", "global_system_prompt_v2_compact.txt"),
+        system_prompt_id=_system_config_value(session, "SOLVE_SYSTEM_PROMPT_ID", ""),
         orchestrator_prompt_id=_system_config_value(
             session,
             "SOLVE_ORCHESTRATOR_DEV_PROMPT_ID",
-            "solve_orchestrator_developer_v2_compact.txt",
+            "",
         ),
-        narrator_prompt_id=_system_config_value(session, "SOLVE_NARRATOR_PROMPT_ID", "solve_explain_narrator_v2_compact.txt"),
-        plot_spec_prompt_id=_system_config_value(session, "SOLVE_PLOT_SPEC_PROMPT_ID", "solve_plot_spec_v2_compact.txt"),
-        repair_prompt_id=_system_config_value(session, "SOLVE_REPAIR_PROMPT_ID", "solve_repair_verification_patch_v1.txt"),
+        narrator_prompt_id=_system_config_value(session, "SOLVE_NARRATOR_PROMPT_ID", ""),
+        plot_spec_prompt_id=_system_config_value(session, "SOLVE_PLOT_SPEC_PROMPT_ID", ""),
+        repair_prompt_id=_system_config_value(session, "SOLVE_REPAIR_PROMPT_ID", ""),
         clarify_prompt_id=_system_config_value(
             session,
             "SOLVE_CLARIFY_PROMPT_ID",
-            "solve_clarification_patch_v1.txt",
+            "",
         ),
-        superset_schema_id=_system_config_value(session, "SOLVE_SCHEMA_ID", "solve_superset_v2.schema.json"),
-        llm_min_schema_id=_system_config_value(session, "SOLVE_LLM_MIN_SCHEMA_ID", "solve_llm_min_v2.schema.json"),
-        clarify_schema_id=_system_config_value(session, "SOLVE_CLARIFY_SCHEMA_ID", "solve_clarification_patch_v1.schema.json"),
-        repair_schema_id=_system_config_value(session, "SOLVE_REPAIR_SCHEMA_ID", "solve_repair_patch_v1.schema.json"),
+        superset_schema_id=_system_config_value(session, "SOLVE_SCHEMA_ID", ""),
+        llm_min_schema_id=_system_config_value(session, "SOLVE_LLM_MIN_SCHEMA_ID", ""),
+        clarify_schema_id=_system_config_value(session, "SOLVE_CLARIFY_SCHEMA_ID", ""),
+        repair_schema_id=_system_config_value(session, "SOLVE_REPAIR_SCHEMA_ID", ""),
         tier_policy=tier_policy,
         narrator_enabled=_truthy(_system_config_value(session, "SOLVE_NARRATOR_ENABLED", "false")),
         parse_timeout_ms=int(_system_config_value(session, "SOLVE_TIMEOUT_PARSE_MS", "1500")),
@@ -172,7 +172,7 @@ def _extract_schema_name(schema_entry: JsonSchemaEntry) -> str:
     name = content.get("name")
     if isinstance(name, str) and name.strip():
         return name.strip()
-    return str(schema_entry.schema_id or "solve_superset_v2").replace(".schema.json", "")
+    return str(schema_entry.schema_id or "runtime_schema").replace(".schema.json", "")
 
 
 def _tier_to_v2(raw_tier: Optional[str]) -> str:

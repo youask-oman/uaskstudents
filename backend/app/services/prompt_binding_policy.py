@@ -6,21 +6,11 @@ from typing import Dict, List
 from app.models import PromptTierEnum, TrimStrategyEnum
 
 
-ALLOWED_PROMPT_IDS: List[str] = [
-    "global_system_prompt_batch_v1",
-    "solve_dev_final_v2",
-    "solve_dev_free_v2",
-    "solve_dev_standard_v2",
-    "solve_dev_research_v2",
-]
+# Optional allowlists. Keep empty to enforce DB-driven bindings only.
+ALLOWED_PROMPT_IDS: List[str] = []
 
-ALLOWED_SCHEMA_IDS: List[str] = [
-    "solve_batch_final_v2",
-    "solve_batch_final_min_v1",
-    "solve_batch_free_v2",
-    "solve_batch_standard_v2",
-    "solve_batch_research_v2",
-]
+# Optional allowlists. Keep empty to enforce DB-driven bindings only.
+ALLOWED_SCHEMA_IDS: List[str] = []
 
 ALLOWED_SOLVE_TIERS: List[PromptTierEnum] = [
     PromptTierEnum.FINAL,
@@ -34,8 +24,6 @@ ALLOWED_SOLVE_TIERS: List[PromptTierEnum] = [
 class SolveTierPolicy:
     prompt_tier: PromptTierEnum
     external_tier: str
-    developer_prompt_id: str
-    schema_id: str
     max_questions: int
     allow_research: bool
     solve_cost_text: int
@@ -49,8 +37,6 @@ SOLVE_TIER_POLICY: Dict[str, SolveTierPolicy] = {
     "FINAL": SolveTierPolicy(
         prompt_tier=PromptTierEnum.FINAL,
         external_tier="FINAL",
-        developer_prompt_id="solve_dev_final_v2",
-        schema_id="solve_batch_final_v2",
         max_questions=15,
         allow_research=False,
         solve_cost_text=1,
@@ -62,8 +48,6 @@ SOLVE_TIER_POLICY: Dict[str, SolveTierPolicy] = {
     "SHORT_STEPS": SolveTierPolicy(
         prompt_tier=PromptTierEnum.SHORT_STEPS,
         external_tier="SHORT_STEPS",
-        developer_prompt_id="solve_dev_free_v2",
-        schema_id="solve_batch_free_v2",
         max_questions=5,
         allow_research=False,
         solve_cost_text=1,
@@ -75,8 +59,6 @@ SOLVE_TIER_POLICY: Dict[str, SolveTierPolicy] = {
     "STANDARD": SolveTierPolicy(
         prompt_tier=PromptTierEnum.STANDARD,
         external_tier="STANDARD",
-        developer_prompt_id="solve_dev_standard_v2",
-        schema_id="solve_batch_standard_v2",
         max_questions=2,
         allow_research=False,
         solve_cost_text=2,
@@ -88,8 +70,6 @@ SOLVE_TIER_POLICY: Dict[str, SolveTierPolicy] = {
     "RESEARCH": SolveTierPolicy(
         prompt_tier=PromptTierEnum.RESEARCH,
         external_tier="RESEARCH",
-        developer_prompt_id="solve_dev_research_v2",
-        schema_id="solve_batch_research_v2",
         max_questions=1,
         allow_research=True,
         solve_cost_text=4,
@@ -100,7 +80,6 @@ SOLVE_TIER_POLICY: Dict[str, SolveTierPolicy] = {
     ),
 }
 
-SYSTEM_PROMPT_ID = "global_system_prompt_batch_v1"
 DEFAULT_MODEL = "gpt-5-mini"
 DEFAULT_TRIM_STRATEGY = TrimStrategyEnum.TRIM_CONTEXT_FIRST
 

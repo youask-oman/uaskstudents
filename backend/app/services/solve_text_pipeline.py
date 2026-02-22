@@ -30,7 +30,6 @@ class SolveTextPipelineError(Exception):
 @dataclass
 class SolveModeConfig:
     cap: int
-    schema_names: List[str]
     binding_tier: str
     solver_mode: str
     batch_supported: bool
@@ -39,28 +38,24 @@ class SolveModeConfig:
 MODE_CONFIG: Dict[str, SolveModeConfig] = {
     "free_minimal": SolveModeConfig(
         cap=10,
-        schema_names=["solve_free_minimal_v1_openai", "solve_free_minimal_v1"],
         binding_tier="SHORT_STEPS",
         solver_mode="minimal",
         batch_supported=True,
     ),
     "final_only": SolveModeConfig(
         cap=10,
-        schema_names=["solve_final_answer_v1_openai", "solve_final_answer_v1"],
         binding_tier="FINAL",
         solver_mode="minimal",
         batch_supported=True,
     ),
     "standard_detailed": SolveModeConfig(
         cap=3,
-        schema_names=["solve_standard_detailed_v1"],
         binding_tier="STANDARD",
         solver_mode="detailed",
         batch_supported=True,
     ),
     "research_detailed": SolveModeConfig(
         cap=1,
-        schema_names=["solve_research_detailed_v1"],
         binding_tier="RESEARCH",
         solver_mode="detailed",
         batch_supported=False,
@@ -119,45 +114,29 @@ def _parse_tier_enum(raw_tier: str) -> PromptTierEnum:
     return PromptTierEnum.SHORT_STEPS
 
 
-def _find_schema_entry(session: Session, schema_names: List[str]) -> JsonSchemaEntry:
-    for schema_name in schema_names:
-        for candidate_schema_id in (schema_name, f"{schema_name}.schema.json"):
-            row = session.exec(
-                select(JsonSchemaEntry)
-                .where(JsonSchemaEntry.schema_id == candidate_schema_id)
-                .where(JsonSchemaEntry.is_active == True)
-                .order_by(JsonSchemaEntry.version.desc(), JsonSchemaEntry.id.desc())
-            ).first()
-            if row:
-                return row
-
-    rows = session.exec(
+def _find_schema_entry_by_id(session: Session, schema_id: str) -> JsonSchemaEntry:
+    row = session.exec(
         select(JsonSchemaEntry)
+        .where(JsonSchemaEntry.schema_id == schema_id)
         .where(JsonSchemaEntry.is_active == True)
-        .order_by(JsonSchemaEntry.updated_at.desc(), JsonSchemaEntry.id.desc())
-    ).all()
-    for row in rows:
-        content = row.content if isinstance(row.content, dict) else {}
-        name = str(content.get("name") or "").strip()
-        if name and name in schema_names:
-            return row
-
+        .order_by(JsonSchemaEntry.version.desc(), JsonSchemaEntry.id.desc())
+    ).first()
+    if row:
+        return row
     raise SolveTextPipelineError(
         "SCHEMA_NOT_FOUND",
         "Configured schema not found in DB",
         http_status=500,
-        details={"schema_names": schema_names},
+        details={"schema_id": schema_id},
     )
 
 
 def _find_prompt_binding(
     session: Session,
-    schema_id: str,
     preferred_tier: PromptTierEnum,
 ) -> PromptBinding:
     binding = session.exec(
         select(PromptBinding)
-        .where(PromptBinding.output_schema_id == schema_id)
         .where(PromptBinding.mode == PromptModeEnum.SOLVE)
         .where(PromptBinding.tier == preferred_tier)
         .where(PromptBinding.is_active == True)
@@ -168,7 +147,6 @@ def _find_prompt_binding(
 
     fallback = session.exec(
         select(PromptBinding)
-        .where(PromptBinding.output_schema_id == schema_id)
         .where(PromptBinding.mode == PromptModeEnum.SOLVE)
         .where(PromptBinding.is_active == True)
         .order_by(PromptBinding.updated_at.desc(), PromptBinding.id.desc())
@@ -178,9 +156,9 @@ def _find_prompt_binding(
 
     raise SolveTextPipelineError(
         "PROMPT_BINDING_NOT_FOUND",
-        "No active prompt binding found for schema",
+        "No active prompt binding found for solve mode",
         http_status=500,
-        details={"schema_id": schema_id, "preferred_tier": preferred_tier.value},
+        details={"preferred_tier": preferred_tier.value},
     )
 
 
@@ -447,12 +425,11 @@ async def solve_text_questions(
     cfg = _enforce_caps(requested_mode, len(normalized_questions))
     response_language = _resolve_user_default_language(session, user_id)
 
-    schema_entry = _find_schema_entry(session, cfg.schema_names)
+    preferred_tier = _parse_tier_enum(cfg.binding_tier if cfg.binding_tier else tier)
+    binding = _find_prompt_binding(session, preferred_tier)
+    schema_entry = _find_schema_entry_by_id(session, binding.output_schema_id)
     schema_name = _extract_schema_name(schema_entry)
     schema_body = _extract_schema_object(schema_entry)
-
-    preferred_tier = _parse_tier_enum(cfg.binding_tier if cfg.binding_tier else tier)
-    binding = _find_prompt_binding(session, schema_entry.schema_id, preferred_tier)
     system_prompt = _find_system_prompt(session, binding.global_system_prompt_id)
     developer_prompt = _find_developer_prompt(session, binding)
 

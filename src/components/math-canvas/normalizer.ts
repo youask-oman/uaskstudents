@@ -1274,6 +1274,7 @@ export const extractBatchSolutionsFromSessionMessages = (
 
     const mode = asString(structured.mode) || "";
     const solutionsRaw = Array.isArray(structured.solutions) ? structured.solutions : [];
+    const itemsRaw = Array.isArray(structured.items) ? structured.items : [];
     const rawUserExtraction = asRecord(structured.raw_user_extraction);
     const tierRequested = asString(structured.tier_requested) || asString(asRecord(structured.solve_meta)?.tier_requested) || "";
     const tierEffective = asString(structured.tier_effective) || asString(asRecord(structured.solve_meta)?.tier_effective) || "";
@@ -1303,7 +1304,7 @@ export const extractBatchSolutionsFromSessionMessages = (
       }
     }
 
-    if (mode !== "batch_text_solve" && solutionsRaw.length === 0) continue;
+    if (mode !== "batch_text_solve" && solutionsRaw.length === 0 && itemsRaw.length === 0) continue;
     if (solutionsRaw.length === 0) {
       const shortDirect = parseMathSolutionFromObject(structured);
       if (shortDirect) {

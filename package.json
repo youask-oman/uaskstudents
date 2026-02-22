@@ -45,8 +45,11 @@
     "@types/react-plotly.js": "^2.6.4",
     "better-react-mathjax": "^2.4.0-beta-1",
     "docx": "^9.5.1",
+    "dompurify": "^3.3.1",
     "fabric": "^7.1.0",
     "katex": "^0.16.27",
+    "lru-cache": "^11.2.6",
+    "mathjax-full": "^3.2.2",
     "mathlive": "^0.108.2",
     "next": "^16.1.6",
     "pdfjs-dist": "^5.4.530",
@@ -57,7 +60,11 @@
     "react-markdown": "^10.1.0",
     "react-plotly.js": "^2.6.0",
     "rehype-katex": "^7.0.1",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "unist-util-visit": "^5.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

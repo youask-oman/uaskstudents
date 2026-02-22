@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  serverExternalPackages: ["mathjax-full"],
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
@@ -32,16 +33,18 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:9000/api/:path*',
-      },
-      {
-        source: '/storage/:path*',
-        destination: 'http://localhost:9000/storage/:path*',
-      },
-    ]
+    return {
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:9000/api/:path*',
+        },
+        {
+          source: '/storage/:path*',
+          destination: 'http://localhost:9000/storage/:path*',
+        },
+      ],
+    };
   },
   // Increase experimental proxy timeout for long-running AI requests
   experimental: {

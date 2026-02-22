@@ -1,8 +1,6 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
+import MarkdownMathContent from "@/components/math/MarkdownMathContent";
 
 type Props = {
   content: string;
@@ -11,9 +9,8 @@ type Props = {
 export function ChatFinalMessage({ content }: Props) {
   return (
     <div className="prose prose-slate max-w-none break-words leading-7 whitespace-normal">
-      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {content}
-      </ReactMarkdown>
+      <MarkdownMathContent content={content} />
     </div>
   );
 }
+

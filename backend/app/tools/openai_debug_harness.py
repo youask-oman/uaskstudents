@@ -471,7 +471,7 @@ Be concise but thorough. Show your work clearly."""
                     "verbosity": verbosity,
                     "format": {
                         "type": "json_schema",
-                        "name": "solve_response_v3",
+                        "name": "runtime_schema",
                         "schema": deref_schema,
                         "strict": True
                     }
@@ -489,7 +489,7 @@ Be concise but thorough. Show your work clearly."""
                 "response_format": {
                     "type": "json_schema",
                     "json_schema": {
-                        "name": "solve_response_v3",
+                        "name": "runtime_schema",
                         "strict": True,
                         "schema": deref_schema
                     }
@@ -506,7 +506,7 @@ Be concise but thorough. Show your work clearly."""
             system_prompt_preview=system_prompt[:500] if len(system_prompt) > 500 else system_prompt,
             user_message_length=len(user_message),
             user_message_content=user_message,
-            schema_name="solve_response_v3",
+            schema_name="runtime_schema",
             schema_object=deref_schema,
             tool_definitions=None,
             full_payload=redact_secrets(raw_params),

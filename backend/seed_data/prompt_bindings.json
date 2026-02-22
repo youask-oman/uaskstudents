@@ -1,284 +1,8 @@
 [
   {
-    "attempt_fee": "1.0000000000",
+    "attempt_fee": null,
     "context_budget_tokens": null,
-    "created_at": "2026-02-15T00:22:16.028912+00:00",
-    "developer_prompt_id": "solve_dev_standard_v2",
-    "features": {
-      "allow_plot": true,
-      "allow_research": false,
-      "allow_verify": true,
-      "daily_credit_cap": null,
-      "generated_images_monthly_cap": null,
-      "make_it_right_monthly_cap": null,
-      "model": "gpt-5-mini",
-      "ocr_monthly_cap": null,
-      "reasoning_effort": "low",
-      "voice_monthly_cap": null
-    },
-    "global_system_prompt_id": "global_system_prompt_batch_v1",
-    "id": "d11d98c8-569e-4089-9b71-aebe8c6d92af",
-    "is_active": true,
-    "json_retry_max_attempts": 1,
-    "json_retry_max_output_tokens": null,
-    "max_input_tokens": null,
-    "max_output_tokens": null,
-    "max_questions_allowed": 2,
-    "max_steps": null,
-    "mode": "SOLVE",
-    "multipliers": {
-      "credits": {
-        "attempt_fee": {
-          "final": 1,
-          "research": 2,
-          "short_steps": 1,
-          "standard": 1
-        },
-        "plot_spec": 1,
-        "plot_trigger": 1,
-        "solve": {
-          "final": {
-            "snap_image": 2,
-            "snap_pdf": 3,
-            "text": 1,
-            "voice": 2
-          },
-          "research": {
-            "snap_image": 5,
-            "snap_pdf": 6,
-            "text": 4,
-            "voice": 5
-          },
-          "short_steps": {
-            "snap_image": 2,
-            "snap_pdf": 3,
-            "text": 1,
-            "voice": 2
-          },
-          "standard": {
-            "snap_image": 3,
-            "snap_pdf": 4,
-            "text": 2,
-            "voice": 3
-          }
-        },
-        "verify": {
-          "final": 1,
-          "research": 2,
-          "short_steps": 1,
-          "standard": 1
-        }
-      },
-      "version": 1
-    },
-    "output_schema_id": "solve_batch_standard_v2",
-    "plot_addon_cost": "2.0000000000",
-    "plot_annotations_cap": 5,
-    "plot_points_cap": 25,
-    "plot_traces_cap": 5,
-    "retry_cap_tokens": null,
-    "solve_snap_image_cost": "2.0000000000",
-    "solve_snap_pdf_cost": "2.0000000000",
-    "solve_text_cost": "3.0000000000",
-    "solve_voice_cost": "2.0000000000",
-    "system_schema_budget_tokens": null,
-    "temperature": 0.1,
-    "tier": "STANDARD",
-    "timeout_ms": 60000,
-    "top_p": 1.0,
-    "trim_strategy": "trim_context_first",
-    "updated_at": "2026-02-16T02:09:01.351146+00:00",
-    "updated_by": "admin@uask.ai",
-    "verify_addon_cost": "1.0000000000"
-  },
-  {
-    "attempt_fee": "2.0000000000",
-    "context_budget_tokens": null,
-    "created_at": "2026-02-15T00:22:16.031835+00:00",
-    "developer_prompt_id": "solve_dev_research_v2",
-    "features": {
-      "allow_plot": true,
-      "allow_research": true,
-      "allow_verify": true,
-      "daily_credit_cap": null,
-      "generated_images_monthly_cap": null,
-      "make_it_right_monthly_cap": null,
-      "model": "gpt-5-mini",
-      "ocr_monthly_cap": null,
-      "reasoning_effort": "low",
-      "voice_monthly_cap": null
-    },
-    "global_system_prompt_id": "global_system_prompt_batch_v1",
-    "id": "42c05778-f4c8-4fb4-a328-2ab42c48e91f",
-    "is_active": true,
-    "json_retry_max_attempts": 1,
-    "json_retry_max_output_tokens": null,
-    "max_input_tokens": null,
-    "max_output_tokens": null,
-    "max_questions_allowed": 1,
-    "max_steps": null,
-    "mode": "SOLVE",
-    "multipliers": {
-      "credits": {
-        "attempt_fee": {
-          "final": 1,
-          "research": 2,
-          "short_steps": 1,
-          "standard": 1
-        },
-        "plot_spec": 1,
-        "plot_trigger": 3,
-        "solve": {
-          "final": {
-            "snap_image": 2,
-            "snap_pdf": 3,
-            "text": 1,
-            "voice": 2
-          },
-          "research": {
-            "snap_image": 5,
-            "snap_pdf": 6,
-            "text": 4,
-            "voice": 5
-          },
-          "short_steps": {
-            "snap_image": 2,
-            "snap_pdf": 3,
-            "text": 1,
-            "voice": 2
-          },
-          "standard": {
-            "snap_image": 3,
-            "snap_pdf": 4,
-            "text": 2,
-            "voice": 3
-          }
-        },
-        "verify": {
-          "final": 1,
-          "research": 2,
-          "short_steps": 1,
-          "standard": 1
-        }
-      },
-      "version": 1
-    },
-    "output_schema_id": "solve_batch_research_v2",
-    "plot_addon_cost": "3.0000000000",
-    "plot_annotations_cap": 5,
-    "plot_points_cap": 25,
-    "plot_traces_cap": 5,
-    "retry_cap_tokens": null,
-    "solve_snap_image_cost": "5.0000000000",
-    "solve_snap_pdf_cost": "6.0000000000",
-    "solve_text_cost": "4.0000000000",
-    "solve_voice_cost": "5.0000000000",
-    "system_schema_budget_tokens": null,
-    "temperature": 0.1,
-    "tier": "RESEARCH",
-    "timeout_ms": 60000,
-    "top_p": 1.0,
-    "trim_strategy": "trim_context_first",
-    "updated_at": "2026-02-15T09:13:40.996337+00:00",
-    "updated_by": "Loai",
-    "verify_addon_cost": "2.0000000000"
-  },
-  {
-    "attempt_fee": "1.0000000000",
-    "context_budget_tokens": null,
-    "created_at": "2026-02-15T00:22:16.034063+00:00",
-    "developer_prompt_id": "solve_dev_final_v2",
-    "features": {
-      "allow_plot": true,
-      "allow_research": false,
-      "allow_verify": true,
-      "daily_credit_cap": null,
-      "generated_images_monthly_cap": null,
-      "make_it_right_monthly_cap": null,
-      "model": "gpt-5-mini",
-      "ocr_monthly_cap": null,
-      "reasoning_effort": "low",
-      "voice_monthly_cap": null
-    },
-    "global_system_prompt_id": "global_system_prompt_batch_v1",
-    "id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
-    "is_active": true,
-    "json_retry_max_attempts": 1,
-    "json_retry_max_output_tokens": null,
-    "max_input_tokens": null,
-    "max_output_tokens": null,
-    "max_questions_allowed": 15,
-    "max_steps": null,
-    "mode": "SOLVE",
-    "multipliers": {
-      "credits": {
-        "attempt_fee": {
-          "final": 1,
-          "research": 2,
-          "short_steps": 1,
-          "standard": 1
-        },
-        "plot_spec": 1,
-        "plot_trigger": 0,
-        "solve": {
-          "final": {
-            "snap_image": 2,
-            "snap_pdf": 3,
-            "text": 1,
-            "voice": 2
-          },
-          "research": {
-            "snap_image": 5,
-            "snap_pdf": 6,
-            "text": 4,
-            "voice": 5
-          },
-          "short_steps": {
-            "snap_image": 2,
-            "snap_pdf": 3,
-            "text": 1,
-            "voice": 2
-          },
-          "standard": {
-            "snap_image": 3,
-            "snap_pdf": 4,
-            "text": 2,
-            "voice": 3
-          }
-        },
-        "verify": {
-          "final": 1,
-          "research": 2,
-          "short_steps": 1,
-          "standard": 1
-        }
-      },
-      "version": 1
-    },
-    "output_schema_id": "solve_batch_final_min_v1",
-    "plot_addon_cost": "0E-10",
-    "plot_annotations_cap": 5,
-    "plot_points_cap": 25,
-    "plot_traces_cap": 5,
-    "retry_cap_tokens": null,
-    "solve_snap_image_cost": "2.0000000000",
-    "solve_snap_pdf_cost": "3.0000000000",
-    "solve_text_cost": "1.0000000000",
-    "solve_voice_cost": "2.0000000000",
-    "system_schema_budget_tokens": null,
-    "temperature": 0.1,
-    "tier": "FINAL",
-    "timeout_ms": 60000,
-    "top_p": 1.0,
-    "trim_strategy": "trim_context_first",
-    "updated_at": "2026-02-15T19:01:09.539198+00:00",
-    "updated_by": "admin@uask.ai",
-    "verify_addon_cost": "1.0000000000"
-  },
-  {
-    "attempt_fee": "1.0000000000",
-    "context_budget_tokens": null,
-    "created_at": "2026-02-15T00:22:16.024333+00:00",
+    "created_at": "2026-02-22T02:59:43.605717+00:00",
     "developer_prompt_id": "solve_dev_free_v2",
     "features": {
       "allow_plot": true,
@@ -348,23 +72,299 @@
       "version": 1
     },
     "output_schema_id": "solve_batch_free_v2",
-    "plot_addon_cost": "0E-10",
+    "plot_addon_cost": null,
     "plot_annotations_cap": 5,
     "plot_points_cap": 25,
     "plot_traces_cap": 5,
     "retry_cap_tokens": null,
-    "solve_snap_image_cost": "2.0000000000",
-    "solve_snap_pdf_cost": "3.0000000000",
-    "solve_text_cost": "1.0000000000",
-    "solve_voice_cost": "2.0000000000",
+    "solve_snap_image_cost": null,
+    "solve_snap_pdf_cost": null,
+    "solve_text_cost": null,
+    "solve_voice_cost": null,
     "system_schema_budget_tokens": null,
     "temperature": 0.1,
     "tier": "SHORT_STEPS",
     "timeout_ms": 60000,
     "top_p": 1.0,
     "trim_strategy": "trim_context_first",
-    "updated_at": "2026-02-15T09:13:40.996508+00:00",
+    "updated_at": "2026-02-22T05:13:45.462085+00:00",
+    "updated_by": "admin@uask.ai",
+    "verify_addon_cost": null
+  },
+  {
+    "attempt_fee": null,
+    "context_budget_tokens": null,
+    "created_at": "2026-02-22T02:59:43.603635+00:00",
+    "developer_prompt_id": "solve_dev_final_v2",
+    "features": {
+      "allow_plot": true,
+      "allow_research": false,
+      "allow_verify": true,
+      "daily_credit_cap": null,
+      "generated_images_monthly_cap": null,
+      "make_it_right_monthly_cap": null,
+      "model": "gpt-5-mini",
+      "ocr_monthly_cap": null,
+      "reasoning_effort": "low",
+      "voice_monthly_cap": null
+    },
+    "global_system_prompt_id": "global_system_prompt_batch_v1",
+    "id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+    "is_active": true,
+    "json_retry_max_attempts": 1,
+    "json_retry_max_output_tokens": null,
+    "max_input_tokens": null,
+    "max_output_tokens": null,
+    "max_questions_allowed": 15,
+    "max_steps": null,
+    "mode": "SOLVE",
+    "multipliers": {
+      "credits": {
+        "attempt_fee": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        },
+        "plot_spec": 1,
+        "plot_trigger": 0,
+        "solve": {
+          "final": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "research": {
+            "snap_image": 5,
+            "snap_pdf": 6,
+            "text": 4,
+            "voice": 5
+          },
+          "short_steps": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "standard": {
+            "snap_image": 3,
+            "snap_pdf": 4,
+            "text": 2,
+            "voice": 3
+          }
+        },
+        "verify": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        }
+      },
+      "version": 1
+    },
+    "output_schema_id": "solve_batch_final_v2",
+    "plot_addon_cost": null,
+    "plot_annotations_cap": 5,
+    "plot_points_cap": 25,
+    "plot_traces_cap": 5,
+    "retry_cap_tokens": null,
+    "solve_snap_image_cost": null,
+    "solve_snap_pdf_cost": null,
+    "solve_text_cost": null,
+    "solve_voice_cost": null,
+    "system_schema_budget_tokens": null,
+    "temperature": 0.1,
+    "tier": "FINAL",
+    "timeout_ms": 60000,
+    "top_p": 1.0,
+    "trim_strategy": "trim_context_first",
+    "updated_at": "2026-02-22T05:10:49.039500+00:00",
+    "updated_by": "admin@uask.ai",
+    "verify_addon_cost": null
+  },
+  {
+    "attempt_fee": null,
+    "context_budget_tokens": null,
+    "created_at": "2026-02-22T02:59:43.598392+00:00",
+    "developer_prompt_id": "solve_dev_standard_v2",
+    "features": {
+      "allow_plot": true,
+      "allow_research": false,
+      "allow_verify": true,
+      "daily_credit_cap": null,
+      "generated_images_monthly_cap": null,
+      "make_it_right_monthly_cap": null,
+      "model": "gpt-5-mini",
+      "ocr_monthly_cap": null,
+      "reasoning_effort": "low",
+      "voice_monthly_cap": null
+    },
+    "global_system_prompt_id": "global_system_prompt_batch_v1",
+    "id": "d11d98c8-569e-4089-9b71-aebe8c6d92af",
+    "is_active": false,
+    "json_retry_max_attempts": 1,
+    "json_retry_max_output_tokens": null,
+    "max_input_tokens": null,
+    "max_output_tokens": null,
+    "max_questions_allowed": 2,
+    "max_steps": null,
+    "mode": "SOLVE",
+    "multipliers": {
+      "credits": {
+        "attempt_fee": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        },
+        "plot_spec": 1,
+        "plot_trigger": 1,
+        "solve": {
+          "final": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "research": {
+            "snap_image": 5,
+            "snap_pdf": 6,
+            "text": 4,
+            "voice": 5
+          },
+          "short_steps": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "standard": {
+            "snap_image": 3,
+            "snap_pdf": 4,
+            "text": 2,
+            "voice": 3
+          }
+        },
+        "verify": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        }
+      },
+      "version": 1
+    },
+    "output_schema_id": "solve_batch_standard_v2",
+    "plot_addon_cost": null,
+    "plot_annotations_cap": 5,
+    "plot_points_cap": 25,
+    "plot_traces_cap": 5,
+    "retry_cap_tokens": null,
+    "solve_snap_image_cost": null,
+    "solve_snap_pdf_cost": null,
+    "solve_text_cost": null,
+    "solve_voice_cost": null,
+    "system_schema_budget_tokens": null,
+    "temperature": 0.1,
+    "tier": "STANDARD",
+    "timeout_ms": 60000,
+    "top_p": 1.0,
+    "trim_strategy": "trim_context_first",
+    "updated_at": "2026-02-22T05:09:49.603096+00:00",
     "updated_by": "Loai",
-    "verify_addon_cost": "1.0000000000"
+    "verify_addon_cost": null
+  },
+  {
+    "attempt_fee": null,
+    "context_budget_tokens": null,
+    "created_at": "2026-02-22T02:59:43.601585+00:00",
+    "developer_prompt_id": "solve_dev_research_v2",
+    "features": {
+      "allow_plot": true,
+      "allow_research": true,
+      "allow_verify": true,
+      "daily_credit_cap": null,
+      "generated_images_monthly_cap": null,
+      "make_it_right_monthly_cap": null,
+      "model": "gpt-5-mini",
+      "ocr_monthly_cap": null,
+      "reasoning_effort": "low",
+      "voice_monthly_cap": null
+    },
+    "global_system_prompt_id": "global_system_prompt_batch_v1",
+    "id": "42c05778-f4c8-4fb4-a328-2ab42c48e91f",
+    "is_active": false,
+    "json_retry_max_attempts": 1,
+    "json_retry_max_output_tokens": null,
+    "max_input_tokens": null,
+    "max_output_tokens": null,
+    "max_questions_allowed": 1,
+    "max_steps": null,
+    "mode": "SOLVE",
+    "multipliers": {
+      "credits": {
+        "attempt_fee": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        },
+        "plot_spec": 1,
+        "plot_trigger": 3,
+        "solve": {
+          "final": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "research": {
+            "snap_image": 5,
+            "snap_pdf": 6,
+            "text": 4,
+            "voice": 5
+          },
+          "short_steps": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "standard": {
+            "snap_image": 3,
+            "snap_pdf": 4,
+            "text": 2,
+            "voice": 3
+          }
+        },
+        "verify": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        }
+      },
+      "version": 1
+    },
+    "output_schema_id": "solve_batch_research_v2",
+    "plot_addon_cost": null,
+    "plot_annotations_cap": 5,
+    "plot_points_cap": 25,
+    "plot_traces_cap": 5,
+    "retry_cap_tokens": null,
+    "solve_snap_image_cost": null,
+    "solve_snap_pdf_cost": null,
+    "solve_text_cost": null,
+    "solve_voice_cost": null,
+    "system_schema_budget_tokens": null,
+    "temperature": 0.1,
+    "tier": "RESEARCH",
+    "timeout_ms": 60000,
+    "top_p": 1.0,
+    "trim_strategy": "trim_context_first",
+    "updated_at": "2026-02-22T05:09:49.604335+00:00",
+    "updated_by": "Loai",
+    "verify_addon_cost": null
   }
 ]

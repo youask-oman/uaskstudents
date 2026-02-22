@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://youask.ai/schemas/solve_single_canonical_v1.schema.json",
+  "title": "solve_single_canonical_v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "mode",
+    "request_id",
+    "attempt_id",
+    "question",
+    "tasks",
+    "selected_task_ids",
+    "solution",
+    "billing",
+    "solve_meta"
+  ],
+  "properties": {
+    "schema_name": {
+      "type": "string",
+      "const": "solve_single_canonical_v1"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "mode": {
+      "type": "string",
+      "const": "single_question_tasks_solve"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attempt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "mode",
+        "graph_mode",
+        "domain_mode"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "text": { "type": "string" },
+        "mode": { "type": "string" },
+        "graph_mode": { "type": "string" },
+        "domain_mode": { "type": "string" }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["task_id", "task_text"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 1 },
+          "task_text": { "type": "string" },
+          "order_index": { "type": "integer" }
+        }
+      }
+    },
+    "selected_task_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "solution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_id",
+        "steps",
+        "final_answer",
+        "plot",
+        "quality",
+        "warnings"
+      ],
+      "properties": {
+        "question_id": { "type": "string", "minLength": 1 },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["index", "title", "explanation", "math_latex"],
+            "properties": {
+              "index": { "type": "integer" },
+              "title": { "type": "string" },
+              "explanation": { "type": "string" },
+              "math_latex": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "final_answer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["answer_text", "answer_latex", "values", "units"],
+          "properties": {
+            "answer_text": { "type": "string" },
+            "answer_latex": { "type": "string" },
+            "values": {
+              "type": "array",
+              "items": {}
+            },
+            "units": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "plot": {
+          "type": "object"
+        },
+        "quality": {
+          "type": "object"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {}
+        }
+      }
+    },
+    "billing": {
+      "type": "object"
+    },
+    "solve_meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "tier_requested",
+        "tier_effective",
+        "requested_mode",
+        "output_format",
+        "prompt_binding_id",
+        "global_system_prompt_id",
+        "developer_prompt_id",
+        "output_schema_id",
+        "solver_calls_count",
+        "saved_items_count"
+      ],
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "tier_requested": { "type": "string" },
+        "tier_effective": { "type": "string" },
+        "requested_mode": { "type": "string" },
+        "output_format": { "type": "string" },
+        "prompt_binding_id": { "type": ["string", "null"] },
+        "global_system_prompt_id": { "type": ["string", "null"] },
+        "developer_prompt_id": { "type": ["string", "null"] },
+        "output_schema_id": { "type": ["string", "null"] },
+        "solver_calls_count": { "type": "integer" },
+        "saved_items_count": { "type": "integer" }
+      }
+    }
+  }
+}

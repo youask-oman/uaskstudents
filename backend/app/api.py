@@ -424,10 +424,6 @@ def _compact_assistant_structured(payload: Any) -> Any:
     return payload
 
 
-def _structured_data_canonical_enabled() -> bool:
-    return (os.getenv("STRUCTURED_DATA_CANONICAL_ENABLED", "true") or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _normalize_graph_mode_value(value: Any) -> str:
     raw = str(value or "").strip().lower()
     if raw in {"on", "force_on"}:
@@ -468,38 +464,6 @@ def _extract_axis_ranges_from_text(text: str) -> Dict[str, Any]:
     return out
 
 
-def _extract_canonical_final_answer(solution_item: Dict[str, Any]) -> Dict[str, Any]:
-    if not isinstance(solution_item, dict):
-        return {"answer_text": "", "answer_latex": "", "values": [], "units": None}
-    final = solution_item.get("final_answer")
-    if isinstance(final, dict):
-        text = str(final.get("answer_text") or "").strip()
-        latex = str(final.get("answer_latex") or "").strip()
-        if text or latex:
-            return {
-                "answer_text": text or latex,
-                "answer_latex": latex or text,
-                "values": final.get("values") if isinstance(final.get("values"), list) else [],
-                "units": final.get("units"),
-            }
-    steps = solution_item.get("steps") if isinstance(solution_item.get("steps"), list) else []
-    for step in reversed(steps):
-        if not isinstance(step, dict):
-            continue
-        explanation = str(step.get("explanation") or "")
-        m = re.search(r"begin\s*[_\-\s]*final([\s\S]*?)end\s*[_\-\s]*final", explanation, flags=re.IGNORECASE)
-        if m:
-            candidate = m.group(1).strip()
-            if candidate:
-                return {"answer_text": candidate, "answer_latex": candidate, "values": [], "units": None}
-        math_latex = step.get("math_latex") if isinstance(step.get("math_latex"), list) else []
-        for expr in reversed(math_latex):
-            expr_s = str(expr or "").strip()
-            if expr_s:
-                return {"answer_text": expr_s, "answer_latex": expr_s, "values": [], "units": None}
-    return {"answer_text": "", "answer_latex": "", "values": [], "units": None}
-
-
 def _enforce_plot_in_payload(
     payload: Dict[str, Any],
     *,
@@ -534,66 +498,6 @@ def _enforce_plot_in_payload(
         item["plot"] = plot_obj
     payload["items"] = items
     return payload
-
-
-def _build_canonical_structured_data(
-    *,
-    runtime_questions_json: List[Dict[str, Any]],
-    safe_items: List[Dict[str, Any]],
-    task_parse: Dict[str, Any],
-    workload_billing: Dict[str, Any],
-    telemetry: Dict[str, Any],
-    body_tier: str,
-    request_id: str,
-    attempt_id: str,
-    requested_mode: str,
-) -> Dict[str, Any]:
-    q = runtime_questions_json[0] if runtime_questions_json else {}
-    item = safe_items[0] if safe_items else {}
-    final_answer = _extract_canonical_final_answer(item)
-    canonical: Dict[str, Any] = {
-        "schema_name": "solve_single_canonical_v1",
-        "schema_version": "v1",
-        "mode": "single_question_tasks_solve",
-        "request_id": str((telemetry or {}).get("request_id") or request_id),
-        "attempt_id": str((telemetry or {}).get("attempt_id") or attempt_id),
-        "question": {
-            "id": "q1",
-            "text": str(q.get("question_text") or ""),
-            "mode": str(q.get("mode") or "SOLVE"),
-            "graph_mode": str(q.get("graph_mode") or "AUTO"),
-            "domain_mode": str(q.get("domain_mode") or "reals"),
-        },
-        "tasks": jsonable_encoder(task_parse.get("tasks") or []),
-        "selected_task_ids": list(
-            task_parse.get("selected_task_ids")
-            or [str(t.get("task_id")) for t in (task_parse.get("tasks") or []) if isinstance(t, dict)]
-        ),
-        "solution": {
-            "question_id": "q1",
-            "steps": jsonable_encoder(item.get("steps") or []),
-            "final_answer": final_answer,
-            "plot": jsonable_encoder(item.get("plot") or {}),
-            "quality": jsonable_encoder(item.get("quality") or {}),
-            "warnings": jsonable_encoder(item.get("warnings") or []),
-        },
-        "billing": workload_billing,
-        "solve_meta": {
-            "provider": str((telemetry or {}).get("provider") or ""),
-            "model": str((telemetry or {}).get("model") or ""),
-            "tier_requested": str((body_tier or "")).upper() or "SHORT_STEPS",
-            "tier_effective": str((safe_items and "FREE") or (body_tier or "")).upper() or "FREE",
-            "requested_mode": str(requested_mode or "general"),
-            "output_format": "json_schema",
-            "prompt_binding_id": (telemetry or {}).get("prompt_binding_id"),
-            "global_system_prompt_id": (telemetry or {}).get("global_system_prompt_id"),
-            "developer_prompt_id": (telemetry or {}).get("developer_prompt_id"),
-            "output_schema_id": (telemetry or {}).get("output_schema_id"),
-            "solver_calls_count": 1,
-            "saved_items_count": 1,
-        },
-    }
-    return canonical
 
 
 def _store_debug_blobs_enabled() -> bool:
@@ -1118,7 +1022,7 @@ def _build_schema_valid_stream_error_payload(
     schema_obj = _schema_object_for_validation(schema_config)
     schema_version = "v1"
     response_type = "standard_solve_extreme"
-    prompt_const = prompt_id or "solve_standard_extreme_detailed_v1"
+    prompt_const = prompt_id or "runtime_prompt_binding"
     if isinstance(schema_obj, dict):
         schema_version = (
             (schema_obj.get("properties") or {}).get("schema_version", {}).get("const")
@@ -7592,76 +7496,9 @@ async def solve_v3_stream_endpoint(
                 if entry.get("question_id") and entry.get("answer_text")
             ).strip() or f"Batch solve complete for {len(safe_items)} question(s)."
             safe_telemetry = jsonable_encoder(msg_telemetry if isinstance(msg_telemetry, dict) else {})
-            if _structured_data_canonical_enabled():
-                assistant_structured = _build_canonical_structured_data(
-                    runtime_questions_json=runtime_questions_json,
-                    safe_items=safe_items,
-                    task_parse=task_parse,
-                    workload_billing=workload_billing,
-                    telemetry=msg_telemetry if isinstance(msg_telemetry, dict) else {},
-                    body_tier=str(body.tier or ""),
-                    request_id=request_id,
-                    attempt_id=attempt_id,
-                    requested_mode=str(body.mode or "general"),
-                )
-                canonical_final = ((assistant_structured.get("solution") or {}).get("final_answer") or {})
-                canonical_final_text = str(canonical_final.get("answer_latex") or canonical_final.get("answer_text") or "").strip()
-                if canonical_final_text:
-                    answer_text = canonical_final_text
-            else:
-                assistant_structured = {
-                    "mode": "single_question_tasks_solve",
-                    "requested_mode": body.mode or "SOLVE",
-                    "response_language": (
-                        (payload.get("language") or {}).get("response_language")
-                        if isinstance(payload.get("language"), dict)
-                        else (trusted_ctx.get("preferred_response_language") or "English")
-                    ),
-                        "question_count": len(runtime_questions_json),
-                        "questions": jsonable_encoder(runtime_questions_json),
-                        "solutions": safe_items,
-                        "final_answer": answer_text,
-                        "final_answers": per_question_final_answers,
-                        "request_id": str((msg_telemetry or {}).get("request_id") or request_id),
-                    "attempt_id": str((msg_telemetry or {}).get("attempt_id") or attempt_id),
-                    "tier": str(payload.get("tier") or body.tier or "").upper(),
-                    "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
-                    "tier_effective": str(payload.get("tier") or body.tier or "").upper(),
-                    "output_format": "json_schema",
-                    "hide_from_tutor": True,
-                    "tasks": jsonable_encoder(task_parse.get("tasks") or []),
-                    "tasks_meta": {
-                        "detected_task_count_raw": int(task_parse.get("detected_task_count_raw") or 0),
-                        "task_count_capped": int(task_parse.get("task_count_capped") or 0),
-                        "omitted_count": int(task_parse.get("omitted_count") or 0),
-                        "task_ids": [str(t.get("task_id")) for t in (task_parse.get("tasks") or []) if isinstance(t, dict)],
-                        "selected_task_ids": list(task_parse.get("selected_task_ids") or [str(t.get("task_id")) for t in (task_parse.get("tasks") or []) if isinstance(t, dict)]),
-                    },
-                    "billing": workload_billing,
-                    "solve_meta": {
-                        "request_id": str((msg_telemetry or {}).get("request_id") or request_id),
-                        "attempt_id": str((msg_telemetry or {}).get("attempt_id") or attempt_id),
-                        "provider": str((msg_telemetry or {}).get("provider") or ""),
-                        "model": str((msg_telemetry or {}).get("model") or ""),
-                        "tier_requested": str((body.tier or "")).upper() or "SHORT_STEPS",
-                        "tier_effective": str(payload.get("tier") or body.tier or "").upper(),
-                        "mode": "SOLVE",
-                        "output_format": "json_schema",
-                        "prompt_binding_id": msg_telemetry.get("prompt_binding_id") if isinstance(msg_telemetry, dict) else None,
-                        "global_system_prompt_id": msg_telemetry.get("global_system_prompt_id") if isinstance(msg_telemetry, dict) else None,
-                        "developer_prompt_id": msg_telemetry.get("developer_prompt_id") if isinstance(msg_telemetry, dict) else None,
-                        "output_schema_id": msg_telemetry.get("output_schema_id") if isinstance(msg_telemetry, dict) else None,
-                        "solver_calls_count": 1,
-                        "saved_items_count": 1,
-                    },
-                }
-                if str(body.tier or "").upper() == "SHORT_STEPS":
-                    if isinstance(payload.get("question"), dict):
-                        assistant_structured["question"] = jsonable_encoder(payload.get("question"))
-                    if isinstance(payload.get("problem"), dict):
-                        assistant_structured["problem"] = jsonable_encoder(payload.get("problem"))
-                    if isinstance(payload.get("raw_user_extraction"), dict):
-                        assistant_structured["raw_user_extraction"] = jsonable_encoder(payload.get("raw_user_extraction"))
+            # Persist the exact runtime payload generated under the active DB prompt-binding schema.
+            # Do not wrap into a separate hardcoded schema envelope.
+            assistant_structured = jsonable_encoder(payload if isinstance(payload, dict) else {})
             msg = ChatMessage(
                 session_id=int(session_row.id),
                 role="assistant",
@@ -15003,17 +14840,17 @@ async def admin_get_solve_v2_config(session: Session = Depends(get_session), adm
         return str(row.value)
 
     return SolveV2ConfigResponse(
-        system_prompt_id=_get("SOLVE_SYSTEM_PROMPT_ID", "global_system_prompt_v2_compact.txt"),
-        orchestrator_prompt_id=_get("SOLVE_ORCHESTRATOR_DEV_PROMPT_ID", "solve_orchestrator_developer_v2_compact.txt"),
-        output_contract_id=_get("SOLVE_OUTPUT_CONTRACT_ID", "solve_output_contract_v2_compact.txt"),
-        narrator_prompt_id=_get("SOLVE_NARRATOR_PROMPT_ID", "solve_explain_narrator_v2_compact.txt"),
-        plot_spec_prompt_id=_get("SOLVE_PLOT_SPEC_PROMPT_ID", "solve_plot_spec_v2_compact.txt"),
-        repair_prompt_id=_get("SOLVE_REPAIR_PROMPT_ID", "solve_repair_verification_patch_v1.txt"),
-        clarify_prompt_id=_get("SOLVE_CLARIFY_PROMPT_ID", "solve_clarification_patch_v1.txt"),
-        schema_id=_get("SOLVE_SCHEMA_ID", "solve_superset_v2.schema.json"),
-        llm_min_schema_id=_get("SOLVE_LLM_MIN_SCHEMA_ID", "solve_llm_min_v2.schema.json"),
-        clarify_schema_id=_get("SOLVE_CLARIFY_SCHEMA_ID", "solve_clarification_patch_v1.schema.json"),
-        repair_schema_id=_get("SOLVE_REPAIR_SCHEMA_ID", "solve_repair_patch_v1.schema.json"),
+        system_prompt_id=_get("SOLVE_SYSTEM_PROMPT_ID", ""),
+        orchestrator_prompt_id=_get("SOLVE_ORCHESTRATOR_DEV_PROMPT_ID", ""),
+        output_contract_id=_get("SOLVE_OUTPUT_CONTRACT_ID", ""),
+        narrator_prompt_id=_get("SOLVE_NARRATOR_PROMPT_ID", ""),
+        plot_spec_prompt_id=_get("SOLVE_PLOT_SPEC_PROMPT_ID", ""),
+        repair_prompt_id=_get("SOLVE_REPAIR_PROMPT_ID", ""),
+        clarify_prompt_id=_get("SOLVE_CLARIFY_PROMPT_ID", ""),
+        schema_id=_get("SOLVE_SCHEMA_ID", ""),
+        llm_min_schema_id=_get("SOLVE_LLM_MIN_SCHEMA_ID", ""),
+        clarify_schema_id=_get("SOLVE_CLARIFY_SCHEMA_ID", ""),
+        repair_schema_id=_get("SOLVE_REPAIR_SCHEMA_ID", ""),
         tier_policy_json=_get("SOLVE_TIER_POLICY_JSON", "{}"),
         narrator_enabled=_get("SOLVE_NARRATOR_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"},
     )
@@ -15028,7 +14865,7 @@ async def admin_update_solve_v2_config(
     entries = [
         ("SOLVE_SYSTEM_PROMPT_ID", req.system_prompt_id, "Active solve system prompt ID"),
         ("SOLVE_ORCHESTRATOR_DEV_PROMPT_ID", req.orchestrator_prompt_id, "Active solve orchestrator developer prompt ID"),
-        ("SOLVE_OUTPUT_CONTRACT_ID", req.output_contract_id or "solve_output_contract_v2_compact.txt", "Legacy output contract prompt ID (unused by solve_v3)"),
+        ("SOLVE_OUTPUT_CONTRACT_ID", req.output_contract_id or "", "Legacy output contract prompt ID (unused by solve_v3)"),
         ("SOLVE_NARRATOR_PROMPT_ID", req.narrator_prompt_id, "Active solve narrator prompt ID"),
         ("SOLVE_PLOT_SPEC_PROMPT_ID", req.plot_spec_prompt_id, "Active solve plot spec prompt ID"),
         ("SOLVE_REPAIR_PROMPT_ID", req.repair_prompt_id, "Active solve verification-repair prompt ID"),
@@ -15413,7 +15250,12 @@ def _enforce_prompt_registry_allowlist() -> bool:
 
 
 def _enforce_allowed_prompt_id(prompt_id: str) -> None:
-    if _is_production_env() and _enforce_prompt_registry_allowlist() and prompt_id not in ALLOWED_PROMPT_IDS:
+    if (
+        _is_production_env()
+        and _enforce_prompt_registry_allowlist()
+        and ALLOWED_PROMPT_IDS
+        and prompt_id not in ALLOWED_PROMPT_IDS
+    ):
         raise HTTPException(status_code=400, detail=f"prompt_id not allowed in production: {prompt_id}")
 
 
@@ -15448,7 +15290,11 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.prompt_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.prompt_id)
 
-    filtered = [row for row in rows if row.prompt_id in ALLOWED_PROMPT_IDS] if (_is_production_env() and _enforce_prompt_registry_allowlist()) else rows
+    filtered = (
+        [row for row in rows if row.prompt_id in ALLOWED_PROMPT_IDS]
+        if (_is_production_env() and _enforce_prompt_registry_allowlist() and ALLOWED_PROMPT_IDS)
+        else rows
+    )
     return [
         RegistryPromptItem(
             prompt_id=row.prompt_id,
@@ -15573,7 +15419,11 @@ admin: User = Depends(get_admin_user)):
                 latest_by_id[row.schema_id] = row
         rows = sorted(latest_by_id.values(), key=lambda item: item.schema_id)
 
-    filtered = [row for row in rows if row.schema_id in ALLOWED_SCHEMA_IDS] if (_is_production_env() and _enforce_prompt_registry_allowlist()) else rows
+    filtered = (
+        [row for row in rows if row.schema_id in ALLOWED_SCHEMA_IDS]
+        if (_is_production_env() and _enforce_prompt_registry_allowlist() and ALLOWED_SCHEMA_IDS)
+        else rows
+    )
     return [
         RegistrySchemaItem(
             schema_id=row.schema_id,
@@ -15662,7 +15512,7 @@ async def admin_list_prompt_registry_bindings(db: Session = Depends(get_session)
         .where(PromptBinding.mode == PromptModeEnum.SOLVE)
         .order_by(PromptBinding.updated_at.desc())
     )
-    if _is_production_env() and _enforce_prompt_registry_allowlist():
+    if _is_production_env() and _enforce_prompt_registry_allowlist() and ALLOWED_PROMPT_IDS and ALLOWED_SCHEMA_IDS:
         statement = (
             statement
             .where(PromptBinding.global_system_prompt_id.in_(ALLOWED_PROMPT_IDS))

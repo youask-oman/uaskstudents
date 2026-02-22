@@ -630,10 +630,14 @@ class SolverV3:
             def prepare_schema(config_schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 
                 candidate = config_schema
+                schema_name = "runtime_schema"
 
                 if not isinstance(candidate, dict) or not candidate:
 
                     raise ValueError("Missing schema from DB prompt binding.")
+                raw_name = candidate.get("name") if isinstance(candidate, dict) else None
+                if isinstance(raw_name, str) and raw_name.strip():
+                    schema_name = raw_name.strip()
 
                 if "schema" in candidate and isinstance(candidate["schema"], dict):
 
@@ -670,7 +674,7 @@ class SolverV3:
 
                 return {
 
-                     "name": "solve_response_v3",
+                     "name": schema_name,
 
                      "strict": True,
 
@@ -1522,7 +1526,7 @@ class SolverV3:
             if isinstance(schema_payload, dict):
                 strict_schema = enforce_strict(optimize_schema_for_model(schema_payload))
                 schema_payload = {
-                    "name": (schema_payload.get("name") or "solve_response_v3_stream"),
+                    "name": (schema_payload.get("name") or "runtime_schema_stream"),
                     "strict": True,
                     "schema": strict_schema,
                 }
@@ -1861,7 +1865,7 @@ class SolverV3:
         if isinstance(schema_payload, dict):
             strict_schema = enforce_strict(optimize_schema_for_model(schema_payload))
             schema_payload = {
-                "name": (schema_payload.get("name") or "solve_response_v3"),
+                "name": (schema_payload.get("name") or "runtime_schema"),
                 "strict": True,
                 "schema": strict_schema,
             }
@@ -2177,7 +2181,7 @@ class SolverV3:
         if isinstance(optimized_schema, dict):
             strict_schema = enforce_strict(optimize_schema_for_model(optimized_schema))
             optimized_schema = {
-                "name": (optimized_schema.get("name") or "solve_response_repair"),
+                "name": (optimized_schema.get("name") or "runtime_schema_repair"),
                 "strict": True,
                 "schema": strict_schema,
             }

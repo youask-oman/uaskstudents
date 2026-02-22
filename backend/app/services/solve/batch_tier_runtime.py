@@ -27,7 +27,6 @@ from app.services.prompt_binding_policy import (
     ALLOWED_PROMPT_IDS,
     ALLOWED_SCHEMA_IDS,
     SOLVE_TIER_POLICY,
-    SYSTEM_PROMPT_ID,
     normalize_external_tier,
 )
 from app.services.solve.local_final_solver import try_solve_final_with_sympy_numpy
@@ -1119,21 +1118,14 @@ def _validate_binding_strict(
             code="prompt_binding_invalid",
         )
     binding = active_bindings[0]
-    if _enforce_solve_binding_allowlist() and binding.global_system_prompt_id != SYSTEM_PROMPT_ID:
-        raise BatchSolveError(
-            f"Unexpected system prompt binding for tier={tier.value}.",
-            status_code=500,
-            code="prompt_binding_invalid",
-            details={"expected": SYSTEM_PROMPT_ID, "actual": binding.global_system_prompt_id, "tier": tier.value},
-        )
-    if _enforce_solve_binding_allowlist() and binding.developer_prompt_id not in ALLOWED_PROMPT_IDS:
+    if _enforce_solve_binding_allowlist() and ALLOWED_PROMPT_IDS and binding.developer_prompt_id not in ALLOWED_PROMPT_IDS:
         raise BatchSolveError(
             f"Unexpected developer prompt binding for tier={tier.value}.",
             status_code=500,
             code="prompt_binding_invalid",
             details={"actual": binding.developer_prompt_id, "tier": tier.value},
         )
-    if _enforce_solve_binding_allowlist() and binding.output_schema_id not in ALLOWED_SCHEMA_IDS:
+    if _enforce_solve_binding_allowlist() and ALLOWED_SCHEMA_IDS and binding.output_schema_id not in ALLOWED_SCHEMA_IDS:
         raise BatchSolveError(
             f"Unexpected output schema binding for tier={tier.value}.",
             status_code=500,
@@ -1815,7 +1807,7 @@ async def execute_batch_solve(
                     "total_tokens": 0,
                     "latency_ms_openai": 0,
                     "latency_ms_total": int((time.perf_counter() - started) * 1000),
-                    "schema_name": str(schema_wrapper.get("name") or tier_policy.schema_id),
+                    "schema_name": str(schema_wrapper.get("name") or _bget("output_schema_id") or external_tier),
                     "model_bound": "sympy-numpy-local",
                     "temperature_bound": 0,
                     "top_p_bound": 1,
@@ -2463,7 +2455,7 @@ async def execute_batch_solve(
         "total_tokens": int((response.usage or {}).get("total") or 0),
         "latency_ms_openai": int(response.latency_ms or 0),
         "latency_ms_total": int((time.perf_counter() - started) * 1000),
-        "schema_name": str(schema_wrapper.get("name") or tier_policy.schema_id),
+        "schema_name": str(schema_wrapper.get("name") or _bget("output_schema_id") or external_tier),
         "model_bound": model_name if selected_provider == "openai" else str(response.model or selected_provider),
         "temperature_bound": bound_temperature,
         "top_p_bound": bound_top_p,
