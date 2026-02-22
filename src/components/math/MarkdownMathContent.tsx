@@ -7,10 +7,13 @@ import remarkMath from "remark-math";
 import remarkLatexDelimiters from "@/lib/remark/remarkLatexDelimiters";
 import MathSvg from "@/components/math/MathSvg";
 
-type MarkdownMathContentProps = {
+interface MarkdownMathContentProps {
   content: string;
   className?: string;
-};
+  /** If true, skips custom layout transformations like forced new lines for bold text/labels. */
+  simple?: boolean;
+}
+;
 
 function childrenToRawText(children: React.ReactNode): string {
   if (typeof children === "string") return children;
@@ -29,9 +32,11 @@ function isExplicitMathClass(className: string): boolean {
   );
 }
 
-export default function MarkdownMathContent({ content, className }: MarkdownMathContentProps) {
+export default function MarkdownMathContent({ content, className, simple }: MarkdownMathContentProps) {
   const processedContent = useMemo(() => {
     if (!content) return "";
+
+    if (simple) return content;
 
     let processed = content;
 

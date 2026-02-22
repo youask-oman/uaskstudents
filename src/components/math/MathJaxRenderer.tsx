@@ -12,6 +12,7 @@ export interface MathJaxRendererProps {
     className?: string;
     dynamic?: boolean;
     idKey?: string;
+    simple?: boolean;
 }
 
 export default function MathJaxRenderer({
@@ -20,9 +21,10 @@ export default function MathJaxRenderer({
     className,
     dynamic,
     idKey,
+    simple,
 }: MathJaxRendererProps) {
     if (mode === "prose") {
-        return <MarkdownMathContent content={content} className={className} />;
+        return <MarkdownMathContent content={content} className={className} simple={simple} />;
     }
 
     if (mode === "inline") {

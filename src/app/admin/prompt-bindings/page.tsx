@@ -8,6 +8,7 @@ type Binding = {
     id: string;
     tier: string;
     mode: string;
+    provider: string;
     global_system_prompt_id: string;
     developer_prompt_id: string;
     output_schema_id: string;
@@ -161,7 +162,7 @@ function toneForBinding(binding: Pick<Binding, "id" | "tier" | "mode"> | null | 
     if (normalizedTier === "RESEARCH") return bindingTones[4];
     if (normalizedTier === "FINAL") return bindingTones[6];
     if (normalizedTier === "SHORT_STEPS") return bindingTones[5];
-    const key = `${binding.id}|${binding.mode}`;
+    const key = `${binding.id}|${binding.mode}|${(binding as any).provider || ""}`;
     return bindingTones[stableHash(key) % bindingTones.length];
 }
 
@@ -297,6 +298,7 @@ export default function PromptBindingsPage() {
                 id: String(row.id),
                 tier: String(row.tier || ""),
                 mode: String(row.mode || ""),
+                provider: String(row.provider || "openai"),
             }));
             setItems(rows);
             setDrafts(Object.fromEntries(rows.map((r) => [r.id, toDraft(r)])));
@@ -400,6 +402,7 @@ export default function PromptBindingsPage() {
         const scalarKeys: Array<keyof Binding> = [
             "tier",
             "mode",
+            "provider",
             "global_system_prompt_id",
             "developer_prompt_id",
             "output_schema_id",
@@ -493,7 +496,7 @@ export default function PromptBindingsPage() {
                         >
                             {items.map((b) => (
                                 <option key={b.id} value={b.id}>
-                                    {b.tier} / {b.mode}
+                                    {b.tier} / {b.mode} ({b.provider})
                                 </option>
                             ))}
                         </select>
@@ -530,7 +533,7 @@ export default function PromptBindingsPage() {
                                 onClick={() => setSelectedId(String(b.id))}
                                 className={`px-3 py-1 rounded-full border text-xs font-semibold transition ring-2 ${isActive ? tone.badgeActive : `${tone.badge} ring-transparent opacity-80 hover:opacity-100`}`}
                             >
-                                {b.tier} / {b.mode}
+                                {b.tier} / {b.mode} ({b.provider})
                             </button>
                         );
                     })}
@@ -554,6 +557,12 @@ export default function PromptBindingsPage() {
                             <Field label="Mode">
                                 <select value={draft.mode} onChange={(e) => updateDraft("mode", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
                                     {modeOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Provider">
+                                <select value={draft.provider} onChange={(e) => updateDraft("provider", e.target.value)} disabled={!canEdit} className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100">
+                                    <option value="openai">OpenAI</option>
+                                    <option value="ollama">Ollama</option>
                                 </select>
                             </Field>
                             <Field label="Global System Prompt ID">

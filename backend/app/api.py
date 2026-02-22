@@ -738,7 +738,7 @@ async def health_llm():
         # We can try a ping if manager supports it, or just return basic info
         return {
             "status": status,
-            "provider": mgr.provider if hasattr(mgr, "provider") else "unknown",
+            "provider": mgr.get_active_provider(),
             "detail": detail
         }
     except Exception as e:
@@ -7251,7 +7251,7 @@ async def solve_v3_stream_endpoint(
 
     from app.services.llm.manager import get_llm_manager, get_configured_openai_model, get_configured_ollama_model
     llm_manager = get_llm_manager()
-    configured_stream_provider = str(getattr(llm_manager, "primary_provider", "") or "openai").strip().lower()
+    configured_stream_provider = llm_manager.get_active_provider(session)
     configured_stream_model = get_configured_ollama_model() if configured_stream_provider == "ollama" else get_configured_openai_model()
 
     logger.info(
@@ -7698,8 +7698,8 @@ async def solve_v3_stream_endpoint(
     effective_tier = tier_policy["tier_effective"]
     requested_tier_internal = tier_policy["tier_requested_internal"]
     effective_tier_internal = tier_policy["tier_effective_internal"]
-    stream_provider = "openai"
-    stream_model = get_configured_openai_model()
+    stream_provider = get_llm_manager().get_active_provider(session)
+    stream_model = get_configured_ollama_model() if stream_provider == "ollama" else get_configured_openai_model()
     effective_billing_tier = effective_tier.lower()
 
     # OCR acceptance: capture OCR hold at solve-start when source_type=ocr
@@ -8360,6 +8360,7 @@ async def solve_v3_stream_endpoint(
                 attempt_id=attempt_id,
                 debug_simulated_tokens=debug_simulated_tokens,
                 debug_force_error=debug_force_error,
+                db_session=session,
             ):
                 # METRIC: Count chunk types
                 ctype = chunk.get("type", "unknown")
@@ -11338,7 +11339,7 @@ Questions remaining: {turns_remaining}/10"""
     try:
         start_time_pts = time.time()
         mgr = get_llm_manager()
-        provider = mgr.primary_provider
+        provider = mgr.get_active_provider(db)
         client = mgr.get_client(provider)
         
         # Prepare messages

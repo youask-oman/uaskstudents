@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "path": "D:\\uaskstudents\\reports\\ollama_extracted_short_final.json"
+  },
+  "exported_at_utc": "2026-02-22T20:50:16Z",
+  "items": [],
+  "filter_summary": {
+    "seen_total": 4,
+    "included_total": 0,
+    "excluded_missing_tier": 4,
+    "excluded_non_short_final": 0,
+    "parse_error_count": 0
+  }
+}

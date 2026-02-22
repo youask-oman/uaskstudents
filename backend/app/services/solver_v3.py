@@ -18,6 +18,9 @@ import json
 import re
 
 import time
+import uuid
+
+from sqlmodel import Session
 
 import hashlib
 
@@ -103,7 +106,8 @@ class SolverV3:
 
         # self.client = ... (access via manager now)
 
-        print(f"[SOLVER_V3_INIT] LLM provider: {self.client_manager.primary_provider}")
+        # No session available during singleton init, will use default from .env for logging
+        print(f"[SOLVER_V3_INIT] LLM provider: {self.client_manager.get_active_provider()}")
 
         self._logger = logging.getLogger("solver_v3")
 
@@ -410,7 +414,7 @@ class SolverV3:
 
             "model": None,
 
-            "provider": self.client_manager.primary_provider,
+            "provider": self.client_manager.get_active_provider(db_session),
 
             "fallback_provider": self.client_manager.get_fallback_provider(),
 
@@ -503,17 +507,16 @@ class SolverV3:
 
 
                 try:
-
                     effective_tier_slug = get_user_effective_tier_slug(user_obj) if user_obj else user_tier
+                    
+                    # Resolve provider EARLY for correct prompt binding lookup
+                    provider = self.client_manager.get_active_provider(db_session)
 
                     binding_bundle = load_prompt_bundle(
-
                         tier=effective_tier_slug,
-
                         mode="solve",
-
                         session=db_session,
-
+                        provider=provider,
                     )
 
                     token_policy = get_token_policy(db_session)
@@ -570,7 +573,7 @@ class SolverV3:
                                  attempt.prompt_id = binding_bundle.get("meta", {}).get("prompt_id")
                                  attempt.prompt_version = binding_bundle.get("meta", {}).get("version")
                                  attempt.prompt_meta = binding_bundle.get("meta")
-                                 attempt.provider = self.client_manager.primary_provider
+                                 attempt.provider = self.client_manager.get_active_provider(db_session)
                                  attempt.model = self.default_model
                                  attempt.input_text_raw = problem_text
                                  attempt.status = "processing"
@@ -708,7 +711,7 @@ class SolverV3:
 
             last_error = None
 
-            providers_to_try = self.client_manager.get_provider_chain()
+            providers_to_try = self.client_manager.get_provider_chain(db_session)
 
             
 
@@ -1240,6 +1243,13 @@ class SolverV3:
 
             response_data = final_response_data
 
+            # Step 3.5: Batch Extraction (if needed)
+            # If the schema returns a batch (items array), extract the first one for single solve.
+            if isinstance(response_data, dict) and "items" in response_data:
+                items = response_data.get("items")
+                if isinstance(items, list) and len(items) > 0:
+                    response_data = items[0]
+
             
 
             # Step 4: Map Minimal Response (if needed)
@@ -1393,6 +1403,7 @@ class SolverV3:
         attempt_id: Optional[str] = None,
         debug_simulated_tokens: Optional[Dict[str, Any]] = None,
         debug_force_error: bool = False,
+        db_session: Optional[Session] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
 
         """
@@ -1413,7 +1424,7 @@ class SolverV3:
 
             "model": self.default_model, # Changed to default_model
 
-            "provider": self.client_manager.primary_provider,
+            "provider": self.client_manager.get_active_provider(db_session),
 
             "input_tokens": 0,
 
@@ -1447,7 +1458,7 @@ class SolverV3:
             if attempt_id:
                 emit_attempt_event(attempt_id, request_id, "attempt_created", status="active")
 
-            provider = self.client_manager.primary_provider
+            provider = self.client_manager.get_active_provider(db_session)
 
             client = self.client_manager.get_client(provider)
 

@@ -49,16 +49,28 @@ def get_configured_ollama_model(tier: Optional[str] = None) -> str:
 
 class LLMManager:
     def __init__(self):
-        configured_provider = (os.environ.get("LLM_PROVIDER") or _default_provider()).strip().lower()
-        if configured_provider and configured_provider not in _SUPPORTED_PROVIDERS:
+        self._default_provider = (os.environ.get("LLM_PROVIDER") or _default_provider()).strip().lower()
+        if self._default_provider and self._default_provider not in _SUPPORTED_PROVIDERS:
             raise RuntimeError("LLM_PROVIDER must be one of: openai, ollama")
-        self.primary_provider = configured_provider or _default_provider()
         self.fallback_enabled = _default_fallback_enabled()
         self._clients: Dict[str, Any] = {}
         self.last_error: Dict[str, Dict[str, Any]] = {}
 
-    def get_provider_chain(self) -> list:
-        return [self.primary_provider]
+    def get_active_provider(self, db_session: Optional[Any] = None) -> str:
+        """
+        Returns the active LLM provider.
+        Prioritizes SystemConfig in DB, falls back to LLM_PROVIDER env.
+        """
+        if db_session:
+            from app.models import SystemConfig
+            row = db_session.get(SystemConfig, "active_llm_provider")
+            if row and row.value.strip().lower() in _SUPPORTED_PROVIDERS:
+                return row.value.strip().lower()
+
+        return self._default_provider
+
+    def get_provider_chain(self, db_session: Optional[Any] = None) -> list:
+        return [self.get_active_provider(db_session)]
 
     def get_fallback_provider(self) -> Optional[str]:
         return None

@@ -292,11 +292,12 @@ class PromptRegistryService:
             .order_by(JsonSchemaEntry.version.desc())
         ).all()
 
-    def get_active_binding(self, session: Session, tier: PromptTierEnum, mode: PromptModeEnum) -> Optional[PromptBinding]:
+    def get_active_binding(self, session: Session, tier: PromptTierEnum, mode: PromptModeEnum, provider: str = "openai") -> Optional[PromptBinding]:
         return session.exec(
             select(PromptBinding)
             .where(PromptBinding.tier == tier)
             .where(PromptBinding.mode == mode)
+            .where(PromptBinding.provider == provider)
             .where(PromptBinding.is_active == True)
             .order_by(PromptBinding.updated_at.desc())
         ).first()
@@ -369,12 +370,13 @@ class PromptRegistryService:
         session: Session,
         tier_slug: str,
         mode: str,
+        provider: str = "openai",
     ) -> Tuple[str, Dict[str, Any], PromptBinding]:
         tier = self._resolve_tier(tier_slug)
         prompt_mode = self._resolve_mode(mode)
-        binding = self.get_active_binding(session, tier, prompt_mode)
+        binding = self.get_active_binding(session, tier, prompt_mode, provider=provider)
         if not binding:
-            raise PromptRegistryError(f"No active binding for tier={tier.value} mode={prompt_mode.value}")
+            raise PromptRegistryError(f"No active binding for tier={tier.value} mode={prompt_mode.value} provider={provider}")
 
         global_prompt = self.get_active_prompt(session, binding.global_system_prompt_id)
         developer_prompt = self.get_active_prompt(session, binding.developer_prompt_id)
@@ -755,6 +757,7 @@ class PromptRegistryService:
         developer_prompt_id: str,
         output_schema_id: str,
         updated_by: Optional[str],
+        provider: str = "openai",
         max_output_tokens: Optional[int] = None,
         max_input_tokens: Optional[int] = None,
         max_questions_allowed: Optional[int] = None,
@@ -785,6 +788,7 @@ class PromptRegistryService:
             select(PromptBinding)
             .where(PromptBinding.tier == tier)
             .where(PromptBinding.mode == mode)
+            .where(PromptBinding.provider == provider)
             .where(PromptBinding.is_active == True)
         ).all()
         for row in active_rows:
@@ -792,14 +796,14 @@ class PromptRegistryService:
             row.updated_at = datetime.utcnow()
             row.updated_by = updated_by
             session.add(row)
-        # Reuse an existing binding row when the tuple already exists.
         # This avoids violating the unique constraint on
-        # (tier, mode, global_system_prompt_id, developer_prompt_id, output_schema_id)
+        # (tier, mode, provider, global_system_prompt_id, developer_prompt_id, output_schema_id)
         # when admins "update" an existing active/inactive binding.
         existing = session.exec(
             select(PromptBinding)
             .where(PromptBinding.tier == tier)
             .where(PromptBinding.mode == mode)
+            .where(PromptBinding.provider == provider)
             .where(PromptBinding.global_system_prompt_id == global_system_prompt_id)
             .where(PromptBinding.developer_prompt_id == developer_prompt_id)
             .where(PromptBinding.output_schema_id == output_schema_id)
@@ -843,6 +847,7 @@ class PromptRegistryService:
         entry = PromptBinding(
             tier=tier,
             mode=mode,
+            provider=provider,
             global_system_prompt_id=global_system_prompt_id,
             developer_prompt_id=developer_prompt_id,
             output_schema_id=output_schema_id,

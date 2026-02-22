@@ -128,6 +128,7 @@ def resolve_prompt_bundle(
         select(PromptBinding)
         .where(PromptBinding.tier == tier_enum)
         .where(PromptBinding.mode == mode_enum)
+        .where(PromptBinding.provider == provider_normalized)
         .where(PromptBinding.is_active == True)
         .order_by(PromptBinding.updated_at.desc(), PromptBinding.id.desc())
     ).first()
@@ -339,9 +340,13 @@ def load_prompt_bundle(
     tier: str,
     mode: str,
     session: Optional[Session] = None,
-    provider: str = "openai",
+    provider: Optional[str] = None,
 ) -> Dict[str, Any]:
     with _session_scope(session) as db:
+        if provider is None:
+            from app.services.llm.manager import get_llm_manager
+            provider = get_llm_manager().get_active_provider(db)
+
         bundle = resolve_prompt_bundle(
             provider=provider,
             tier=tier,

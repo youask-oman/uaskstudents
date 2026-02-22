@@ -52,7 +52,7 @@ const RenderAssistantItem = ({
   if (item.type === "text") {
     return (
       <div className={styles.chatBubbleAssistant}>
-        <MathRenderer content={item.text} mode="prose" />
+        <MathRenderer content={item.text} mode="prose" simple={true} />
       </div>
     );
   }
@@ -88,7 +88,7 @@ export default function ChatMessage({ message, originalProblem, direction = "ltr
         dir={direction}
       >
         <div className={`${styles.chatBubbleUser} ${isRtl ? styles.chatBubbleRtl : ""}`.trim()}>
-          <MathRenderer content={text && text.type === "text" ? text.text : ""} mode="prose" />
+          <MathRenderer content={text && text.type === "text" ? text.text : ""} mode="prose" simple={true} />
         </div>
       </div>
     );

@@ -500,7 +500,7 @@ async def llm_health_check():
     ollama_model = get_configured_ollama_model()
     ollama_final_model = get_configured_ollama_model("FINAL")
     return {
-        "provider": manager.primary_provider,
+        "provider": manager.get_active_provider(),
         "fallback_enabled": manager.fallback_enabled,
         "models": {
             "openai_default": openai_model,

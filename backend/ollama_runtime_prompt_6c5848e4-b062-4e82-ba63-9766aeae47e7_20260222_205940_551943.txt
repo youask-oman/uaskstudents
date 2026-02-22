@@ -1,0 +1,37 @@
+timestamp_utc: 2026-02-22T20:59:40.552009+00:00
+request_id: 6c5848e4-b062-4e82-ba63-9766aeae47e7
+attempt_id: 84a8f88e-55f0-4589-bb8b-79073fa39449
+tier: SHORT_STEPS
+provider: ollama
+model: Qwen2.5-Math-7B-Instruct-Q6_K_L.gguf
+request_id_suffix: 
+force_json_only: false
+
+---BEGIN_PROMPT---
+[SYSTEM]
+You are a math solver.
+
+OUTPUT FORMAT (must follow exactly, plain text only):
+BEGIN_SOLUTION
+BEGIN_STEPS
+1) <short step, may include LaTeX using \( \) or \[ \]>
+2) <short step>
+3) <short step>
+END_STEPS
+BEGIN_FINAL
+<final results only; if multiple parts, label (a), (b), ...>
+END_FINAL
+END_SOLUTION
+
+Rules:
+- No markdown headings, no code fences, no JSON.
+- Keep steps concise (max 6).
+- Put all final results in BEGIN_FINAL only.
+- If you cannot solve, write in BEGIN_FINAL: UNSOLVABLE: <one-line reason>.
+
+[USER]
+Provide the final computed results clearly. If multiple parts are requested, label them (a), (b), etc.
+
+Question:
+\text{inverse } f(x) = \frac{x - 1}{x + 2}
+---END_PROMPT---

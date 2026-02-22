@@ -20,7 +20,7 @@ from app.models import (
     PromptTierEnum,
     SystemConfig,
 )
-from app.services.llm.manager import LLMManager, get_configured_ollama_model
+from app.services.llm.manager import LLMManager, get_configured_ollama_model, get_llm_manager
 from app.services.llm.clients import LLMProviderError
 from app.services.prompt_manager import prompt_manager
 from app.services.prompt_binding_policy import (
@@ -1892,8 +1892,8 @@ async def execute_batch_solve(
         },
     ]
 
-    llm_manager = LLMManager()
-    primary_provider = (llm_manager.primary_provider or "openai").strip().lower()
+    llm_manager = get_llm_manager()
+    primary_provider = llm_manager.get_active_provider(session)
     provider_candidates: List[str] = [primary_provider]
     ollama_first_tier = external_tier in {"SHORT_STEPS", "FINAL"}
     if ollama_first_tier:

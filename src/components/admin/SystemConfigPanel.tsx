@@ -202,12 +202,23 @@ export default function SystemConfigPanel({
                         {sortedConfig.map((entry) => (
                             <div key={entry.key} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-white/5 p-4 space-y-2">
                                 <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">{entry.key}</p>
-                                <input
-                                    type="text"
-                                    value={configDraft[entry.key] ?? entry.value ?? ""}
-                                    onChange={(e) => handleFieldChange(entry.key, e.target.value)}
-                                    className="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-admin-primary transition-all"
-                                />
+                                {entry.key === "active_llm_provider" ? (
+                                    <select
+                                        value={configDraft[entry.key] ?? entry.value ?? "openai"}
+                                        onChange={(e) => handleFieldChange(entry.key, e.target.value)}
+                                        className="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-admin-primary transition-all"
+                                    >
+                                        <option value="openai">OpenAI</option>
+                                        <option value="ollama">Ollama</option>
+                                    </select>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        value={configDraft[entry.key] ?? entry.value ?? ""}
+                                        onChange={(e) => handleFieldChange(entry.key, e.target.value)}
+                                        className="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-admin-primary transition-all"
+                                    />
+                                )}
                                 <p className="text-[11px] text-slate-500">{entry.description ?? "System configuration entry"}</p>
                             </div>
                         ))}

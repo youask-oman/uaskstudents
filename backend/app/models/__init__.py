@@ -825,10 +825,14 @@ class JsonSchemaEntry(SQLModel, table=True):
 
 class PromptBinding(SQLModel, table=True):
     __tablename__ = "prompt_bindings"
+    __table_args__ = (
+        UniqueConstraint("tier", "mode", "provider", name="uq_prompt_binding_tier_mode_provider"),
+    )
 
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     tier: PromptTierEnum = Field(sa_column=Column(SAEnum(PromptTierEnum)))
     mode: PromptModeEnum = Field(sa_column=Column(SAEnum(PromptModeEnum)))
+    provider: str = Field(default="openai", index=True)
     global_system_prompt_id: str = Field(index=True)
     developer_prompt_id: str = Field(index=True)
     output_schema_id: str = Field(index=True)

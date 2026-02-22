@@ -1529,7 +1529,7 @@ async def run_solve_v3_superset_v2(
                     details={"tier": tier, "openai_fallback_blocked": True},
                 )
 
-        provider_name = (solver.client_manager.primary_provider or "openai").strip().lower()
+        provider_name = solver.client_manager.get_active_provider(session)
         timeout_seconds = max(3, config.openai_timeout_ms // 1000)
 
         async def _call_primary(
