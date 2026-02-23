@@ -439,6 +439,12 @@ def _seed_prompt_bindings(session: Session, app_env: str) -> Tuple[int, Dict[str
                 "retry_cap_tokens": row.get("retry_cap_tokens"),
                 "features": row.get("features") or {},
                 "multipliers": row.get("multipliers") or {},
+                "openai_prompt_id": row.get("openai_prompt_id"),
+                "openai_prompt_version": row.get("openai_prompt_version"),
+                "openai_prompt_use_latest": bool(row.get("openai_prompt_use_latest", False)),
+                "openai_prompt_variable_mapping": row.get("openai_prompt_variable_mapping"),
+                "openai_prompt_cache_key_template": row.get("openai_prompt_cache_key_template"),
+                "openai_prompt_cache_retention": row.get("openai_prompt_cache_retention"),
                 "is_active": bool(row.get("is_active", True)),
             }
             changed = False
@@ -480,6 +486,12 @@ def _seed_prompt_bindings(session: Session, app_env: str) -> Tuple[int, Dict[str
                     retry_cap_tokens=row.get("retry_cap_tokens"),
                     features=row.get("features") or {},
                     multipliers=row.get("multipliers") or {},
+                    openai_prompt_id=row.get("openai_prompt_id"),
+                    openai_prompt_version=row.get("openai_prompt_version"),
+                    openai_prompt_use_latest=bool(row.get("openai_prompt_use_latest", False)),
+                    openai_prompt_variable_mapping=row.get("openai_prompt_variable_mapping"),
+                    openai_prompt_cache_key_template=row.get("openai_prompt_cache_key_template"),
+                    openai_prompt_cache_retention=row.get("openai_prompt_cache_retention"),
                     is_active=bool(row.get("is_active", True)),
                     updated_by=row.get("updated_by") or f"seed:{app_env.lower()}",
                 )

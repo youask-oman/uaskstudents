@@ -2,23 +2,23 @@
   "files": {
     "credit_programs_or_plans.json": {
       "row_count": 12,
-      "sha256": "0b099a676ee83d35ea8d4ec1ea6862eb41fccc94e07dab5e543898659d83b3d0"
+      "sha256": "c5c54c8ffe1530aa80de19c10bc6847c9e6b781d0cead3431173f97d59adcb3e"
     },
     "internal_users.json": {
       "row_count": 5,
-      "sha256": "9907a07a5406817bcf7dedaa206c1d044de1ca481b00e201ec65118548cf7080"
+      "sha256": "1f3adef2abf4eba71c16ed461c1436ae1c97c4236b8d13a4ab129ba1f14f71a5"
     },
     "json_schemas.json": {
       "row_count": 3,
-      "sha256": "e35a87980842094f8df6586c6bc20b987b22394583cc5824c6c3ff1dd8721011"
+      "sha256": "9d6043f6369870bd789568f018754c825094fa97387b2a9e33a6ef8197c5cf28"
     },
     "legal_documents.json": {
       "row_count": 2,
-      "sha256": "c6dbacc924d1d0d5410fb6ccf8c6ee88de00651bcb3b070fc84a22811997ca5f"
+      "sha256": "159d1782c5a522a612f420a9715e9a559764e9011dbd22fa1a5024afb0b50652"
     },
     "prompt_bindings.json": {
       "row_count": 3,
-      "sha256": "f3c9eff9ba567dc082248c029096adb41149d68a2931b22506cb460625a64ea6"
+      "sha256": "0a1adc9d3349d9f07e28c0d9bbd3cbb0af69a11e8a85e0296abc07c0803220b9"
     },
     "prompt_schema_links.json": {
       "row_count": 0,
@@ -26,26 +26,26 @@
     },
     "prompt_templates.json": {
       "row_count": 5,
-      "sha256": "239d9572dff6383b9717efe84cf7c13e59890000e676f4e1c9233358062e3e54"
+      "sha256": "920f92a5e4b1993268e4667000bbfbc2bb37a99f1c04ce9f9bb57a968ed67b53"
     },
     "providermodelpricing.json": {
       "row_count": 8,
-      "sha256": "9cac59a8b16b1f980e99711a3eb2a199ac57bd606d1778d1ed3143b275e2f649"
+      "sha256": "eedd6b39ef0a0b27872a017b1c20e41204a06cba1c214e18a53eaf7587393358"
     },
     "schools.json": {
       "row_count": 117960,
-      "sha256": "971f03734d26248c9fe3ccc9d2c6289cde17d2ea7734971006b33eefd1a1aed4"
+      "sha256": "5b31d48100ac172b2e724bd187851ac465e3e37321e77a96f9f0518bb6f4248c"
     },
     "systemconfig.json": {
       "row_count": 56,
-      "sha256": "86263eb42c5b87be108fce6efa6efb81369b08c9bb6e992e9a276c2499819d0b"
+      "sha256": "6f78e99bfd3a6b53424cb1fdba5bbeffb6afefe81949cde4c7575ca4743bfe0b"
     },
     "topup_products.json": {
       "row_count": 4,
-      "sha256": "b247ea715b6eb3af9dd3150bb6f6ea184f49dd43df78eb5296c67ec04d19e140"
+      "sha256": "18d66bfde2c1271f7619735b9fb0d7a45cb0e4fe1906481421475fc90638ab47"
     }
   },
-  "generated_at": "2026-02-23T07:30:30.323656+00:00",
+  "generated_at": "2026-02-23T07:44:51.642921+00:00",
   "schema_table_map": {
     "link_tables": [],
     "prompt_binding_reference_model": "key-based strings",
@@ -58,10 +58,5 @@
       "json_schemas"
     ]
   },
-  "validation_warnings": [
-    "missing system prompt_ids in prompt_templates: ['global_system_prompt_batch_v1']",
-    "missing developer prompt_ids in prompt_templates: ['solve_dev_research_v2']",
-    "missing output schema_ids in json_schemas: ['solve_batch_research_v2']",
-    "dropped_unseedable_prompt_bindings=1"
-  ]
+  "validation_warnings": []
 }

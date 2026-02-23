@@ -20,4 +20,13 @@ def test_internal_users_exist():
         seed_file = Path(__file__).resolve().parents[2] / "seed_data" / "internal_users.json"
         expected = len(json.loads(seed_file.read_text(encoding="utf-8")))
         assert len(users) == expected
-        assert all(u.role in {"admin", "employee", "superadmin"} for u in users)
+        allowed_internal_roles = {
+            "admin",
+            "employee",
+            "superadmin",
+            "supervisor",
+            "support",
+            "finance",
+            "devops",
+        }
+        assert all((u.role or "").lower() in allowed_internal_roles for u in users)

@@ -1,6 +1,9 @@
 import argparse
 import hashlib
 import json
+import os
+import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -63,7 +66,39 @@ def _sha256(data: Any) -> str:
 def _write_json(path: Path, payload: Any) -> Tuple[int, str]:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, ensure_ascii=True, sort_keys=True, indent=2) + "\n"
-    path.write_text(text, encoding="utf-8")
+    # Use atomic replace + retry to avoid intermittent Windows write errors on large files.
+    last_err: Exception | None = None
+    for _ in range(3):
+        tmp_fd = None
+        tmp_name = None
+        try:
+            tmp_fd, tmp_name = tempfile.mkstemp(
+                prefix=f".{path.name}.",
+                suffix=".tmp",
+                dir=str(path.parent),
+            )
+            with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as fh:
+                tmp_fd = None
+                fh.write(text)
+            os.replace(tmp_name, str(path))
+            last_err = None
+            break
+        except Exception as e:
+            last_err = e
+            time.sleep(0.2)
+        finally:
+            if tmp_fd is not None:
+                try:
+                    os.close(tmp_fd)
+                except Exception:
+                    pass
+            if tmp_name and os.path.exists(tmp_name):
+                try:
+                    os.remove(tmp_name)
+                except Exception:
+                    pass
+    if last_err is not None:
+        raise last_err
     return (len(payload) if isinstance(payload, list) else 1, _sha256(payload))
 
 
