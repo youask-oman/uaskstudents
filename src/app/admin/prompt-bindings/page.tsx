@@ -12,6 +12,10 @@ type Binding = {
     global_system_prompt_id: string;
     developer_prompt_id: string;
     output_schema_id: string;
+    openai_prompt_id?: string | null;
+    openai_prompt_version?: string | null;
+    openai_prompt_use_latest?: boolean;
+    openai_prompt_variable_mapping?: Record<string, unknown> | null;
     features: Record<string, unknown>;
     multipliers: Record<string, unknown>;
     is_active: boolean;
@@ -60,6 +64,7 @@ type SchemaRegistryEntry = {
 type DraftBinding = Omit<Binding, "features" | "multipliers"> & {
     features_obj: Record<string, unknown>;
     multipliers_obj: Record<string, unknown>;
+    openai_prompt_variable_mapping_obj: Record<string, unknown>;
 };
 
 const modeOptions = ["SOLVE", "VERIFY", "PLOT_TRIGGER", "PLOT_SPEC", "OCR_EXTRACT"];
@@ -129,6 +134,9 @@ function toDraft(b: Binding): DraftBinding {
         ...b,
         features_obj: JSON.parse(JSON.stringify(b.features || {})),
         multipliers_obj: JSON.parse(JSON.stringify(b.multipliers || {})),
+        openai_prompt_variable_mapping_obj: JSON.parse(
+            JSON.stringify((b.openai_prompt_variable_mapping as Record<string, unknown>) || {})
+        ),
     };
 }
 
@@ -406,6 +414,9 @@ export default function PromptBindingsPage() {
             "global_system_prompt_id",
             "developer_prompt_id",
             "output_schema_id",
+            "openai_prompt_id",
+            "openai_prompt_version",
+            "openai_prompt_use_latest",
             "is_active",
             "trim_strategy",
             ...numericKeys,
@@ -429,7 +440,7 @@ export default function PromptBindingsPage() {
 
             const prevStr = String(prevVal ?? "").trim();
             const nextStr = String(nextVal ?? "").trim();
-            if (prevStr !== nextStr && nextStr !== "") payload[key] = nextStr;
+            if (prevStr !== nextStr) payload[key] = nextStr === "" ? null : nextStr;
         }
 
         if (JSON.stringify(draft.features_obj || {}) !== JSON.stringify(selected.features || {})) {
@@ -437,6 +448,12 @@ export default function PromptBindingsPage() {
         }
         if (JSON.stringify(draft.multipliers_obj || {}) !== JSON.stringify(selected.multipliers || {})) {
             payload.multipliers = draft.multipliers_obj || {};
+        }
+        if (
+            JSON.stringify(draft.openai_prompt_variable_mapping_obj || {}) !==
+            JSON.stringify((selected.openai_prompt_variable_mapping as Record<string, unknown>) || {})
+        ) {
+            payload.openai_prompt_variable_mapping = draft.openai_prompt_variable_mapping_obj || {};
         }
 
         if (Object.keys(payload).length === 1) {
@@ -609,6 +626,84 @@ export default function PromptBindingsPage() {
                                     <input type="checkbox" checked={Boolean(draft.is_active)} onChange={(e) => updateDraft("is_active", e.target.checked)} disabled={!canEdit} className="size-4" />
                                     <span className="text-sm font-semibold text-slate-700">{draft.is_active ? "Enabled" : "Disabled"}</span>
                                 </label>
+                            </Field>
+                        </div>
+                    </Section>
+
+                    <Section title="OpenAI Managed Prompt" tone={activeTone}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field label="OpenAI Prompt ID">
+                                <input
+                                    value={asInput(draft.openai_prompt_id)}
+                                    onChange={(e) => updateDraft("openai_prompt_id", e.target.value)}
+                                    disabled={!canEdit}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100"
+                                    placeholder="pmpt_..."
+                                />
+                            </Field>
+                            <Field label="OpenAI Prompt Version">
+                                <input
+                                    value={asInput(draft.openai_prompt_version)}
+                                    onChange={(e) => updateDraft("openai_prompt_version", e.target.value)}
+                                    disabled={!canEdit}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100"
+                                    placeholder="1"
+                                />
+                            </Field>
+                            <Field label="Use Latest Version">
+                                <label className="inline-flex items-center gap-3 rounded-xl border border-slate-300 px-4 py-3 bg-white">
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(draft.openai_prompt_use_latest)}
+                                        onChange={(e) => updateDraft("openai_prompt_use_latest", e.target.checked)}
+                                        disabled={!canEdit}
+                                        className="size-4"
+                                    />
+                                    <span className="text-sm font-semibold text-slate-700">
+                                        {draft.openai_prompt_use_latest ? "Enabled" : "Disabled"}
+                                    </span>
+                                </label>
+                            </Field>
+                            <Field label="Variable Mapping (JSON)">
+                                <textarea
+                                    key={`mapping-${draft.id}`}
+                                    defaultValue={JSON.stringify(draft.openai_prompt_variable_mapping_obj || {}, null, 2)}
+                                    onBlur={(e) => {
+                                        const raw = (e.target.value || "").trim();
+                                        if (!raw) {
+                                            setDrafts((prev) => ({
+                                                ...prev,
+                                                [draft.id]: {
+                                                    ...prev[draft.id],
+                                                    openai_prompt_variable_mapping_obj: {},
+                                                },
+                                            }));
+                                            return;
+                                        }
+                                        try {
+                                            const parsed = JSON.parse(raw);
+                                            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                                                setDrafts((prev) => ({
+                                                    ...prev,
+                                                    [draft.id]: {
+                                                        ...prev[draft.id],
+                                                        openai_prompt_variable_mapping_obj: parsed as Record<string, unknown>,
+                                                    },
+                                                }));
+                                            }
+                                        } catch {
+                                            pushToast({
+                                                type: "error",
+                                                title: "Invalid mapping JSON",
+                                                message: "Variable mapping must be a valid JSON object.",
+                                            });
+                                        }
+                                    }}
+                                    disabled={!canEdit}
+                                    rows={8}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100 font-mono text-xs"
+                                    placeholder='{"question":"question_text"}'
+                                />
                             </Field>
                         </div>
                     </Section>

@@ -71,6 +71,14 @@ class PromptManager:
                 "timeout_ms": int(binding.timeout_ms or 60000),
                 "max_questions_allowed": int(binding.max_questions_allowed or 0),
                 "features": binding.features if isinstance(binding.features, dict) else {},
+                "openai_prompt_id": str(binding.openai_prompt_id or "").strip() or None,
+                "openai_prompt_version": str(binding.openai_prompt_version or "").strip() or None,
+                "openai_prompt_use_latest": bool(binding.openai_prompt_use_latest),
+                "openai_prompt_variable_mapping": (
+                    binding.openai_prompt_variable_mapping
+                    if isinstance(binding.openai_prompt_variable_mapping, dict)
+                    else {}
+                ),
             },
             "global_system_prompt": global_prompt.content,
             "developer_prompt": developer_prompt.content,

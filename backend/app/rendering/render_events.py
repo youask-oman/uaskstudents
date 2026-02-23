@@ -139,6 +139,7 @@ def build_render_events(
         )
 
     emit("MESSAGE_START", {"items_count": len(items)})
+    attempt_id = _as_text(solution_json.get("attempt_id")).strip()
 
     for item_index, item in enumerate(items, start=1):
         question_id = _as_text(item.get("question_id")).strip() or f"q{item_index}"
@@ -226,6 +227,7 @@ def build_render_events(
                 {
                     "item_index": item_index,
                     "question_id": question_id,
+                    "attempt_id": attempt_id or None,
                     "recipe": _as_dict(plot.get("recipe")),
                     "notes": _as_text(plot.get("notes")),
                 },

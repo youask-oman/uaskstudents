@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import CodeBlock from "@/components/code/CodeBlock";
-import PlotFromRecipe from "@/components/plot/PlotFromRecipe";
+import PlotCard from "@/components/plot/PlotCard";
 import BlockRenderer from "@/components/solve/BlockRenderer";
 import TypingIndicator from "@/components/solve/TypingIndicator";
 import UnifiedMathRenderer from "@/components/math/UnifiedMathRenderer";
@@ -65,7 +65,8 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
   const finalText = useMemo(() => String(state.finalAnswer?.answer_text || ""), [state.finalAnswer]);
   const finalLatex = useMemo(() => String(state.finalAnswer?.answer_latex || ""), [state.finalAnswer]);
 
-  const plotRecipe = (state.plot?.recipe as Record<string, unknown>) || null;
+  const plotPayload = state.plot || null;
+  const plotAttemptId = typeof state.plot?.attempt_id === "string" ? String(state.plot.attempt_id) : undefined;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -114,10 +115,10 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
         </section>
       ) : null}
 
-      {plotRecipe ? (
+      {plotPayload ? (
         <section style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.75, marginBottom: 6 }}>PLOT</div>
-          <PlotFromRecipe recipe={plotRecipe} />
+          <PlotCard plot={plotPayload} attemptId={plotAttemptId} playbackVisible={true} />
         </section>
       ) : null}
 

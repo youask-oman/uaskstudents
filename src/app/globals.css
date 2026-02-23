@@ -226,6 +226,13 @@
   --key-content-primary: #333;
 }
 
+/* Force readable Python block colors inside short-paper rows that set black !important */
+.uask-code-block .uask-code-block-pre,
+.uask-code-block .uask-code-block-code {
+  color: #fef08a !important;
+  background: #0f172a !important;
+}
+
 /* Print Styles for PDF Export */
 @media print {
 

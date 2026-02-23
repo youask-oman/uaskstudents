@@ -838,6 +838,10 @@ class PromptBinding(SQLModel, table=True):
     output_schema_id: str = Field(index=True)
     features: dict = Field(default_factory=dict, sa_column=Column(JSON))
     multipliers: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    openai_prompt_id: Optional[str] = Field(default=None, index=True)
+    openai_prompt_version: Optional[str] = Field(default=None)
+    openai_prompt_use_latest: bool = Field(default=False)
+    openai_prompt_variable_mapping: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
     # Dynamic Token Configuration (Overrides SystemConfig Defaults if set)
     max_questions_allowed: Optional[int] = Field(default=None)

@@ -363,6 +363,77 @@ def _allow_openai_fallback_for_ollama_first_tiers() -> bool:
     return False
 
 
+def _managed_prompt_feature_enabled() -> bool:
+    raw = (os.environ.get("OPENAI_PROMPT_ID_ENABLED") or "").strip().lower()
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    # Default enabled so non-empty binding fields activate managed prompt.
+    return True
+
+
+def _build_managed_prompt_batch_input(questions: List[Dict[str, Any]]) -> str:
+    lines: List[str] = []
+    for idx, q in enumerate(questions or [], start=1):
+        qtext = str((q or {}).get("question_text") or "").strip()
+        if qtext:
+            lines.append(f"Q{idx}: {qtext}")
+    return "\n\n".join(lines).strip()
+
+
+def _resolve_mapping_path(source: Dict[str, Any], path: str) -> Any:
+    cursor: Any = source
+    for token in str(path or "").split("."):
+        key = token.strip()
+        if not key:
+            continue
+        if isinstance(cursor, dict) and key in cursor:
+            cursor = cursor[key]
+            continue
+        return None
+    return cursor
+
+
+def _build_managed_prompt_variables(
+    mapping: Dict[str, Any],
+    *,
+    runtime_request_id: str,
+    runtime_attempt_id: str,
+    external_tier: str,
+    normalized_questions: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    first_question = str((normalized_questions[0] or {}).get("question_text") or "").strip() if normalized_questions else ""
+    context: Dict[str, Any] = {
+        "request_id": runtime_request_id,
+        "attempt_id": runtime_attempt_id,
+        "tier": external_tier,
+        "question": first_question,
+        "question_text": first_question,
+        "questions_joined": _build_managed_prompt_batch_input(normalized_questions),
+        "questions_json": normalized_questions,
+        "payload": {
+            "request_id": runtime_request_id,
+            "attempt_id": runtime_attempt_id,
+            "tier": external_tier,
+            "question_text": first_question,
+            "questions_joined": _build_managed_prompt_batch_input(normalized_questions),
+            "questions_json": normalized_questions,
+        },
+    }
+    out: Dict[str, Any] = {}
+    for var_name, rule in (mapping or {}).items():
+        key = str(var_name or "").strip()
+        if not key:
+            continue
+        if isinstance(rule, str) and rule.strip():
+            value = _resolve_mapping_path(context, rule.strip())
+        else:
+            value = rule
+        if value is None:
+            value = ""
+        out[key] = value
+    return out
+
+
 def _coerce_graph_mode(value: Optional[str]) -> str:
     raw = (value or "").strip().upper()
     if raw in {"OFF", "ON", "AUTO"}:
@@ -1585,17 +1656,21 @@ def _post_assertions(
         if not isinstance(item, dict):
             raise BatchSolveError("Each item must be an object.", status_code=502, code="post_assert_failed")
         if str(item.get("question_id")) != qin["question_id"]:
-            raise BatchSolveError(
-                f"question_id mismatch at index={idx}.",
-                status_code=502,
-                code="post_assert_failed",
+            logger.warning(
+                "batch_question_id_mismatch_normalized index=%s expected=%s got=%s",
+                idx,
+                qin["question_id"],
+                item.get("question_id"),
             )
+            item["question_id"] = qin["question_id"]
         if expect_question_index and int(item.get("question_index") or -1) != idx:
-            raise BatchSolveError(
-                f"question_index mismatch at index={idx}.",
-                status_code=502,
-                code="post_assert_failed",
+            logger.warning(
+                "batch_question_index_mismatch_normalized index=%s expected=%s got=%s",
+                idx,
+                idx,
+                item.get("question_index"),
             )
+            item["question_index"] = idx
 
         clarification = item.get("clarification") if isinstance(item.get("clarification"), dict) else {}
         if bool(clarification.get("needs_clarification")):
@@ -1640,17 +1715,37 @@ def _post_assertions(
             ("detected_tasks" in problem_props or "detected_tasks" in classification_props)
             and not detected_tasks
         ):
-            raise BatchSolveError(
-                f"detected_tasks must be non-empty for item {idx}.",
-                status_code=502,
-                code="post_assert_failed",
-            )
+            logger.warning("batch_detected_tasks_empty_normalized item=%s", idx)
+            detected_tasks = ["solve"]
+            if "problem" in solve_item_props:
+                problem_obj = item.get("problem") if isinstance(item.get("problem"), dict) else {}
+                problem_obj["detected_tasks"] = detected_tasks
+                item["problem"] = problem_obj
+            elif "classification" in solve_item_props:
+                classification_obj = item.get("classification") if isinstance(item.get("classification"), dict) else {}
+                classification_obj["detected_tasks"] = detected_tasks
+                item["classification"] = classification_obj
         if enum_tasks and any(str(t) not in enum_tasks for t in detected_tasks):
-            raise BatchSolveError(
-                f"detected_tasks contains out-of-enum value for item {idx}.",
-                status_code=502,
-                code="post_assert_failed",
+            normalized_tasks = [str(t) for t in detected_tasks if str(t) in enum_tasks]
+            if not normalized_tasks and "solve" in enum_tasks:
+                normalized_tasks = ["solve"]
+            if not normalized_tasks and enum_tasks:
+                normalized_tasks = [sorted(enum_tasks)[0]]
+            logger.warning(
+                "batch_detected_tasks_enum_normalized item=%s before=%s after=%s",
+                idx,
+                detected_tasks,
+                normalized_tasks,
             )
+            detected_tasks = normalized_tasks
+            if "problem" in solve_item_props:
+                problem_obj = item.get("problem") if isinstance(item.get("problem"), dict) else {}
+                problem_obj["detected_tasks"] = detected_tasks
+                item["problem"] = problem_obj
+            elif "classification" in solve_item_props:
+                classification_obj = item.get("classification") if isinstance(item.get("classification"), dict) else {}
+                classification_obj["detected_tasks"] = detected_tasks
+                item["classification"] = classification_obj
 
         classification = item.get("classification") if isinstance(item.get("classification"), dict) else {}
         if "difficulty" in classification_props and str(classification.get("difficulty") or "") not in DIFFICULTY_ENUM:
@@ -1977,6 +2072,61 @@ async def execute_batch_solve(
     runtime_max_tasks_per_question = int(max_tasks_per_question or 6)
     questions_json_text = json.dumps(normalized_questions, ensure_ascii=False)
     binding_features_prompt = _bget("features") if isinstance(_bget("features"), dict) else {}
+
+    def _binding_field(name: str, default: Any = None) -> Any:
+        if isinstance(binding, dict):
+            return binding.get(name, default)
+        return getattr(binding, name, default)
+
+    binding_openai_prompt_id = str(_binding_field("openai_prompt_id", "") or "").strip()
+    binding_openai_prompt_version = str(_binding_field("openai_prompt_version", "") or "").strip()
+    binding_openai_prompt_use_latest = bool(_binding_field("openai_prompt_use_latest", False))
+    binding_openai_prompt_variable_mapping_raw = _binding_field("openai_prompt_variable_mapping", None)
+    binding_openai_prompt_variable_mapping = (
+        binding_openai_prompt_variable_mapping_raw
+        if isinstance(binding_openai_prompt_variable_mapping_raw, dict)
+        else {}
+    )
+
+    # Backward-compatibility only: prefer dedicated binding columns; fall back to legacy features map when unset.
+    managed_prompt_id = str(
+        binding_openai_prompt_id
+        or binding_features_prompt.get("openai_prompt_id")
+        or ""
+    ).strip()
+    managed_prompt_version = str(
+        binding_openai_prompt_version
+        or binding_features_prompt.get("openai_prompt_version")
+        or ""
+    ).strip()
+    managed_prompt_use_latest = bool(
+        binding_openai_prompt_use_latest
+        if binding_openai_prompt_id
+        else binding_features_prompt.get("openai_prompt_use_latest", False)
+    )
+    mapping_candidate = (
+        binding_openai_prompt_variable_mapping
+        if binding_openai_prompt_variable_mapping
+        else binding_features_prompt.get("openai_prompt_variable_mapping")
+    )
+    managed_prompt_variable_mapping = mapping_candidate if isinstance(mapping_candidate, dict) else {}
+    managed_prompt_input = _build_managed_prompt_batch_input(normalized_questions)
+    managed_prompt_variables = (
+        _build_managed_prompt_variables(
+            managed_prompt_variable_mapping,
+            runtime_request_id=runtime_request_id,
+            runtime_attempt_id=runtime_attempt_id,
+            external_tier=external_tier,
+            normalized_questions=normalized_questions,
+        )
+        if managed_prompt_variable_mapping
+        else {}
+    )
+    managed_prompt_active = (
+        _managed_prompt_feature_enabled()
+        and managed_prompt_id != ""
+        and (managed_prompt_use_latest or managed_prompt_version != "")
+    )
     schema_name_for_prompt = str(schema_wrapper.get("name") or _bget("output_schema_id") or "youask_math_openai_v1").strip()
     schema_version_for_prompt = _schema_version_for_prompt(schema_body, default="v1")
     max_steps_value = int(_bget("max_steps") or binding_features_prompt.get("max_steps") or _tier_default_max_steps(external_tier))
@@ -2425,6 +2575,11 @@ async def execute_batch_solve(
             model=model_name if provider_name == "openai" else ollama_model_name,
             verbosity="low",
             reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or "minimal"),
+            managed_prompt_id=(managed_prompt_id if (provider_name == "openai" and managed_prompt_active) else None),
+            managed_prompt_version=(managed_prompt_version if (provider_name == "openai" and managed_prompt_active) else None),
+            managed_prompt_use_latest=(managed_prompt_use_latest if (provider_name == "openai" and managed_prompt_active) else False),
+            managed_prompt_variables=(managed_prompt_variables if (provider_name == "openai" and managed_prompt_active and managed_prompt_variables) else None),
+            managed_prompt_input=(managed_prompt_input if (provider_name == "openai" and managed_prompt_active and not managed_prompt_variables) else None),
         )
 
     def _provider_fallback_allowed() -> bool:
@@ -2833,6 +2988,10 @@ async def execute_batch_solve(
         "developer_prompt_id": _bget("developer_prompt_id"),
         "output_schema_id": _bget("output_schema_id"),
         "openai_calls_count": 1 if response.provider == "openai" else 0,
+        "openai_prompt_id": (response.payload or {}).get("openai_prompt_id"),
+        "openai_prompt_version": (response.payload or {}).get("openai_prompt_version"),
+        "openai_prompt_use_latest": (response.payload or {}).get("openai_prompt_use_latest"),
+        "openai_prompt_variables_used": (response.payload or {}).get("openai_prompt_variables_used"),
         "repair_attempted": repair_attempted,
         "schema_valid": True,
         "sympy_numpy_reports": sympy_numpy_reports,

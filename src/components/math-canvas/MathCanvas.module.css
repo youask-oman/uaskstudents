@@ -3102,6 +3102,14 @@
   color: #111827 !important;
 }
 
+/* Keep playback Python code readable on dark background inside the final row */
+.paperPageShortPaper .stepsBlock>.stepRow:last-child .stepValue :global(.uask-code-block-pre),
+.paperPageShortPaper .stepsBlock>.stepRow:last-child .stepValue :global(.uask-code-block-code),
+.paperPageShortPaper .stepsBlock>.stepRow:last-child .stepValue :global(.uask-code-block-code *) {
+  color: #fef08a !important;
+  -webkit-text-fill-color: #fef08a !important;
+}
+
 .paperPageShortPaper .stepsBlock>.stepRow:last-child .blockActionButton {
   border-color: #d1d5db;
   background: #ffffff;

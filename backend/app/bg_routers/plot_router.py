@@ -13,8 +13,18 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from sqlmodel import Session
 import logging
+import asyncio
+import time
+from collections import deque, defaultdict
 
 from app.database import get_session
+from app.plot.cache import build_cache_key, get_cached_svg, set_cached_svg
+from app.plot.render_svg import render_recipe_svg
+from app.schemas.plot_render import (
+    PlotRenderSvgMeta,
+    PlotRenderSvgRequest,
+    PlotRenderSvgResponse,
+)
 from app.services.plot_pipeline_service import (
     get_plot_pipeline_service,
     PlotTriggerResult,
@@ -23,6 +33,20 @@ from app.services.plot_pipeline_service import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/plot", tags=["plotting"])
+_RATE_WINDOW_SECONDS = 60
+_RATE_MAX_PER_WINDOW = 40
+_plot_rate: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _enforce_plot_rate_limit(request: Request) -> None:
+    ip = (request.client.host if request.client else "unknown") or "unknown"
+    now = time.time()
+    bucket = _plot_rate[ip]
+    while bucket and (now - bucket[0]) > _RATE_WINDOW_SECONDS:
+        bucket.popleft()
+    if len(bucket) >= _RATE_MAX_PER_WINDOW:
+        raise HTTPException(status_code=429, detail="Too many plot render requests")
+    bucket.append(now)
 
 
 class PlotTriggerRequest(BaseModel):
@@ -210,3 +234,56 @@ async def plot_pipeline_v1(
             response.error = "No plot generated"
     
     return response
+
+
+@router.post("/render-svg", response_model=PlotRenderSvgResponse)
+async def render_plot_svg_endpoint(
+    payload: PlotRenderSvgRequest,
+    request: Request,
+) -> PlotRenderSvgResponse:
+    """
+    Render a stored plot recipe to deterministic SVG with Redis/disk cache.
+    """
+    _enforce_plot_rate_limit(request)
+
+    if not payload.plot.should_visualize:
+        raise HTTPException(status_code=400, detail="plot.should_visualize is false")
+
+    recipe = payload.plot.recipe
+    render_options = payload.render_options.model_dump()
+    cache_key = build_cache_key(recipe, render_options)
+
+    cached_svg = get_cached_svg(cache_key)
+    if cached_svg:
+        return PlotRenderSvgResponse(
+            cache_key=cache_key,
+            svg=cached_svg,
+            meta=PlotRenderSvgMeta(render_ms=0, cached=True, warnings=[]),
+        )
+
+    try:
+        svg, warnings, render_ms = await asyncio.wait_for(
+            asyncio.to_thread(
+                render_recipe_svg,
+                recipe,
+                width_px=payload.render_options.width_px,
+                height_px=payload.render_options.height_px,
+                font_scale=payload.render_options.font_scale,
+            ),
+            timeout=3.5,
+        )
+    except TimeoutError as exc:
+        raise HTTPException(status_code=408, detail="Plot rendering timeout") from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("plot_render_svg_failed")
+        raise HTTPException(status_code=422, detail=f"Plot render failed: {exc}") from exc
+
+    if not svg or "<svg" not in svg.lower():
+        raise HTTPException(status_code=422, detail="Renderer did not produce valid SVG")
+
+    set_cached_svg(cache_key, svg)
+    return PlotRenderSvgResponse(
+        cache_key=cache_key,
+        svg=svg,
+        meta=PlotRenderSvgMeta(render_ms=render_ms, cached=False, warnings=warnings),
+    )

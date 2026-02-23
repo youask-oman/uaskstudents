@@ -13,6 +13,9 @@ from sqlmodel import Session, select
 from app.admin_billing.deps import get_current_user
 from app.database import get_session
 from app.models import (
+    BillingLedger,
+    CreditHold,
+    CreditLot,
     CreditHoldAllocationV2,
     CreditHoldV2,
     CreditLotV2,
@@ -99,6 +102,10 @@ class PatchPromptBindingBody(BaseModel):
     global_system_prompt_id: Optional[str] = None
     developer_prompt_id: Optional[str] = None
     output_schema_id: Optional[str] = None
+    openai_prompt_id: Optional[str] = None
+    openai_prompt_version: Optional[str] = None
+    openai_prompt_use_latest: Optional[bool] = None
+    openai_prompt_variable_mapping: Optional[Dict[str, Any]] = None
     features: Optional[Dict[str, Any]] = None
     multipliers: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
@@ -253,8 +260,90 @@ def admin_credits_ledger(
         }
         for r in rows
     ]
-    next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].ledger_id) if has_more and rows else None
-    return CursorPage(items=items, next_cursor=next_cursor, limit=limit, total=total)
+    if items:
+        next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].ledger_id) if has_more and rows else None
+        return CursorPage(items=items, next_cursor=next_cursor, limit=limit, total=total)
+
+    # Legacy fallback for environments still writing to BillingLedger/CreditHold.
+    legacy_q = select(BillingLedger)
+    legacy_count_q = select(func.count(BillingLedger.id))
+    if user_id is not None:
+        legacy_q = legacy_q.where(BillingLedger.user_id == user_id)
+        legacy_count_q = legacy_count_q.where(BillingLedger.user_id == user_id)
+    if request_id:
+        legacy_q = legacy_q.where(BillingLedger.request_id == request_id.strip())
+        legacy_count_q = legacy_count_q.where(BillingLedger.request_id == request_id.strip())
+    if tier:
+        legacy_q = legacy_q.where(BillingLedger.tier == tier.upper())
+        legacy_count_q = legacy_count_q.where(BillingLedger.tier == tier.upper())
+    if action:
+        legacy_q = legacy_q.where(BillingLedger.action_type == action)
+        legacy_count_q = legacy_count_q.where(BillingLedger.action_type == action)
+    if outcome:
+        legacy_q = legacy_q.where(BillingLedger.status == outcome.upper())
+        legacy_count_q = legacy_count_q.where(BillingLedger.status == outcome.upper())
+    if date_from:
+        legacy_q = legacy_q.where(BillingLedger.created_at >= date_from)
+        legacy_count_q = legacy_count_q.where(BillingLedger.created_at >= date_from)
+    if date_to:
+        legacy_q = legacy_q.where(BillingLedger.created_at <= date_to)
+        legacy_count_q = legacy_count_q.where(BillingLedger.created_at <= date_to)
+
+    legacy_total = int(session.exec(legacy_count_q).one() or 0)
+    legacy_cursor_id_int: Optional[int] = None
+    if cursor_id and cursor_id.startswith("legacy_billing_"):
+        try:
+            legacy_cursor_id_int = int(cursor_id.replace("legacy_billing_", ""))
+        except Exception:
+            legacy_cursor_id_int = None
+    if cursor_dt and legacy_cursor_id_int is not None:
+        legacy_q = legacy_q.where(
+            or_(
+                BillingLedger.created_at < cursor_dt,
+                and_(BillingLedger.created_at == cursor_dt, BillingLedger.id < legacy_cursor_id_int),
+            )
+        )
+
+    legacy_rows = session.exec(
+        legacy_q.order_by(BillingLedger.created_at.desc(), BillingLedger.id.desc()).limit(limit + 1)
+    ).all()
+    legacy_has_more = len(legacy_rows) > limit
+    legacy_rows = legacy_rows[:limit]
+    legacy_user_ids = {r.user_id for r in legacy_rows if r.user_id is not None}
+    legacy_user_email_map: Dict[int, str] = {}
+    if legacy_user_ids:
+        legacy_users = session.exec(select(User).where(User.id.in_(legacy_user_ids))).all()
+        legacy_user_email_map = {int(u.id): u.email for u in legacy_users if u.id is not None}
+
+    legacy_items = [
+        {
+            "ledger_id": f"legacy_billing_{r.id}",
+            "user_id": r.user_id,
+            "user_email": legacy_user_email_map.get(r.user_id),
+            "hold_id": None,
+            "request_id": r.request_id,
+            "attempt_id": None,
+            "idempotency_key": r.idempotency_key,
+            "tier": r.tier,
+            "action": r.action_type,
+            "question_id": r.question_id,
+            "question_index": None,
+            "base_cost": 0.0,
+            "addons_cost": 0.0,
+            "attempt_fee": 0.0,
+            "total_cost": float(r.credits_charged or 0),
+            "outcome": (r.status or "").lower() or "charged",
+            "pricing_snapshot": r.pricing_snapshot_json,
+            "created_at": r.created_at,
+        }
+        for r in legacy_rows
+    ]
+    legacy_next_cursor = (
+        _encode_cursor(legacy_rows[-1].created_at, f"legacy_billing_{legacy_rows[-1].id}")
+        if legacy_has_more and legacy_rows
+        else None
+    )
+    return CursorPage(items=legacy_items, next_cursor=legacy_next_cursor, limit=limit, total=legacy_total)
 
 
 @router.get("/holds", response_model=CursorPage)
@@ -313,8 +402,77 @@ def admin_credits_holds(
         }
         for r in rows
     ]
-    next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].hold_id) if has_more and rows else None
-    return CursorPage(items=items, next_cursor=next_cursor, limit=limit)
+    if items:
+        next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].hold_id) if has_more and rows else None
+        return CursorPage(items=items, next_cursor=next_cursor, limit=limit)
+
+    # Legacy fallback for environments still writing CreditHold.
+    legacy_q = select(CreditHold)
+    if status:
+        status_norm = status.lower()
+        if status_norm == "active":
+            legacy_q = legacy_q.where(CreditHold.status == "held")
+        elif status_norm == "released":
+            legacy_q = legacy_q.where(CreditHold.status.in_(["released", "released_void"]))
+        elif status_norm == "settled":
+            legacy_q = legacy_q.where(CreditHold.status == "finalized")
+        else:
+            legacy_q = legacy_q.where(CreditHold.status == status_norm)
+    if user_id is not None:
+        legacy_q = legacy_q.where(CreditHold.user_id == user_id)
+    if date_from:
+        legacy_q = legacy_q.where(CreditHold.created_at >= date_from)
+    if date_to:
+        legacy_q = legacy_q.where(CreditHold.created_at <= date_to)
+
+    legacy_cursor_id_int: Optional[int] = None
+    if cursor_id and cursor_id.startswith("legacy_hold_"):
+        try:
+            legacy_cursor_id_int = int(cursor_id.replace("legacy_hold_", ""))
+        except Exception:
+            legacy_cursor_id_int = None
+    if cursor_dt and legacy_cursor_id_int is not None:
+        legacy_q = legacy_q.where(
+            or_(
+                CreditHold.created_at < cursor_dt,
+                and_(CreditHold.created_at == cursor_dt, CreditHold.id < legacy_cursor_id_int),
+            )
+        )
+
+    legacy_rows = session.exec(
+        legacy_q.order_by(CreditHold.created_at.desc(), CreditHold.id.desc()).limit(limit + 1)
+    ).all()
+    legacy_has_more = len(legacy_rows) > limit
+    legacy_rows = legacy_rows[:limit]
+    legacy_items = []
+    for r in legacy_rows:
+        meta = r.meta if isinstance(r.meta, dict) else {}
+        status_value = (r.status or "").lower()
+        is_finalized = status_value in {"finalized", "released"}
+        is_void = status_value in {"released_void", "failed"}
+        legacy_items.append(
+            {
+                "hold_id": f"legacy_hold_{r.id}",
+                "user_id": r.user_id,
+                "request_id": r.request_id,
+                "attempt_id": str(meta.get("attempt_id") or ""),
+                "idempotency_key": str(meta.get("idempotency_key") or ""),
+                "tier": str(meta.get("tier") or ""),
+                "action": str(meta.get("action") or "solve"),
+                "status": "active" if status_value == "held" else ("released" if is_void else "settled"),
+                "reserved": float(r.reserved_credits or 0),
+                "settled": float(r.reserved_credits or 0) if is_finalized else 0.0,
+                "released": float(r.reserved_credits or 0) if is_void else 0.0,
+                "created_at": r.created_at,
+                "expires_at": None,
+            }
+        )
+    legacy_next_cursor = (
+        _encode_cursor(legacy_rows[-1].created_at, f"legacy_hold_{legacy_rows[-1].id}")
+        if legacy_has_more and legacy_rows
+        else None
+    )
+    return CursorPage(items=legacy_items, next_cursor=legacy_next_cursor, limit=limit)
 
 
 @router.get("/lots", response_model=CursorPage)
@@ -642,6 +800,10 @@ def admin_list_prompt_bindings(
                 "global_system_prompt_id": r.global_system_prompt_id,
                 "developer_prompt_id": r.developer_prompt_id,
                 "output_schema_id": r.output_schema_id,
+                "openai_prompt_id": _val(r, "openai_prompt_id"),
+                "openai_prompt_version": _val(r, "openai_prompt_version"),
+                "openai_prompt_use_latest": bool(_val(r, "openai_prompt_use_latest", False)),
+                "openai_prompt_variable_mapping": _val(r, "openai_prompt_variable_mapping"),
                 "features": _val(r, "features", {}) or {},
                 "multipliers": _val(r, "multipliers", {}) or {},
                 "max_questions_allowed": _val(r, "max_questions_allowed"),
@@ -790,15 +952,22 @@ def admin_credits_overview(
     from_dt = date_from or one_day_ago
     to_dt = date_to or now
 
-    lots_q = select(func.coalesce(func.sum(CreditLotV2.credits_total), 0))
-    consumed_q = select(func.coalesce(func.sum(UsageLedgerV2.total_cost), 0))
+    lots_q_v2 = select(func.coalesce(func.sum(CreditLotV2.credits_total), 0))
+    lots_q_legacy = select(func.coalesce(func.sum(CreditLot.credits_total), 0))
+    consumed_q_v2 = select(func.coalesce(func.sum(UsageLedgerV2.total_cost), 0))
+    consumed_q_legacy = select(func.coalesce(func.sum(BillingLedger.credits_charged), 0)).where(
+        BillingLedger.status.in_(["SETTLED", "CHARGED"])
+    )
     holds_count_q = select(func.count(CreditHoldV2.hold_id)).where(CreditHoldV2.status == "active")
     holds_amount_q = select(
         func.coalesce(func.sum(CreditHoldV2.amount_reserved - CreditHoldV2.amount_settled - CreditHoldV2.amount_released), 0)
     ).where(CreditHoldV2.status == "active")
+    legacy_holds_count_q = select(func.count(CreditHold.id)).where(CreditHold.status == "held")
+    legacy_holds_amount_q = select(func.coalesce(func.sum(CreditHold.reserved_credits), 0)).where(CreditHold.status == "held")
 
     if tier:
-        consumed_q = consumed_q.where(UsageLedgerV2.tier == tier.upper())
+        consumed_q_v2 = consumed_q_v2.where(UsageLedgerV2.tier == tier.upper())
+        consumed_q_legacy = consumed_q_legacy.where(BillingLedger.tier == tier.upper())
         holds_count_q = holds_count_q.where(CreditHoldV2.tier == tier.upper())
         holds_amount_q = holds_amount_q.where(CreditHoldV2.tier == tier.upper())
 
@@ -817,15 +986,23 @@ def admin_credits_overview(
         .where(CreditHoldV2.amount_settled == 0)
         .where(CreditHoldV2.amount_released == CreditHoldV2.amount_reserved)
     ).one()
-    last_ledger = session.exec(select(UsageLedgerV2).order_by(UsageLedgerV2.created_at.desc())).first()
+    last_ledger_v2 = session.exec(select(UsageLedgerV2).order_by(UsageLedgerV2.created_at.desc())).first()
+    last_ledger_legacy = session.exec(select(BillingLedger).order_by(BillingLedger.created_at.desc())).first()
+    last_ledger_at = None
+    if last_ledger_v2 and last_ledger_legacy:
+        last_ledger_at = max(last_ledger_v2.created_at, last_ledger_legacy.created_at)
+    elif last_ledger_v2:
+        last_ledger_at = last_ledger_v2.created_at
+    elif last_ledger_legacy:
+        last_ledger_at = last_ledger_legacy.created_at
 
     return {
-        "total_credits_issued": float(session.exec(lots_q).one()),
-        "total_credits_consumed": float(session.exec(consumed_q).one()),
-        "active_holds_count": int(session.exec(holds_count_q).one()),
-        "active_holds_reserved": float(session.exec(holds_amount_q).one()),
+        "total_credits_issued": float(session.exec(lots_q_v2).one() or 0) + float(session.exec(lots_q_legacy).one() or 0),
+        "total_credits_consumed": float(session.exec(consumed_q_v2).one() or 0) + float(session.exec(consumed_q_legacy).one() or 0),
+        "active_holds_count": int(session.exec(holds_count_q).one() or 0) + int(session.exec(legacy_holds_count_q).one() or 0),
+        "active_holds_reserved": float(session.exec(holds_amount_q).one() or 0) + float(session.exec(legacy_holds_amount_q).one() or 0),
         "insufficient_credits_count": int(insufficient_count),
         "provider_failures_count": int(provider_failures),
-        "last_ledger_entry_at": last_ledger.created_at if last_ledger else None,
+        "last_ledger_entry_at": last_ledger_at,
         "range": {"date_from": from_dt, "date_to": to_dt, "tier": tier},
     }

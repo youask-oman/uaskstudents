@@ -4,6 +4,7 @@ import logging
 import os
 import time
 import asyncio
+import copy
 from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
@@ -302,6 +303,11 @@ class OpenAIClient:
         model: Optional[str] = None,
         verbosity: Optional[str] = None,
         reasoning_effort: Optional[str] = None,
+        managed_prompt_id: Optional[str] = None,
+        managed_prompt_version: Optional[str] = None,
+        managed_prompt_use_latest: bool = False,
+        managed_prompt_variables: Optional[Dict[str, Any]] = None,
+        managed_prompt_input: Optional[str] = None,
     ) -> LLMResponse:
         del stream
         if not self.api_key and not self.allow_missing_api_key and not _openai_dry_run_enabled():
@@ -351,6 +357,46 @@ class OpenAIClient:
 
         try:
             if "gpt-5" in model_name.lower():
+                def _flatten_messages_for_input(src_messages: List[Dict[str, Any]]) -> str:
+                    chunks: List[str] = []
+                    for row in src_messages:
+                        role = str(row.get("role") or "user").upper()
+                        content = row.get("content", "")
+                        if isinstance(content, list):
+                            parts: List[str] = []
+                            for part in content:
+                                if isinstance(part, dict) and part.get("type") in {"text", "input_text"}:
+                                    parts.append(str(part.get("text") or ""))
+                            text = "\n".join([p for p in parts if p]).strip()
+                        else:
+                            text = str(content or "").strip()
+                        if text:
+                            chunks.append(f"{role}: {text}")
+                    return "\n\n".join(chunks).strip()
+
+                def _is_transient_status(exc: Exception) -> bool:
+                    status = getattr(exc, "status_code", None)
+                    if isinstance(status, int) and status in {429, 500, 503}:
+                        return True
+                    details = getattr(exc, "details", None)
+                    if isinstance(details, dict) and int(details.get("status_code") or 0) in {429, 500, 503}:
+                        return True
+                    return False
+
+                async def _responses_create_with_retry(base_params: Dict[str, Any]) -> Any:
+                    last_exc: Optional[Exception] = None
+                    max_attempts = 3
+                    for attempt in range(max_attempts):
+                        try:
+                            effective_client = self.client.with_options(timeout=(max(1.0, float(timeout_ms) / 1000.0))) if timeout_ms else self.client
+                            return await effective_client.responses.create(**base_params)
+                        except Exception as exc:  # noqa: BLE001
+                            last_exc = exc
+                            if (attempt + 1) >= max_attempts or not _is_transient_status(exc):
+                                raise
+                            await asyncio.sleep(0.4 * (2**attempt))
+                    raise last_exc or RuntimeError("responses.create failed")
+
                 verbosity = verbosity or "low"
                 if json_schema and reasoning_effort not in {"minimal", "low", "medium", "high"}:
                     reasoning_effort = "minimal"
@@ -386,8 +432,17 @@ class OpenAIClient:
 
                 params: Dict[str, Any] = {
                     "model": model_name,
-                    "input": input_items,
                 }
+                managed_prompt_active = bool(str(managed_prompt_id or "").strip())
+                managed_prompt_ref: Optional[Dict[str, Any]] = None
+                if managed_prompt_active:
+                    managed_prompt_ref = {"id": str(managed_prompt_id).strip()}
+                    if not managed_prompt_use_latest and str(managed_prompt_version or "").strip():
+                        managed_prompt_ref["version"] = str(managed_prompt_version).strip()
+                    params["prompt"] = managed_prompt_ref
+                else:
+                    params["input"] = input_items
+
                 if max_tokens is not None:
                     params["max_output_tokens"] = max_tokens
                 text_payload: Dict[str, Any] = {"verbosity": verbosity}
@@ -418,6 +473,23 @@ class OpenAIClient:
                         _schema_has_key(schema_obj, "const"),
                     )
 
+                prompt_variables_used = False
+                prompt_variable_fallback_used = False
+                if managed_prompt_active:
+                    if isinstance(managed_prompt_variables, dict) and managed_prompt_variables:
+                        prompt_variables_used = True
+                    else:
+                        prompt_input_text = str(
+                            managed_prompt_input or prompt or _flatten_messages_for_input(messages)
+                        ).strip()
+                        if not prompt_input_text:
+                            raise LLMProviderError(
+                                "Managed prompt call requires input or variables.",
+                                provider="openai",
+                                status_code=400,
+                            )
+                        params["input"] = prompt_input_text
+
                 if _openai_dry_run_enabled():
                     dump_path = _dump_openai_dry_run_payload(
                         request_id=request_id,
@@ -436,8 +508,33 @@ class OpenAIClient:
                         },
                     )
 
-                effective_client = self.client.with_options(timeout=(max(1.0, float(timeout_ms) / 1000.0))) if timeout_ms else self.client
-                response = await effective_client.responses.create(**params)
+                if managed_prompt_active and isinstance(managed_prompt_variables, dict) and managed_prompt_variables:
+                    embedded_params = copy.deepcopy(params)
+                    embedded_prompt = dict((embedded_params.get("prompt") or {}))
+                    embedded_prompt["variables"] = managed_prompt_variables
+                    embedded_params["prompt"] = embedded_prompt
+                    try:
+                        response = await _responses_create_with_retry(embedded_params)
+                    except Exception as exc:
+                        error_text = str(exc or "").lower()
+                        # SDK compatibility: if variables are rejected, keep prompt id/version
+                        # and retry with plain input only.
+                        if "unexpected keyword argument 'variables'" in error_text or 'unexpected keyword argument "variables"' in error_text:
+                            input_fallback_params = copy.deepcopy(params)
+                            if "input" not in input_fallback_params:
+                                prompt_input_text = str(
+                                    managed_prompt_input or prompt or _flatten_messages_for_input(messages)
+                                ).strip()
+                                if prompt_input_text:
+                                    input_fallback_params["input"] = prompt_input_text
+                            prompt_variable_fallback_used = True
+                            prompt_variables_used = False
+                            response = await _responses_create_with_retry(input_fallback_params)
+                        else:
+                            raise
+                else:
+                    response = await _responses_create_with_retry(params)
+
                 status_info["status"] = getattr(response, "status", "completed")
                 if status_info["status"] == "incomplete":
                     details = getattr(response, "incomplete_details", None)
@@ -469,9 +566,17 @@ class OpenAIClient:
 
                 payload = {
                     "max_output_tokens": max_tokens,
-                    "full_input": input_items,
+                    "full_input": input_items if not managed_prompt_active else (params.get("input") or input_items),
                     "response_format_schema_name": json_schema_norm.get("name") if json_schema_norm else None,
                     "reasoning_effort": reasoning_effort,
+                    "openai_prompt_id": str(managed_prompt_id or "").strip() or None,
+                    "openai_prompt_version": (
+                        "latest" if managed_prompt_active and managed_prompt_use_latest
+                        else (str(managed_prompt_version or "").strip() or None)
+                    ),
+                    "openai_prompt_use_latest": bool(managed_prompt_use_latest) if managed_prompt_active else False,
+                    "openai_prompt_variables_used": prompt_variables_used,
+                    "openai_prompt_variable_fallback_used": prompt_variable_fallback_used,
                 }
                 try:
                     payload["openai_response_raw"] = response.model_dump(mode="json")
@@ -542,10 +647,11 @@ class OpenAIClient:
             },
         )
 
+        response_model_name = str(getattr(locals().get("response", None), "model", None) or model_name)
         return LLMResponse(
             content=content or "",
             provider="openai",
-            model=model_name,
+            model=response_model_name,
             usage=usage,
             status=status_info,
             payload=payload,
@@ -568,6 +674,11 @@ class OpenAIClient:
         model: Optional[str] = None,
         verbosity: Optional[str] = None,
         reasoning_effort: Optional[str] = None,
+        managed_prompt_id: Optional[str] = None,
+        managed_prompt_version: Optional[str] = None,
+        managed_prompt_use_latest: bool = False,
+        managed_prompt_variables: Optional[Dict[str, Any]] = None,
+        managed_prompt_input: Optional[str] = None,
     ) -> AsyncIterator[LLMStreamResponse]:
         response = await self.generate(
             messages=messages,
@@ -583,6 +694,11 @@ class OpenAIClient:
             model=model,
             verbosity=verbosity,
             reasoning_effort=reasoning_effort,
+            managed_prompt_id=managed_prompt_id,
+            managed_prompt_version=managed_prompt_version,
+            managed_prompt_use_latest=managed_prompt_use_latest,
+            managed_prompt_variables=managed_prompt_variables,
+            managed_prompt_input=managed_prompt_input,
         )
         yield LLMStreamResponse(
             content=response.content,

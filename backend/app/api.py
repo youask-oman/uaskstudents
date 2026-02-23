@@ -6937,6 +6937,8 @@ async def solve_v3_stream_endpoint(
                     session_id=int(session_row.id),
                     message_id=int(msg.id) if msg.id is not None else None,
                     output_format="json_schema",
+                    prompt_id=str((msg_telemetry or {}).get("openai_prompt_id") or "") or None,
+                    prompt_version=str((msg_telemetry or {}).get("openai_prompt_version") or "") or None,
                     attempt_number=1,
                     provider=str((msg_telemetry or {}).get("provider") or ""),
                     model=str((msg_telemetry or {}).get("model") or ""),
@@ -6955,7 +6957,13 @@ async def solve_v3_stream_endpoint(
                     output_tokens=int((msg_telemetry or {}).get("output_tokens") or 0),
                     total_tokens=int((msg_telemetry or {}).get("total_tokens") or 0),
                     latency_ms=int((msg_telemetry or {}).get("latency_ms_total") or 0) or None,
-                    prompt_meta={"questions_json": jsonable_encoder(runtime_questions_json)},
+                    prompt_meta={
+                        "questions_json": jsonable_encoder(runtime_questions_json),
+                        "openai_prompt_id": (msg_telemetry or {}).get("openai_prompt_id"),
+                        "openai_prompt_version": (msg_telemetry or {}).get("openai_prompt_version"),
+                        "openai_prompt_use_latest": (msg_telemetry or {}).get("openai_prompt_use_latest"),
+                        "openai_prompt_variables_used": (msg_telemetry or {}).get("openai_prompt_variables_used"),
+                    },
                     status="success",
                 )
             )
@@ -12143,16 +12151,10 @@ async def admin_list_llm_usage_ledger(
             )
         )
 
-    # If primary ledger has rows, still supplement with solver attempts when Ollama
-    # visibility would otherwise be missing from the observability page.
+    # If primary ledger has rows, still supplement with solver attempts so
+    # recent rows are visible even when LlmUsageLedger is sparse/stale.
     if items:
-        has_ollama = any(str(item.provider or "").strip().lower() == "ollama" for item in items)
-        should_supplement_with_attempts = (
-            solve_session_id is None
-            and (provider_filter in {"", "ollama"})
-            and not has_ollama
-        )
-        if not should_supplement_with_attempts:
+        if solve_session_id is not None:
             return AdminLlmUsageLedgerListResponse(total=total, items=items, source="llmusageledger")
 
         supplement_attempt_query = select(SolverOutputAttempt)
@@ -12189,6 +12191,13 @@ async def admin_list_llm_usage_ledger(
         supplement_request_summary_map = _build_request_summary_map(db, supplement_request_ids)
 
         supplement_items: List[AdminLlmUsageLedgerItem] = []
+        existing_keys = {
+            (
+                str(item.request_id or "").strip(),
+                str(item.attempt_id or "").strip(),
+            )
+            for item in items
+        }
         for row in supplement_rows:
             item = _serialize_solver_attempt_as_llm_usage(
                 row,
@@ -12219,7 +12228,13 @@ async def admin_list_llm_usage_ledger(
                     else None
                 ),
             )
-            if str(item.provider or "").strip().lower() != "ollama":
+            if provider_filter and str(item.provider or "").strip().lower() != provider_filter:
+                continue
+            dedupe_key = (
+                str(item.request_id or "").strip(),
+                str(item.attempt_id or "").strip(),
+            )
+            if dedupe_key in existing_keys:
                 continue
             supplement_items.append(item)
 
@@ -13029,6 +13044,72 @@ async def admin_list_chat_billing_records(
                     billing_statuses=[],
                     per_question_total_credits=usage_total,
                     per_question_charges=question_items,
+                )
+            )
+            request_ids_in_records.add(rid)
+
+        # Legacy fallback for environments that charge through BillingLedger
+        # but do not write UsageLedgerV2 rows.
+        billing_recent_rows = db.exec(
+            select(BillingLedger)
+            .where(BillingLedger.request_id.is_not(None))
+            .order_by(BillingLedger.created_at.desc())
+            .limit(max(limit * 8, 500))
+        ).all()
+        billing_by_request_recent: Dict[str, List[BillingLedger]] = {}
+        for billing_row in billing_recent_rows:
+            rid = str(billing_row.request_id or "").strip()
+            if not rid:
+                continue
+            billing_by_request_recent.setdefault(rid, []).append(billing_row)
+
+        for rid, billing_entries in billing_by_request_recent.items():
+            if rid in request_ids_in_records:
+                continue
+            first_entry = billing_entries[0]
+            billing_user = db.get(User, first_entry.user_id) if first_entry.user_id is not None else None
+            total_credits = 0.0
+            total_provider_cost = 0.0
+            statuses: List[str] = []
+            for entry in billing_entries:
+                total_credits += float(entry.credits_charged or 0)
+                total_provider_cost += float(entry.provider_cost_usd or 0)
+                status_value = str(entry.status or "").strip()
+                if status_value and status_value not in statuses:
+                    statuses.append(status_value)
+            fallback_attempt = attempt_by_request.get(rid)
+            records.append(
+                AdminChatBillingRecord(
+                    session_id=0,
+                    message_id=0,
+                    role="assistant",
+                    created_at=first_entry.created_at.isoformat() if first_entry.created_at else "",
+                    user_id=int(first_entry.user_id or 0),
+                    user_email=billing_user.email if billing_user else "unknown",
+                    request_id=rid,
+                    content_preview=(
+                        "No chatmessage row found; rendered from billing_ledger fallback. "
+                        f"action={first_entry.action_type or 'solve'} "
+                        f"statuses={','.join(statuses) or 'n/a'}"
+                    ),
+                    question_count=0,
+                    charge_mode="single",
+                    credits_charged_total=total_credits,
+                    credits_source="billingledger",
+                    provider_cost_usd_total=total_provider_cost,
+                    provider_cost_source="billingledger" if total_provider_cost > 0 else "none",
+                    provider=(fallback_attempt.provider if fallback_attempt else None),
+                    model=(fallback_attempt.model if fallback_attempt else None),
+                    input_tokens_total=_safe_int(fallback_attempt.input_tokens) if fallback_attempt else 0,
+                    output_tokens_total=_safe_int(fallback_attempt.output_tokens) if fallback_attempt else 0,
+                    total_tokens=_safe_int(fallback_attempt.total_tokens) if fallback_attempt else 0,
+                    latency_ms=_safe_int(fallback_attempt.latency_ms) if fallback_attempt else None,
+                    billing_entries_count=len(billing_entries),
+                    usage_entries_count=0,
+                    ledger_entries_total_count=len(billing_entries),
+                    billing_statuses=statuses,
+                    per_question_total_credits=0.0,
+                    per_question_charges=[],
                 )
             )
             request_ids_in_records.add(rid)

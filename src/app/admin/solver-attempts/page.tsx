@@ -40,7 +40,7 @@ export default function AdminSolverAttemptsPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const [format, setFormat] = useState("freeform");
+  const [format, setFormat] = useState("");
 
   const getHeaders = () => {
     const token = localStorage.getItem("token");
@@ -114,8 +114,10 @@ export default function AdminSolverAttemptsPage() {
           onChange={(e) => setStatus(e.target.value)}
         >
           <option value="">All Status</option>
-          <option value="ok">ok</option>
-          <option value="invalid">invalid</option>
+          <option value="success">success</option>
+          <option value="failure">failure</option>
+          <option value="processing">processing</option>
+          <option value="ambiguous">ambiguous</option>
           <option value="error">error</option>
         </select>
         <select
