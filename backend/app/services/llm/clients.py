@@ -4,7 +4,9 @@ import logging
 import os
 import time
 import asyncio
+from datetime import datetime
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -110,6 +112,31 @@ def _log_llm(event: str, payload: Dict[str, Any]) -> None:
         return
     logger = logging.getLogger("llm")
     logger.info(json.dumps({"event": event, **payload}))
+
+
+def _openai_dry_run_enabled() -> bool:
+    return (os.environ.get("OPENAI_RESPONSES_DRY_RUN_DUMP") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _dump_openai_dry_run_payload(*, request_id: Optional[str], params: Dict[str, Any], model_name: str) -> str:
+    base_dir = os.environ.get("OPENAI_RESPONSES_DRY_RUN_DIR")
+    if base_dir:
+        out_dir = Path(base_dir)
+    else:
+        out_dir = Path(__file__).resolve().parents[2] / "storage" / "debug" / "openai_dryrun"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    req = (request_id or "no_request_id").replace(":", "_")
+    out_path = out_dir / f"{ts}_{req}_openai_responses_realpath_payload.json"
+    payload = {
+        "dry_run": True,
+        "request_id": request_id,
+        "model": model_name,
+        "created_at_utc": datetime.utcnow().isoformat() + "Z",
+        "responses_create_params": params,
+    }
+    out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return str(out_path)
 
 
 
@@ -277,7 +304,7 @@ class OpenAIClient:
         reasoning_effort: Optional[str] = None,
     ) -> LLMResponse:
         del stream
-        if not self.api_key and not self.allow_missing_api_key:
+        if not self.api_key and not self.allow_missing_api_key and not _openai_dry_run_enabled():
             raise LLMProviderError("OPENAI_API_KEY not configured.", provider="openai")
         if not self.default_model and not model:
             raise LLMProviderError("OPENAI_MODEL_DEFAULT not configured.", provider="openai")
@@ -372,6 +399,43 @@ class OpenAIClient:
                 if reasoning_effort in {"minimal", "low", "medium", "high"}:
                     params["reasoning"] = {"effort": reasoning_effort}
 
+                if text_format:
+                    schema_obj = text_format.get("schema") if isinstance(text_format, dict) else {}
+                    def _schema_has_key(node: Any, target: str) -> bool:
+                        if isinstance(node, dict):
+                            if target in node:
+                                return True
+                            return any(_schema_has_key(v, target) for v in node.values())
+                        if isinstance(node, list):
+                            return any(_schema_has_key(v, target) for v in node)
+                        return False
+                    logging.getLogger(__name__).info(
+                        "OpenAI Responses preflight: text.format.type=%s text.format.name=%s text.format.strict=%s text.format.schema.type=%s schema.has_const=%s",
+                        text_format.get("type"),
+                        text_format.get("name"),
+                        text_format.get("strict"),
+                        schema_obj.get("type") if isinstance(schema_obj, dict) else None,
+                        _schema_has_key(schema_obj, "const"),
+                    )
+
+                if _openai_dry_run_enabled():
+                    dump_path = _dump_openai_dry_run_payload(
+                        request_id=request_id,
+                        params=params,
+                        model_name=model_name,
+                    )
+                    raise LLMProviderError(
+                        f"OpenAI dry-run enabled. Request payload dumped to: {dump_path}",
+                        provider="openai",
+                        status_code=None,
+                        is_transient=False,
+                        details={
+                            "dry_run": True,
+                            "dump_path": dump_path,
+                            "request_id": request_id,
+                        },
+                    )
+
                 effective_client = self.client.with_options(timeout=(max(1.0, float(timeout_ms) / 1000.0))) if timeout_ms else self.client
                 response = await effective_client.responses.create(**params)
                 status_info["status"] = getattr(response, "status", "completed")
@@ -409,6 +473,11 @@ class OpenAIClient:
                     "response_format_schema_name": json_schema_norm.get("name") if json_schema_norm else None,
                     "reasoning_effort": reasoning_effort,
                 }
+                try:
+                    payload["openai_response_raw"] = response.model_dump(mode="json")
+                except Exception:
+                    # Non-fatal: keep request flow even if raw dump serialization fails.
+                    pass
             else:
                 params = {
                     "model": model_name,

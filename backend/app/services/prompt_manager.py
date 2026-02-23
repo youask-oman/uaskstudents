@@ -59,6 +59,7 @@ class PromptManager:
         result = {
             "binding": {
                 "id": str(binding.id),
+                "provider": str(binding.provider or "").strip().lower(),
                 "tier": binding.tier.value if binding.tier else None,
                 "mode": binding.mode.value if binding.mode else None,
                 "global_system_prompt_id": binding.global_system_prompt_id,

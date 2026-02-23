@@ -10,6 +10,7 @@ export interface PlaybackSegment {
 export interface PlaybackResolution {
   source:
     | "solutions_steps"
+    | "items_steps"
     | "message.display_markdown"
     | "message.rendered_content"
     | "structured.display_markdown"
@@ -132,6 +133,59 @@ const buildSegmentsFromSolutions = (structured: Record<string, unknown>): Playba
   };
 };
 
+const buildSegmentsFromItems = (structured: Record<string, unknown>): PlaybackResolution | null => {
+  const items = Array.isArray(structured.items) ? structured.items : [];
+  if (!items.length) return null;
+
+  const item = items.map((raw) => asRecord(raw)).find(Boolean);
+  if (!item) return null;
+
+  const questionId = sanitizeInline(item.question_id || "q1") || "q1";
+  const segments: PlaybackSegment[] = [];
+  segments.push({ kind: "markdown", text: `### ${questionId.toUpperCase()} (${questionId})` });
+
+  const steps = Array.isArray(item.steps) ? item.steps : [];
+  steps.forEach((rawStep, idx) => {
+    const step = asRecord(rawStep);
+    if (!step) return;
+    const stepIndex = Number(step.index);
+    const heading = sanitizeInline(step.title) || `Step ${Number.isFinite(stepIndex) ? stepIndex : idx + 1}`;
+    if (heading) {
+      segments.push({ kind: "step_title", text: heading });
+    }
+    const blocks = Array.isArray(step.blocks) ? step.blocks : [];
+    blocks.forEach((rawBlock) => {
+      const block = asRecord(rawBlock);
+      if (!block) return;
+      const text = sanitizeInline(block.content);
+      if (!text) return;
+      const kind = sanitizeInline(block.kind).toLowerCase();
+      if (kind === "math") {
+        segments.push({ kind: "math", text });
+        return;
+      }
+      segments.push({ kind: "markdown", text });
+    });
+  });
+
+  const finalAnswer = asRecord(item.final_answer);
+  const finalText =
+    sanitizeInline(finalAnswer?.answer_latex) ||
+    sanitizeInline(finalAnswer?.answer_text);
+  if (finalText) {
+    segments.push({ kind: "final_answer", text: finalText });
+  }
+
+  if (!segments.length) return null;
+  const content = segmentsToMarkdown(segments);
+  return {
+    source: "items_steps",
+    content,
+    segments,
+    questionId,
+  };
+};
+
 const synthesizeFromSections = (structured: Record<string, unknown>): string => {
   const candidate = asRecord(structured.raw_user_extraction) || structured;
   const sections = Array.isArray(candidate.sections) ? candidate.sections : [];
@@ -216,6 +270,8 @@ export const resolvePlaybackFromMessage = (message: SessionMessage): PlaybackRes
   const structured = asRecord(message?.structured_data) || {};
   const fromSolutions = buildSegmentsFromSolutions(structured);
   if (fromSolutions) return fromSolutions;
+  const fromItems = buildSegmentsFromItems(structured);
+  if (fromItems) return fromItems;
 
   const responseNode = asRecord(structured.response);
   const responseMessage = asRecord(responseNode?.message);

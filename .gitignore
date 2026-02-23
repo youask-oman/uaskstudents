@@ -43,6 +43,13 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+# python bytecode / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
 backend/backend/debug_logs.txt
 backend/backend/debug_logs.txt
 backend/backend/debug_logs.txt

@@ -106,6 +106,10 @@ def enforce_strict(node: Any) -> Any:
 
     # Arrays
     if node.get("type") == "array":
+        # Some legacy schemas omit "items"; OpenAI strict validators can reject that.
+        # Preserve permissive semantics by defaulting to an unconstrained item schema.
+        if "items" not in node:
+            node["items"] = {}
         if "items" in node:
             enforce_strict(node["items"])
 

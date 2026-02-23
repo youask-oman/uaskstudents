@@ -4,6 +4,7 @@ import React from "react";
 import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathJaxRenderer";
 import TypingPlaybackMessage from "./TypingPlaybackMessage";
+import ChatLikeSolvePlayer from "@/components/solve/ChatLikeSolvePlayer";
 import RichTextElementEditor from "./RichTextElementEditor";
 import type { RichTextCommitPayload } from "./RichTextElementEditor";
 import { StepRow, VerificationCheck, FinalAnswer, ShortSection, ShortSourcePayload, PlaybackSegment } from "./types";
@@ -387,10 +388,10 @@ export default function SolutionStepsBlock({
         )}
         <SectionRow label="SOLUTION" id={`${sectionId}-playback-solution`} hideLabel={false}>
           <div data-playback-source={playbackSource || "unknown"}>
-            <TypingPlaybackMessage
+            <ChatLikeSolvePlayer
               messageId={String(playbackMessageId)}
               fallbackContent={playbackContent}
-              fallbackSegments={playbackSegments}
+              anchorPrefix={sectionId}
             />
           </div>
         </SectionRow>

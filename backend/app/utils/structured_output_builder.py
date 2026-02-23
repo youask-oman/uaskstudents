@@ -12,7 +12,7 @@ This module ensures:
 import hashlib
 import json
 import logging
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Dict, Optional, Literal, List
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,57 @@ logger = logging.getLogger(__name__)
 
 EndpointType = Literal["chat_completions", "responses"]
 CallName = Literal["SOLVE", "VERIFY", "PLOT_TRIGGER", "PLOT_SPEC"]
+_DISALLOWED_OPENAI_SCHEMA_KEYS = {"const", "oneOf", "allOf", "not", "if", "then", "else"}
+
+
+def _unwrap_nested_schema_wrapper(schema_obj: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Guard against accidental double-wrapping:
+      schema = {"type":"json_schema","name":"...","strict":true,"schema":{...}}
+    which is invalid for text.format.schema.
+    """
+    if not isinstance(schema_obj, dict):
+        return schema_obj
+
+    # Canonical nested wrapper accidentally placed inside schema.
+    if schema_obj.get("type") == "json_schema" and isinstance(schema_obj.get("schema"), dict):
+        logger.warning("Detected nested json_schema wrapper inside schema; unwrapping inner schema.")
+        return schema_obj["schema"]
+
+    # Chat variant accidentally nested.
+    if schema_obj.get("type") == "json_schema" and isinstance(schema_obj.get("json_schema"), dict):
+        inner = schema_obj["json_schema"]
+        if isinstance(inner.get("schema"), dict):
+            logger.warning("Detected nested chat-style json_schema wrapper inside schema; unwrapping inner schema.")
+            return inner["schema"]
+    return schema_obj
+
+
+def _assert_real_json_schema_root(schema_obj: Dict[str, Any], *, schema_name: str) -> None:
+    """
+    Validate that text.format.schema is a real JSON Schema object root,
+    not a wrapper/config object.
+    """
+    if not isinstance(schema_obj, dict):
+        raise ValueError("text.format.schema must be a JSON object.")
+
+    # Wrapper keys at top-level usually indicate miswiring.
+    if schema_obj.get("type") == "json_schema" or (
+        "schema" in schema_obj and ("name" in schema_obj or "strict" in schema_obj)
+    ):
+        raise ValueError(
+            "Invalid schema wiring: wrapper keys found inside text.format.schema. "
+            "Use wrapper keys in text.format and put only real JSON Schema in text.format.schema."
+        )
+
+    if schema_obj.get("type") != "object":
+        raise ValueError(
+            f"Invalid JSON Schema root for '{schema_name}': text.format.schema.type must be 'object'."
+        )
+    if not isinstance(schema_obj.get("properties"), dict):
+        raise ValueError(
+            f"Invalid JSON Schema root for '{schema_name}': text.format.schema.properties must be an object."
+        )
 
 
 def _enforce_openai_required_properties(node: Any) -> Any:
@@ -71,6 +122,65 @@ def _enforce_openai_required_properties(node: Any) -> Any:
             _enforce_openai_required_properties(value)
 
     return node
+
+
+def _walk_schema_for_disallowed_keys(node: Any, *, path: str = "$") -> List[str]:
+    violations: List[str] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            child_path = f"{path}.{key}"
+            if key in _DISALLOWED_OPENAI_SCHEMA_KEYS:
+                violations.append(child_path)
+            violations.extend(_walk_schema_for_disallowed_keys(value, path=child_path))
+        return violations
+    if isinstance(node, list):
+        for idx, item in enumerate(node):
+            violations.extend(_walk_schema_for_disallowed_keys(item, path=f"{path}[{idx}]"))
+    return violations
+
+
+def _walk_anyof_duplicate_object_first_key(node: Any, *, path: str = "$") -> List[str]:
+    violations: List[str] = []
+    if isinstance(node, dict):
+        any_of = node.get("anyOf")
+        if isinstance(any_of, list):
+            seen: Dict[str, int] = {}
+            for idx, branch in enumerate(any_of):
+                if not isinstance(branch, dict):
+                    continue
+                props = branch.get("properties")
+                if isinstance(props, dict) and props:
+                    first_key = next(iter(props.keys()))
+                    if first_key in seen:
+                        violations.append(
+                            f"{path}.anyOf has duplicate object branches with first property key '{first_key}' "
+                            f"(indexes {seen[first_key]} and {idx})"
+                        )
+                    else:
+                        seen[first_key] = idx
+        for key, value in node.items():
+            violations.extend(_walk_anyof_duplicate_object_first_key(value, path=f"{path}.{key}"))
+        return violations
+    if isinstance(node, list):
+        for idx, item in enumerate(node):
+            violations.extend(_walk_anyof_duplicate_object_first_key(item, path=f"{path}[{idx}]"))
+    return violations
+
+
+def _validate_openai_strict_preflight(schema_obj: Dict[str, Any], *, schema_name: str) -> None:
+    disallowed = _walk_schema_for_disallowed_keys(schema_obj, path="$")
+    if disallowed:
+        sample = ", ".join(disallowed[:8])
+        raise ValueError(
+            f"Schema preflight failed for '{schema_name}': disallowed keys found ({sample})."
+        )
+
+    anyof_violations = _walk_anyof_duplicate_object_first_key(schema_obj, path="$")
+    if anyof_violations:
+        sample = "; ".join(anyof_violations[:4])
+        raise ValueError(
+            f"Schema preflight failed for '{schema_name}': invalid anyOf object branch overlap ({sample})."
+        )
 
 
 def compute_schema_hash(schema: Dict[str, Any]) -> str:
@@ -184,7 +294,7 @@ def build_openai_structured_output(
     normalized = unwrap_db_schema(db_wrapper)
     name = normalized["name"]
     strict = normalized["strict"]
-    inner_schema = normalized["schema"]
+    inner_schema = _unwrap_nested_schema_wrapper(normalized["schema"])
     
     # Step 2: Validate inner schema is a dict and looks like JSON Schema
     if not isinstance(inner_schema, dict) or not inner_schema:
@@ -219,6 +329,10 @@ def build_openai_structured_output(
         raise ValueError(f"Invalid inner schema after enforce_strict: type={inner_schema.get('type')!r}")
     if isinstance(inner_schema, dict) and 'type' not in inner_schema and any(k in inner_schema for k in ('properties','required','additionalProperties')):
         inner_schema['type'] = 'object'
+
+    # Final guardrails for Responses/Chat structured outputs.
+    _assert_real_json_schema_root(inner_schema, schema_name=name)
+    _validate_openai_strict_preflight(inner_schema, schema_name=name)
     
     # Step 3: Build output format based on endpoint
     if endpoint == "chat_completions":
@@ -247,6 +361,22 @@ def build_openai_structured_output(
     logger.info(
         f"build_openai_structured_output: call={call_name} endpoint={endpoint} "
         f"name={name} strict={strict} schema_hash={schema_hash}"
+    )
+    logger.info(
+        "Structured output sanity: type=%s name=%s schema.type=%s schema.has_properties=%s",
+        result.get("type"),
+        (result.get("name") if endpoint == "responses" else (result.get("json_schema") or {}).get("name")),
+        (result.get("schema") if endpoint == "responses" else (result.get("json_schema") or {}).get("schema", {})).get("type"),
+        isinstance(
+            (result.get("schema") if endpoint == "responses" else (result.get("json_schema") or {}).get("schema", {})).get("properties"),
+            dict,
+        ),
+    )
+    disallowed_keys_after = _walk_schema_for_disallowed_keys(inner_schema, path="$")
+    logger.info(
+        "Structured output strict preflight: has_disallowed_keys=%s has_const=%s",
+        bool(disallowed_keys_after),
+        any(".const" in p for p in disallowed_keys_after),
     )
     
     return result

@@ -730,15 +730,34 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
         if (isShortOutline) {
           const questionSuffix = (qMatch?.[1] || "Q1").toUpperCase();
           const questionTag = `QUESTION ${questionSuffix}`;
-          const solutionAnchorId = hasPlayback
-            ? `${block.id}-playback-solution`
-            : hasShortSections
+          const solutionAnchorId = hasShortSections
               ? `${block.id}-section-0`
               : hasShortSourceSections
                 ? `${block.id}-source-section-0`
-                : `${block.id}-final-answer`;
+                : `${block.id}-playback-solution`;
           items.push({ id: `${block.id}-problem`, label: `Question ${questionSuffix}`, tag: questionTag });
-          items.push({ id: solutionAnchorId, label: "Solution", tag: "SOLUTION" });
+
+          if (hasPlayback && Array.isArray(block.playbackSegments) && block.playbackSegments.length > 0) {
+            const playbackStepTitles = block.playbackSegments
+              .filter((segment) => segment.kind === "step_title")
+              .map((segment) => String(segment.text || "").trim())
+              .filter(Boolean);
+
+            if (playbackStepTitles.length > 0) {
+              playbackStepTitles.forEach((title, index) => {
+                items.push({
+                  id: `${block.id}-playback-step-${index + 1}`,
+                  label: title,
+                  tag: "STEP",
+                });
+              });
+            } else {
+              items.push({ id: solutionAnchorId, label: "Solution", tag: "SOLUTION" });
+            }
+          } else {
+            items.push({ id: solutionAnchorId, label: "Solution", tag: "SOLUTION" });
+          }
+
           items.push({ id: `${block.id}-final-answer`, label: "Final Answer", tag: "FINAL" });
           return;
         }

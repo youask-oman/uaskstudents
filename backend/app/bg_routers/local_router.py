@@ -349,6 +349,8 @@ async def solve_text_batch(
             questions_json=questions_json,
             allow_auto_split=(len(questions_json) > 1),
             max_tasks_per_question=6,
+            user_id=user_id,
+            trusted_context={},
         )
         # Persist a chat session so frontend can route to /chat/{session_id}
         user_prompt_lines = ["Solve the selected questions:"]

@@ -19,6 +19,7 @@ from app.models import (
     PromptModeEnum,
     PromptTierEnum,
     SystemConfig,
+    User,
 )
 from app.services.llm.manager import LLMManager, get_configured_ollama_model, get_llm_manager
 from app.services.llm.clients import LLMProviderError
@@ -42,6 +43,89 @@ SOLVER_RUNTIME_CONFIG_DEFAULTS: Dict[str, Dict[str, str]] = {
         "description": "Enable local SymPy/NumPy solve path before LLM fallback (FINAL/SHORT tiers).",
     },
 }
+
+PLACEHOLDER_TOKEN_RE = re.compile(r"\{[A-Z_]+\}")
+
+
+def _tier_default_max_steps(external_tier: str) -> int:
+    t = (external_tier or "").strip().upper()
+    if t == "FINAL":
+        return 2
+    if t == "SHORT_STEPS":
+        return 6
+    if t == "STANDARD":
+        return 12
+    if t == "RESEARCH":
+        return 20
+    return 8
+
+
+def _tier_default_step_style(external_tier: str) -> str:
+    t = (external_tier or "").strip().upper()
+    if t in {"FINAL", "SHORT_STEPS"}:
+        return "compact"
+    if t == "RESEARCH":
+        return "detailed"
+    return "standard"
+
+
+def _to_bool_text(value: Any, default: bool) -> str:
+    if value is None:
+        return "true" if default else "false"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    s = str(value).strip().lower()
+    if s in {"1", "true", "yes", "on"}:
+        return "true"
+    if s in {"0", "false", "no", "off"}:
+        return "false"
+    return "true" if default else "false"
+
+
+def _resolve_user_prompt_context(
+    *,
+    session: Session,
+    user_id: Optional[int],
+    trusted_context: Optional[Dict[str, Any]],
+    binding_features: Dict[str, Any],
+) -> Dict[str, str]:
+    ctx = trusted_context if isinstance(trusted_context, dict) else {}
+    user: Optional[User] = None
+    if user_id is not None:
+        try:
+            user = session.get(User, int(user_id))
+        except Exception:
+            user = None
+
+    country = str(
+        ctx.get("country")
+        or (getattr(user, "profile_country", None) if user else None)
+        or (getattr(user, "country", None) if user else None)
+        or ""
+    ).strip()
+    region = str(
+        ctx.get("region")
+        or ctx.get("region_state_province")
+        or (getattr(user, "profile_province_state", None) if user else None)
+        or ""
+    ).strip()
+    curriculum = str(ctx.get("curriculum") or binding_features.get("curriculum") or "").strip()
+    grade_level = str(ctx.get("grade_level") or (getattr(user, "grade_level", None) if user else None) or "").strip()
+    course = str(ctx.get("course") or binding_features.get("course") or "").strip()
+    notation_profile = str(
+        ctx.get("notation_profile")
+        or binding_features.get("notation_profile")
+        or "decimal_dot,radians_default"
+    ).strip()
+
+    return {
+        "COUNTRY": country or "unknown",
+        "REGION": region or "unknown",
+        "CURRICULUM": curriculum or "unknown",
+        "GRADE_LEVEL": grade_level or "unknown",
+        "COURSE": course or "unknown",
+        "NOTATION_PROFILE": notation_profile,
+    }
 
 
 class BatchSolveError(Exception):
@@ -308,11 +392,97 @@ def _replace_prompt_tokens(template: str, replacements: Dict[str, str]) -> str:
     return out
 
 
+def _schema_version_for_prompt(schema_body: Dict[str, Any], default: str = "v1") -> str:
+    if not isinstance(schema_body, dict):
+        return default
+    props = schema_body.get("properties")
+    if not isinstance(props, dict):
+        return default
+    ver = props.get("schema_version")
+    if not isinstance(ver, dict):
+        return default
+    const_val = ver.get("const")
+    if isinstance(const_val, str) and const_val.strip():
+        return const_val.strip()
+    enum_vals = ver.get("enum")
+    if isinstance(enum_vals, list) and enum_vals and isinstance(enum_vals[0], str) and enum_vals[0].strip():
+        return str(enum_vals[0]).strip()
+    return default
+
+
+def _enforce_authoritative_dev_prompt_lines(prompt_text: str, replacements: Dict[str, str]) -> str:
+    """
+    Normalize known binding lines even when legacy templates are hard-coded
+    instead of using placeholders.
+    """
+    out = str(prompt_text or "")
+    mapping = {
+        "SCHEMA_NAME": ("SCHEMA_NAME=", True),
+        "SCHEMA_VERSION": ("SCHEMA_VERSION=", True),
+        "TIER": ("TIER=", True),
+        "request_id": ("request_id:", False),
+        "attempt_id": ("attempt_id:", False),
+        "preferred_response_language": ("preferred_response_language:", False),
+        "max_questions_allowed": ("max_questions_allowed:", False),
+        "default_mode": ("default_mode:", False),
+        "default_domain_mode": ("default_domain_mode:", False),
+        "graph_mode": ("graph_mode:", False),
+        "max_steps": ("max_steps:", False),
+        "step_style": ("step_style:", False),
+        "include_task_results": ("include_task_results:", False),
+        "prefer_exact": ("prefer_exact:", False),
+        "country": ("country:", False),
+        "region": ("region:", False),
+        "curriculum": ("curriculum:", False),
+        "grade_level": ("grade_level:", False),
+        "course": ("course:", False),
+        "notation_profile": ("notation_profile:", False),
+    }
+
+    for key, (prefix, upper_key) in mapping.items():
+        rep_key = key if not upper_key else key
+        if upper_key:
+            value = str(replacements.get(rep_key, "")).strip()
+        else:
+            value = str(replacements.get(key.upper(), "")).strip()
+        if not value:
+            continue
+        pattern = rf"(?im)^(?P<lead>\s*{re.escape(prefix)}\s*)(?P<val>.*)$"
+        out = re.sub(pattern, lambda m: f"{m.group('lead')}{value}", out)
+    return out
+
+
 def _preview_text(value: Any, limit: int = 1200) -> str:
     text = str(value or "")
     if len(text) <= limit:
         return text
     return text[:limit] + "...<truncated>"
+
+
+def _capture_openai_raw_and_stop(
+    *,
+    runtime_request_id: str,
+    provider_response: Any,
+) -> None:
+    raw_payload = getattr(provider_response, "payload", None) if provider_response is not None else None
+    raw_response = raw_payload.get("openai_response_raw") if isinstance(raw_payload, dict) else None
+    if raw_response is None:
+        raise BatchSolveError(
+            "Requested raw OpenAI capture, but raw response was unavailable.",
+            status_code=500,
+            code="openai_raw_capture_missing",
+        )
+    out_dir = Path(__file__).resolve().parents[2] / "storage" / "debug" / "openai_raw"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    out_path = out_dir / f"{ts}_{runtime_request_id}_raw_before_processing.json"
+    out_path.write_text(json.dumps(raw_response, ensure_ascii=False, indent=2), encoding="utf-8")
+    raise BatchSolveError(
+        "Stopped after raw OpenAI response capture (before parsing/saving).",
+        status_code=409,
+        code="openai_raw_capture_stop",
+        details={"raw_response_path": str(out_path), "request_id": runtime_request_id},
+    )
 
 
 def _extract_json_candidate(raw: str) -> Optional[str]:
@@ -1100,6 +1270,87 @@ def _extract_schema_body(schema_wrapper: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+def _infer_schema_name_from_raw_schema(raw_schema: Dict[str, Any], fallback: str) -> str:
+    if not isinstance(raw_schema, dict):
+        return fallback
+    props = raw_schema.get("properties")
+    if isinstance(props, dict):
+        schema_name_prop = props.get("schema_name")
+        if isinstance(schema_name_prop, dict):
+            enum_vals = schema_name_prop.get("enum")
+            if isinstance(enum_vals, list) and enum_vals:
+                candidate = str(enum_vals[0] or "").strip()
+                if candidate:
+                    return candidate
+            const_val = schema_name_prop.get("const")
+            if isinstance(const_val, str) and const_val.strip():
+                return const_val.strip()
+    return fallback
+
+
+def _coerce_to_openai_schema_wrapper(
+    schema_payload: Any,
+    *,
+    schema_name_fallback: str,
+) -> Dict[str, Any]:
+    """
+    Normalize DB schema payload into canonical OpenAI wrapper shape:
+      {"type":"json_schema","name":str,"strict":bool,"schema":{...}}
+    """
+    if not isinstance(schema_payload, dict):
+        raise BatchSolveError(
+            "Schema payload is not an object.",
+            status_code=500,
+            code="schema_wrapper_invalid",
+        )
+
+    # Canonical wrapper
+    if (
+        schema_payload.get("type") == "json_schema"
+        and isinstance(schema_payload.get("schema"), dict)
+        and isinstance(schema_payload.get("name"), str)
+        and schema_payload.get("name", "").strip()
+    ):
+        return {
+            "type": "json_schema",
+            "name": str(schema_payload.get("name")).strip(),
+            "strict": bool(schema_payload.get("strict", True)),
+            "schema": schema_payload["schema"],
+        }
+
+    # Legacy wrapper
+    if isinstance(schema_payload.get("schema"), dict) and isinstance(schema_payload.get("name"), str):
+        name = str(schema_payload.get("name") or "").strip()
+        if name:
+            return {
+                "type": "json_schema",
+                "name": name,
+                "strict": bool(schema_payload.get("strict", True)),
+                "schema": schema_payload["schema"],
+            }
+
+    # Raw schema body from DB
+    if (
+        isinstance(schema_payload.get("properties"), dict)
+        or isinstance(schema_payload.get("$defs"), dict)
+        or isinstance(schema_payload.get("required"), list)
+        or isinstance(schema_payload.get("type"), (str, list))
+    ):
+        inferred_name = _infer_schema_name_from_raw_schema(schema_payload, schema_name_fallback)
+        return {
+            "type": "json_schema",
+            "name": inferred_name,
+            "strict": True,
+            "schema": schema_payload,
+        }
+
+    raise BatchSolveError(
+        "Schema payload invalid: expected wrapper or JSON Schema object.",
+        status_code=500,
+        code="schema_wrapper_invalid",
+    )
+
+
 def _validate_binding_strict(
     session: Session,
     tier: PromptTierEnum,
@@ -1280,6 +1531,18 @@ def _post_assertions(
     questions: List[Dict[str, Any]],
     tier: str,
 ) -> None:
+    defs = schema_body.get("$defs") if isinstance(schema_body.get("$defs"), dict) else {}
+
+    def _resolve_schema_ref(schema_obj: Any) -> Dict[str, Any]:
+        if not isinstance(schema_obj, dict):
+            return {}
+        ref = schema_obj.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/$defs/"):
+            key = ref.split("/")[-1]
+            resolved = defs.get(key)
+            return resolved if isinstance(resolved, dict) else {}
+        return schema_obj
+
     items = payload.get("items")
     if not isinstance(items, list):
         raise BatchSolveError("Output missing items[].", status_code=502, code="post_assert_failed")
@@ -1290,14 +1553,31 @@ def _post_assertions(
             code="post_assert_failed",
         )
 
+    solve_item_schema = _resolve_schema_ref(((defs.get("SolveItem") if isinstance(defs, dict) else {}) or {}))
+    solve_item_props = solve_item_schema.get("properties") if isinstance(solve_item_schema.get("properties"), dict) else {}
+    expect_question_index = "question_index" in solve_item_props
+
+    problem_schema = _resolve_schema_ref(solve_item_props.get("problem"))
+    problem_props = problem_schema.get("properties") if isinstance(problem_schema.get("properties"), dict) else {}
+    classification_schema = _resolve_schema_ref(solve_item_props.get("classification"))
+    classification_props = (
+        classification_schema.get("properties") if isinstance(classification_schema.get("properties"), dict) else {}
+    )
+    quality_schema = _resolve_schema_ref(solve_item_props.get("quality"))
+    quality_props = quality_schema.get("properties") if isinstance(quality_schema.get("properties"), dict) else {}
+    plot_schema = _resolve_schema_ref(solve_item_props.get("plot"))
+    plot_props = plot_schema.get("properties") if isinstance(plot_schema.get("properties"), dict) else {}
+
     enum_tasks: set[str] = set()
     try:
-        enum_tasks = set(
-            (((schema_body.get("$defs") or {}).get("problem") or {}).get("properties") or {})
-            .get("detected_tasks", {})
-            .get("items", {})
-            .get("enum", [])
-        )
+        if "detected_tasks" in problem_props:
+            enum_tasks = set(
+                (_resolve_schema_ref(problem_props.get("detected_tasks")).get("items") or {}).get("enum", [])
+            )
+        elif "detected_tasks" in classification_props:
+            enum_tasks = set(
+                (_resolve_schema_ref(classification_props.get("detected_tasks")).get("items") or {}).get("enum", [])
+            )
     except Exception:
         enum_tasks = set()
 
@@ -1310,7 +1590,7 @@ def _post_assertions(
                 status_code=502,
                 code="post_assert_failed",
             )
-        if int(item.get("question_index") or -1) != idx:
+        if expect_question_index and int(item.get("question_index") or -1) != idx:
             raise BatchSolveError(
                 f"question_index mismatch at index={idx}.",
                 status_code=502,
@@ -1331,36 +1611,49 @@ def _post_assertions(
                 code="clarification_not_allowed",
             )
 
-        problem = item.get("problem") if isinstance(item.get("problem"), dict) else {}
-        expected_text = qin["question_text"]
-        got_text = str(problem.get("original_text") or "")
-        if _normalize_question_text(got_text) != _normalize_question_text(expected_text):
-            # Do not fail the entire request for benign model reformatting.
-            # Keep downstream UI stable by forcing canonical original_text from input.
-            logger.warning(
-                "batch_original_text_mismatch_normalized item=%s expected=%r got=%r",
-                idx,
-                expected_text,
-                got_text,
+        detected_tasks: List[Any] = []
+        if "problem" in solve_item_props:
+            problem = item.get("problem") if isinstance(item.get("problem"), dict) else {}
+            expected_text = qin["question_text"]
+            got_text = str(problem.get("original_text") or "")
+            if _normalize_question_text(got_text) != _normalize_question_text(expected_text):
+                # Do not fail the entire request for benign model reformatting.
+                # Keep downstream UI stable by forcing canonical original_text from input.
+                logger.warning(
+                    "batch_original_text_mismatch_normalized item=%s expected=%r got=%r",
+                    idx,
+                    expected_text,
+                    got_text,
+                )
+                problem["original_text"] = expected_text
+                item["problem"] = problem
+            detected_tasks = problem.get("detected_tasks") if isinstance(problem.get("detected_tasks"), list) else []
+        elif "classification" in solve_item_props:
+            classification_obj = item.get("classification") if isinstance(item.get("classification"), dict) else {}
+            detected_tasks = (
+                classification_obj.get("detected_tasks")
+                if isinstance(classification_obj.get("detected_tasks"), list)
+                else []
             )
-            problem["original_text"] = expected_text
-            item["problem"] = problem
-        detected_tasks = problem.get("detected_tasks") if isinstance(problem.get("detected_tasks"), list) else []
-        if not detected_tasks:
+
+        if (
+            ("detected_tasks" in problem_props or "detected_tasks" in classification_props)
+            and not detected_tasks
+        ):
             raise BatchSolveError(
-                f"problem.detected_tasks must be non-empty for item {idx}.",
+                f"detected_tasks must be non-empty for item {idx}.",
                 status_code=502,
                 code="post_assert_failed",
             )
         if enum_tasks and any(str(t) not in enum_tasks for t in detected_tasks):
             raise BatchSolveError(
-                f"problem.detected_tasks contains out-of-enum value for item {idx}.",
+                f"detected_tasks contains out-of-enum value for item {idx}.",
                 status_code=502,
                 code="post_assert_failed",
             )
 
         classification = item.get("classification") if isinstance(item.get("classification"), dict) else {}
-        if str(classification.get("difficulty") or "") not in DIFFICULTY_ENUM:
+        if "difficulty" in classification_props and str(classification.get("difficulty") or "") not in DIFFICULTY_ENUM:
             raise BatchSolveError(
                 f"classification.difficulty invalid for item {idx}.",
                 status_code=502,
@@ -1368,7 +1661,7 @@ def _post_assertions(
             )
 
         plot = item.get("plot") if isinstance(item.get("plot"), dict) else {}
-        if not str(plot.get("decision_reason") or "").strip():
+        if "decision_reason" in plot_props and not str(plot.get("decision_reason") or "").strip():
             # Keep runtime tolerant: decision_reason is informational and may be omitted.
             # We normalize instead of failing the entire batch.
             plot["decision_reason"] = "No plot rationale provided."
@@ -1463,7 +1756,7 @@ def _post_assertions(
                 code="post_assert_failed",
             )
         mistakes = quality.get("common_mistakes") if isinstance(quality.get("common_mistakes"), list) else []
-        if tier == "FINAL" and len(mistakes) != 0:
+        if tier == "FINAL" and "common_mistakes" in quality_props and len(mistakes) != 0:
             raise BatchSolveError(
                 f"FINAL tier requires quality.common_mistakes = []. item={idx}",
                 status_code=502,
@@ -1592,6 +1885,8 @@ async def execute_batch_solve(
     max_output_tokens: Optional[int] = None,
     allow_auto_split: Optional[bool] = None,
     max_tasks_per_question: Optional[int] = None,
+    user_id: Optional[int] = None,
+    trusted_context: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     started = time.perf_counter()
     external_tier = normalize_external_tier(tier)
@@ -1660,7 +1955,11 @@ async def execute_batch_solve(
         )
     system_prompt = str(binding_bundle["global_system_prompt"] or "")
     developer_prompt_template = str(binding_bundle["developer_prompt"] or "")
-    schema_wrapper = binding_bundle["schema"]
+    raw_schema_payload = binding_bundle["schema"]
+    schema_wrapper = _coerce_to_openai_schema_wrapper(
+        raw_schema_payload,
+        schema_name_fallback=str(_bget("output_schema_id") or "youask_math_openai_v1"),
+    )
     schema_body = _extract_schema_body(schema_wrapper)
     allowed_task_enum = _extract_allowed_task_enum(schema_body)
 
@@ -1677,6 +1976,19 @@ async def execute_batch_solve(
     runtime_allow_auto_split = is_multi_question or bool(allow_auto_split)
     runtime_max_tasks_per_question = int(max_tasks_per_question or 6)
     questions_json_text = json.dumps(normalized_questions, ensure_ascii=False)
+    binding_features_prompt = _bget("features") if isinstance(_bget("features"), dict) else {}
+    schema_name_for_prompt = str(schema_wrapper.get("name") or _bget("output_schema_id") or "youask_math_openai_v1").strip()
+    schema_version_for_prompt = _schema_version_for_prompt(schema_body, default="v1")
+    max_steps_value = int(_bget("max_steps") or binding_features_prompt.get("max_steps") or _tier_default_max_steps(external_tier))
+    step_style_value = str(binding_features_prompt.get("step_style") or _tier_default_step_style(external_tier)).strip()
+    include_task_results_value = _to_bool_text(binding_features_prompt.get("include_task_results"), True)
+    prefer_exact_value = _to_bool_text(binding_features_prompt.get("prefer_exact"), False)
+    user_prompt_ctx = _resolve_user_prompt_context(
+        session=session,
+        user_id=user_id,
+        trusted_context=trusted_context,
+        binding_features=binding_features_prompt,
+    )
 
     if external_tier == "FINAL" and local_sympy_enabled:
         reports_by_id = {str(rep.get("question_id") or ""): rep for rep in sympy_numpy_reports}
@@ -1859,21 +2171,66 @@ async def execute_batch_solve(
     developer_prompt = _replace_prompt_tokens(
         developer_prompt_template,
         {
+            "SCHEMA_NAME": schema_name_for_prompt,
+            "SCHEMA_VERSION": schema_version_for_prompt,
             "REQUEST_ID": runtime_request_id,
             "ATTEMPT_ID": runtime_attempt_id,
             "TIER": external_tier,
             "MAX_QUESTIONS": str(max_questions_allowed),
+            "MAX_QUESTIONS_ALLOWED": str(max_questions_allowed),
             "MODE": runtime_mode,
             "GRAPH_MODE": runtime_graph,
             "DOMAIN_MODE": runtime_domain,
             "PREFERRED_RESPONSE_LANGUAGE": runtime_lang,
+            "MAX_STEPS": str(max_steps_value),
+            "STEP_STYLE": step_style_value,
+            "INCLUDE_TASK_RESULTS": include_task_results_value,
+            "PREFER_EXACT": prefer_exact_value,
             "QUESTIONS_JSON": questions_json_text,
             "ALLOW_AUTO_SPLIT": "true" if runtime_allow_auto_split else "false",
             "allow_auto_split": "true" if runtime_allow_auto_split else "false",
             "MAX_TASKS_PER_QUESTION": str(runtime_max_tasks_per_question),
             "max_tasks_per_question": str(runtime_max_tasks_per_question),
+            **user_prompt_ctx,
         },
     )
+    developer_prompt = _enforce_authoritative_dev_prompt_lines(
+        developer_prompt,
+        {
+            "SCHEMA_NAME": schema_name_for_prompt,
+            "SCHEMA_VERSION": schema_version_for_prompt,
+            "TIER": external_tier,
+            "REQUEST_ID": runtime_request_id,
+            "ATTEMPT_ID": runtime_attempt_id,
+            "PREFERRED_RESPONSE_LANGUAGE": runtime_lang,
+            "MAX_QUESTIONS_ALLOWED": str(max_questions_allowed),
+            "MODE": runtime_mode,
+            "DOMAIN_MODE": runtime_domain,
+            "GRAPH_MODE": runtime_graph,
+            "MAX_STEPS": str(max_steps_value),
+            "STEP_STYLE": step_style_value,
+            "INCLUDE_TASK_RESULTS": include_task_results_value,
+            "PREFER_EXACT": prefer_exact_value,
+            "COUNTRY": user_prompt_ctx.get("COUNTRY", "unknown"),
+            "REGION": user_prompt_ctx.get("REGION", "unknown"),
+            "CURRICULUM": user_prompt_ctx.get("CURRICULUM", "unknown"),
+            "GRADE_LEVEL": user_prompt_ctx.get("GRADE_LEVEL", "unknown"),
+            "COURSE": user_prompt_ctx.get("COURSE", "unknown"),
+            "NOTATION_PROFILE": user_prompt_ctx.get("NOTATION_PROFILE", "decimal_dot,radians_default"),
+        },
+    )
+    unresolved_placeholders = sorted(set(PLACEHOLDER_TOKEN_RE.findall(developer_prompt)))
+    if unresolved_placeholders:
+        raise BatchSolveError(
+            "Developer prompt contains unresolved placeholders.",
+            status_code=500,
+            code="developer_prompt_unresolved_placeholders",
+            details={
+                "placeholders": unresolved_placeholders,
+                "binding_id": binding_id,
+                "developer_prompt_id": _bget("developer_prompt_id"),
+            },
+        )
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -1894,9 +2251,14 @@ async def execute_batch_solve(
 
     llm_manager = get_llm_manager()
     primary_provider = llm_manager.get_active_provider(session)
+    binding_provider = str(_bget("provider") or "").strip().lower()
     provider_candidates: List[str] = [primary_provider]
     ollama_first_tier = external_tier in {"SHORT_STEPS", "FINAL"}
-    if ollama_first_tier:
+    if binding_provider in {"openai", "ollama"}:
+        provider_candidates = [binding_provider]
+        if binding_provider == "ollama" and _allow_openai_fallback_for_ollama_first_tiers():
+            provider_candidates.append("openai")
+    elif ollama_first_tier:
         provider_candidates = ["ollama"]
         if _allow_openai_fallback_for_ollama_first_tiers():
             provider_candidates.append("openai")
@@ -2389,6 +2751,11 @@ async def execute_batch_solve(
         client = llm_manager.get_client(provider_name)
         try:
             response = await _call_provider()
+            if bool((trusted_context or {}).get("capture_openai_raw_only")):
+                _capture_openai_raw_and_stop(
+                    runtime_request_id=runtime_request_id,
+                    provider_response=response,
+                )
             payload, response, repair_attempted = await _parse_validate_response(response)
             last_provider_error = None
             break
