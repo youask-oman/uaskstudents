@@ -1,0 +1,38 @@
+[
+  {
+    "code": "topup_10",
+    "credits": 1200,
+    "id": 6,
+    "is_active": true,
+    "metadata_json": null,
+    "name": "$10 Pack",
+    "price_usd": 10.0
+  },
+  {
+    "code": "topup_25",
+    "credits": 3250,
+    "id": 7,
+    "is_active": true,
+    "metadata_json": null,
+    "name": "$25 Pack",
+    "price_usd": 25.0
+  },
+  {
+    "code": "topup_5",
+    "credits": 550,
+    "id": 5,
+    "is_active": true,
+    "metadata_json": null,
+    "name": "$5 Pack",
+    "price_usd": 5.0
+  },
+  {
+    "code": "topup_50",
+    "credits": 7000,
+    "id": 8,
+    "is_active": true,
+    "metadata_json": null,
+    "name": "$50 Pack",
+    "price_usd": 50.0
+  }
+]

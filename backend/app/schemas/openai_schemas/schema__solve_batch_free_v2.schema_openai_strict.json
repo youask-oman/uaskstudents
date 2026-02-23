@@ -583,7 +583,9 @@
         "properties": {
           "needs_clarification": {
             "type": "boolean",
-            "const": false
+            "enum": [
+              false
+            ]
           },
           "questions": {
             "type": "array",

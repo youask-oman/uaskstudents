@@ -150,6 +150,12 @@
     "value": "true"
   },
   {
+    "description": null,
+    "key": "active_llm_provider",
+    "updated_at": "2026-02-22T19:43:14.178657+00:00",
+    "value": "openai"
+  },
+  {
     "description": "Enable billing v2 stack.",
     "key": "billing_v2_enabled",
     "updated_at": "2026-02-22T02:59:43.511373+00:00",

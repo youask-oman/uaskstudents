@@ -106,6 +106,8 @@ class PatchPromptBindingBody(BaseModel):
     openai_prompt_version: Optional[str] = None
     openai_prompt_use_latest: Optional[bool] = None
     openai_prompt_variable_mapping: Optional[Dict[str, Any]] = None
+    openai_prompt_cache_key_template: Optional[str] = None
+    openai_prompt_cache_retention: Optional[str] = None
     features: Optional[Dict[str, Any]] = None
     multipliers: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
@@ -804,6 +806,8 @@ def admin_list_prompt_bindings(
                 "openai_prompt_version": _val(r, "openai_prompt_version"),
                 "openai_prompt_use_latest": bool(_val(r, "openai_prompt_use_latest", False)),
                 "openai_prompt_variable_mapping": _val(r, "openai_prompt_variable_mapping"),
+                "openai_prompt_cache_key_template": _val(r, "openai_prompt_cache_key_template"),
+                "openai_prompt_cache_retention": _val(r, "openai_prompt_cache_retention"),
                 "features": _val(r, "features", {}) or {},
                 "multipliers": _val(r, "multipliers", {}) or {},
                 "max_questions_allowed": _val(r, "max_questions_allowed"),

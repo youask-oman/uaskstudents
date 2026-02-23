@@ -38,3 +38,24 @@ def test_render_events_deterministic_for_same_seed():
     left, _ = build_render_events(_sample_payload(), seed="attempt-123")
     right, _ = build_render_events(_sample_payload(), seed="attempt-123")
     assert [e.model_dump() for e in left] == [e.model_dump() for e in right]
+
+
+def test_python_code_auto_generated_when_plot_exists_without_code():
+    payload = _sample_payload()
+    payload["items"][0]["plot"] = {
+        "should_visualize": True,
+        "recipe": {
+            "title": "Auto code",
+            "x_label": "N",
+            "y_label": "Value",
+            "expressions": ["a_n = (-1)^(n+1)/n^2 for n=1..20"],
+            "domain": {"x_min": 1, "x_max": 20, "y_min": None, "y_max": None},
+        },
+        "python_code": None,
+    }
+    events, _ = build_render_events(payload, seed="attempt-123")
+    python_events = [e for e in events if e.type == "PYTHON_CODE_SET"]
+    assert len(python_events) == 1
+    code = str(python_events[0].payload.get("code") or "")
+    assert "import matplotlib.pyplot as plt" in code
+    assert "ax.plot" in code

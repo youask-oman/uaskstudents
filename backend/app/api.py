@@ -6963,6 +6963,11 @@ async def solve_v3_stream_endpoint(
                         "openai_prompt_version": (msg_telemetry or {}).get("openai_prompt_version"),
                         "openai_prompt_use_latest": (msg_telemetry or {}).get("openai_prompt_use_latest"),
                         "openai_prompt_variables_used": (msg_telemetry or {}).get("openai_prompt_variables_used"),
+                        "openai_prompt_cache_key": (msg_telemetry or {}).get("openai_prompt_cache_key"),
+                        "openai_prompt_cache_retention": (msg_telemetry or {}).get("openai_prompt_cache_retention"),
+                        "schema_name": (msg_telemetry or {}).get("schema_name"),
+                        "schema_version": (msg_telemetry or {}).get("schema_version"),
+                        "latency_ms_total": (msg_telemetry or {}).get("latency_ms_total"),
                     },
                     status="success",
                 )

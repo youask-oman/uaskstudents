@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import PlotFromRecipe from "@/components/plot/PlotFromRecipe";
 
 type PlotPayload = Record<string, unknown>;
@@ -23,10 +23,6 @@ interface PlotRenderResponse {
   };
 }
 
-const memorySvgCache = new Map<string, string>(); // key: cache_key
-const memoryMetaCache = new Map<string, PlotRenderResponse["meta"]>(); // key: cache_key
-const requestToCacheKey = new Map<string, string>(); // key: request signature
-
 export default function PlotCard({
   plot,
   attemptId,
@@ -42,16 +38,6 @@ export default function PlotCard({
 
   const recipe = (plot?.recipe as Record<string, unknown>) || null;
   const shouldVisualize = Boolean(plot?.should_visualize ?? true);
-  const requestKey = useMemo(
-    () =>
-      JSON.stringify({
-        attemptId: attemptId || "",
-        recipe: recipe || {},
-        widthPx,
-        heightPx,
-      }),
-    [attemptId, recipe, widthPx, heightPx]
-  );
 
   useEffect(() => {
     if (!playbackVisible || !recipe || !shouldVisualize) return;
@@ -59,15 +45,6 @@ export default function PlotCard({
 
     const run = async () => {
       setFallbackToClient(false);
-      const preKnownKey = requestToCacheKey.get(requestKey);
-      if (preKnownKey && memorySvgCache.has(preKnownKey)) {
-        const cachedSvg = memorySvgCache.get(preKnownKey) || "";
-        setSvg(cachedSvg);
-        setMeta(memoryMetaCache.get(preKnownKey) || null);
-        setError("");
-        setLoading(false);
-        return;
-      }
 
       setLoading(true);
       setError("");
@@ -82,7 +59,7 @@ export default function PlotCard({
           }),
         });
         if (!res.ok) {
-          if (res.status === 404 || res.status === 405 || res.status === 501 || res.status === 503) {
+          if (res.status === 404 || res.status === 405 || res.status === 422 || res.status === 500 || res.status === 501 || res.status === 503) {
             if (!cancelled) {
               setFallbackToClient(true);
               setError("");
@@ -95,9 +72,6 @@ export default function PlotCard({
         }
         const body = (await res.json()) as PlotRenderResponse;
         if (cancelled) return;
-        requestToCacheKey.set(requestKey, body.cache_key);
-        memorySvgCache.set(body.cache_key, body.svg);
-        memoryMetaCache.set(body.cache_key, body.meta);
         setSvg(body.svg);
         setMeta(body.meta);
       } catch (e) {
@@ -111,7 +85,7 @@ export default function PlotCard({
     return () => {
       cancelled = true;
     };
-  }, [attemptId, playbackVisible, plot, recipe, requestKey, shouldVisualize, widthPx, heightPx]);
+  }, [attemptId, playbackVisible, plot, recipe, shouldVisualize, widthPx, heightPx]);
 
   if (!playbackVisible || !recipe || !shouldVisualize) return null;
 

@@ -24,6 +24,19 @@ const fallbackEvents = (text: string): RenderEvent[] => [
   { id: "evt_00006", at_ms: 60, type: "MESSAGE_END", payload: {} },
 ];
 
+function normalizeQuestionForDisplay(raw: string): string {
+  let text = String(raw || "");
+  if (!text) return "";
+  text = text
+    .replace(/\?_\{n=1\}\^\{\?\}/g, "\\sum_{n=1}^{\\infty}")
+    .replace(/\?unknown exact closed form\?/gi, '"unknown exact closed form"')
+    .replace(/\s\*\s/g, " ");
+  // Wrap common plain-TeX fragments so MarkdownMathContent renders SVG math.
+  text = text.replace(/(\(-1\)\^\{n\+1\}\/n\^2)/g, "\\($1\\)");
+  text = text.replace(/(\\sum_\{[^}]+\}\^\{[^}]+\})/g, "\\($1\\)");
+  return text;
+}
+
 export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchorPrefix }: Props) {
   const [events, setEvents] = useState<RenderEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,8 +75,13 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
     if (instant) skipToEnd();
   }, [instant, skipToEnd]);
 
+  const questionText = useMemo(() => normalizeQuestionForDisplay(String(state.questionText || "")), [state.questionText]);
   const finalText = useMemo(() => String(state.finalAnswer?.answer_text || ""), [state.finalAnswer]);
   const finalLatex = useMemo(() => String(state.finalAnswer?.answer_latex || ""), [state.finalAnswer]);
+  const finalValues = useMemo(() => {
+    const raw = state.finalAnswer?.values;
+    return Array.isArray(raw) ? raw : [];
+  }, [state.finalAnswer]);
 
   const plotPayload = state.plot || null;
   const plotAttemptId = typeof state.plot?.attempt_id === "string" ? String(state.plot.attempt_id) : undefined;
@@ -80,10 +98,10 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
         </button>
       </div>
 
-      {state.questionText ? (
+      {questionText ? (
         <section id={anchorPrefix ? `${anchorPrefix}-question` : undefined} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7, marginBottom: 6 }}>QUESTION</div>
-          <div>{state.questionText}</div>
+          <UnifiedMathRenderer content={questionText} mode="prose" />
         </section>
       ) : null}
 
@@ -102,16 +120,44 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
         </section>
       ))}
 
-      {finalText || finalLatex ? (
+      {finalText || finalLatex || finalValues.length > 0 ? (
         <section id={anchorPrefix ? `${anchorPrefix}-final-answer` : undefined} style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 10, padding: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.75, marginBottom: 6 }}>FINAL ANSWER</div>
-          <div>
-            {finalLatex ? (
-              <UnifiedMathRenderer content={finalLatex} mode="block" />
-            ) : (
-              <MarkdownMathContent content={finalText} />
-            )}
-          </div>
+          {finalText ? <MarkdownMathContent content={finalText} /> : null}
+          {finalLatex ? <UnifiedMathRenderer content={finalLatex} mode="block" /> : null}
+          {finalValues.length > 0 ? (
+            <div style={{ marginTop: 10, overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", borderBottom: "1px solid #86efac", padding: "6px 8px" }}>Label</th>
+                    <th style={{ textAlign: "left", borderBottom: "1px solid #86efac", padding: "6px 8px" }}>Value</th>
+                    <th style={{ textAlign: "left", borderBottom: "1px solid #86efac", padding: "6px 8px" }}>LaTeX</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {finalValues.map((entry, idx) => {
+                    const row = entry && typeof entry === "object" ? (entry as Record<string, unknown>) : {};
+                    const label = String(row.label ?? row.key ?? "");
+                    const valueRaw = row.value ?? row.text ?? row.number ?? "";
+                    const valueText = typeof valueRaw === "string" ? valueRaw : String(valueRaw ?? "");
+                    const valueLatex = String(row.value_latex ?? row.latex ?? "");
+                    return (
+                      <tr key={`final-value-${idx}`}>
+                        <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>{label || "-"}</td>
+                        <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
+                          {valueText ? <MarkdownMathContent content={valueText} /> : "-"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
+                          {valueLatex ? <UnifiedMathRenderer content={valueLatex} mode="inline" /> : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

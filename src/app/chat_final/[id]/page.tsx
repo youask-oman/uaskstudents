@@ -274,8 +274,8 @@ const extractShortSourcePayload = (messages: SessionMessage[]): ShortSourcePaylo
     if (sections.length === 0) continue;
 
     const questionText =
-      asString(asRecord(structured.question)?.text) ||
       asString(asRecord(structured.problem)?.original_text) ||
+      asString(asRecord(structured.question)?.text) ||
       undefined;
 
     return {
@@ -340,8 +340,8 @@ const buildInitialPages = (
   // Avoid using sessionTitle if it's generic like "Untitled Session"
   const validSessionTitle = sessionTitle && sessionTitle !== "Untitled Session" ? sessionTitle : undefined;
   const rawProblemStatement =
-    (isShortTier ? shortSource?.question : undefined) ||
     solution?.originalProblem ||
+    (isShortTier ? shortSource?.question : undefined) ||
     userText ||
     validSessionTitle ||
     layoutTitle ||
@@ -814,16 +814,29 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
     for (let i = sourceMessages.length - 1; i >= 0; i -= 1) {
       const payload = sourceMessages[i].structured_data;
       if (!payload || typeof payload !== "object") continue;
-      const rawClassification = (payload as Record<string, unknown>).classification;
-      if (!rawClassification || typeof rawClassification !== "object") continue;
-      const entry = rawClassification as Record<string, unknown>;
-      const domain = typeof entry.domain === "string" ? entry.domain : undefined;
-      const topic = typeof entry.topic === "string" ? entry.topic : undefined;
-      const grade_band = typeof entry.grade_band === "string" ? entry.grade_band : undefined;
-      const difficulty = typeof entry.difficulty === "string" ? entry.difficulty : undefined;
+      const root = payload as Record<string, unknown>;
+      const candidates: Record<string, unknown>[] = [];
+      const rootClassification = root.classification;
+      if (rootClassification && typeof rootClassification === "object") {
+        candidates.push(rootClassification as Record<string, unknown>);
+      }
+      const items = Array.isArray(root.items) ? root.items : [];
+      for (const item of items) {
+        if (!item || typeof item !== "object") continue;
+        const itemClassification = (item as Record<string, unknown>).classification;
+        if (itemClassification && typeof itemClassification === "object") {
+          candidates.push(itemClassification as Record<string, unknown>);
+        }
+      }
 
-      if (domain || topic || grade_band || difficulty) {
-        return { domain, topic, grade_band, difficulty };
+      for (const entry of candidates) {
+        const domain = typeof entry.domain === "string" ? entry.domain : undefined;
+        const topic = typeof entry.topic === "string" ? entry.topic : undefined;
+        const grade_band = typeof entry.grade_band === "string" ? entry.grade_band : undefined;
+        const difficulty = typeof entry.difficulty === "string" ? entry.difficulty : undefined;
+        if (domain || topic || grade_band || difficulty) {
+          return { domain, topic, grade_band, difficulty };
+        }
       }
     }
     return undefined;
@@ -937,7 +950,11 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
   }
 
   const notebookTitle = session.subject ? `${tierLabel} - ${session.subject}` : `${tierLabel} Math Notebook`;
-  const baseSubtitle = session.title || "Untitled Session";
+  const baseSubtitleRaw = session.title || "Untitled Session";
+  const baseSubtitle =
+    solveTier === "SHORT_STEPS" && baseSubtitleRaw.length > 30
+      ? `${baseSubtitleRaw.slice(0, 30)}...`
+      : baseSubtitleRaw;
   const notebookSubtitle = baseSubtitle.toUpperCase().startsWith(tierLabel)
     ? baseSubtitle
     : `${tierLabel} Paper - ${baseSubtitle}`;

@@ -690,7 +690,10 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   const rawUserExtraction = asRecord(obj.raw_user_extraction);
   if (rawUserExtraction) {
     const nestedSectioned = parseSectionedShortPayload(rawUserExtraction, {
-      questionText: asString(asRecord(obj.question)?.text) || undefined,
+      questionText:
+        asString(asRecord(obj.problem)?.original_text) ||
+        asString(asRecord(obj.question)?.text) ||
+        undefined,
       originalProblem: asString(asRecord(obj.problem)?.original_text) || undefined,
     });
     if (nestedSectioned) return nestedSectioned;
@@ -706,7 +709,22 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
     const primaryItem =
       parsedItems.find((item) => asRecord(item.refusal)?.is_refusal !== true) || parsedItems[0];
     const parsedPrimary = parseMathSolutionFromObject(primaryItem);
-    if (parsedPrimary) return parsedPrimary;
+    if (parsedPrimary) {
+      const rootOriginal =
+        asString(asRecord(obj.problem)?.original_text) ||
+        asString(asRecord(obj.question)?.original_text) ||
+        asString(asRecord(obj.question)?.text) ||
+        undefined;
+      const rootNormalized =
+        asString(asRecord(obj.problem)?.normalized_text) ||
+        asString(asRecord(obj.question)?.normalized_text) ||
+        undefined;
+      return {
+        ...parsedPrimary,
+        originalProblem: parsedPrimary.originalProblem || rootOriginal,
+        normalizedProblem: parsedPrimary.normalizedProblem || rootNormalized,
+      };
+    }
   }
 
   const layoutTitle = parseLayoutTitleFromObject(obj);
@@ -1283,8 +1301,8 @@ export const extractBatchSolutionsFromSessionMessages = (
     // Prefer full short-tier parser output (sections->steps->blocks) when available.
     if ((looksShortTier || rawUserExtraction) && rawUserExtraction) {
       const questionText =
-        asString(asRecord(structured.question)?.text) ||
         asString(asRecord(structured.problem)?.original_text) ||
+        asString(asRecord(structured.question)?.text) ||
         questionTextMap.q1;
       const parsedShort = parseMathSolutionFromObject({
         ...structured,
@@ -1312,8 +1330,8 @@ export const extractBatchSolutionsFromSessionMessages = (
           {
             questionId: "q1",
             questionText:
-              asString(asRecord(structured.question)?.text) ||
               asString(asRecord(structured.problem)?.original_text) ||
+              asString(asRecord(structured.question)?.text) ||
               questionTextMap.q1,
             solution: shortDirect,
           },

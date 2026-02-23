@@ -101,12 +101,24 @@ def _terms_inventory_markdown() -> str:
 
 
 def _seed_legal_documents(session: Session, app_env: str) -> Tuple[int, Dict[str, int]]:
-    terms_md = _terms_inventory_markdown()
-    privacy_md = build_privacy_policy_markdown()
-    payload = [
-        {"key": "terms_of_service", "version": "seed-v1", "content_md": terms_md},
-        {"key": "privacy_policy", "version": "seed-v1", "content_md": privacy_md},
-    ]
+    legal_seed_path = SEED_DATA_DIR / "legal_documents.json"
+    if legal_seed_path.exists():
+        raw_payload = _load_json(legal_seed_path)
+        payload = []
+        for row in raw_payload:
+            key = str(row.get("key", "")).strip()
+            version = str(row.get("version", "")).strip() or "seed-v1"
+            content_md = str(row.get("content_md", "")).strip()
+            if not key or not content_md:
+                continue
+            payload.append({"key": key, "version": version, "content_md": content_md})
+    else:
+        terms_md = _terms_inventory_markdown()
+        privacy_md = build_privacy_policy_markdown()
+        payload = [
+            {"key": "terms_of_service", "version": "seed-v1", "content_md": terms_md},
+            {"key": "privacy_policy", "version": "seed-v1", "content_md": privacy_md},
+        ]
     checksum = _sha256_payload(payload)
     if _reg_same(session, "legal_documents", checksum):
         count = len(
@@ -609,6 +621,39 @@ def _seed_programs_and_plans(session: Session, app_env: str) -> Tuple[int, int, 
 
 
 def _seed_topup_products(session: Session) -> Tuple[int, Dict[str, int]]:
+    topup_seed_path = SEED_DATA_DIR / "topup_products.json"
+    if topup_seed_path.exists():
+        payload = _load_json(topup_seed_path)
+        c = u = s = 0
+        for row in payload:
+            code = str(row.get("code", "")).strip()
+            if not code:
+                continue
+            cur = session.exec(select(TopUpProduct).where(TopUpProduct.code == code)).first()
+            values = {
+                "name": str(row.get("name", "")).strip() or code,
+                "credits": int(row.get("credits", 0)),
+                "price_usd": float(row.get("price_usd", 0.0)),
+                "is_active": bool(row.get("is_active", True)),
+            }
+            if cur:
+                changed = False
+                for k, v in values.items():
+                    if getattr(cur, k) != v:
+                        setattr(cur, k, v)
+                        changed = True
+                if changed:
+                    session.add(cur)
+                    u += 1
+                else:
+                    s += 1
+            else:
+                session.add(TopUpProduct(code=code, **values))
+                c += 1
+        session.commit()
+        count = len(session.exec(select(TopUpProduct)).all())
+        return count, _res(c, u, s)
+
     existing = session.exec(select(TopUpProduct)).all()
     if existing:
         return len(existing), _res(s=len(existing))

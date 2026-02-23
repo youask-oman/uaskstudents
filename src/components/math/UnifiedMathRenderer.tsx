@@ -101,7 +101,7 @@ const useMathSvgBatch = (jobs: Array<{ key: string; latex: string; inline: boole
         const run = async () => {
             setLoading(true);
             try {
-                const response = await fetch("/api/math/svg/batch", {
+                const response = await fetch("/api/v1/math/svg/batch", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

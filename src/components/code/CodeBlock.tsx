@@ -1,9 +1,26 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function CodeBlock({ code, language = "python" }: { code: string; language?: string }) {
   const filename = useMemo(() => `solution.${language === "python" ? "py" : "txt"}`, [language]);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard?.writeText(code);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   if (!code) return null;
   return (
     <div className="uask-code-block" style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
@@ -11,10 +28,18 @@ export default function CodeBlock({ code, language = "python" }: { code: string;
         <span>{filename}</span>
         <button
           type="button"
-          onClick={() => navigator.clipboard?.writeText(code)}
-          style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "2px 8px" }}
+          onClick={handleCopy}
+          style={{
+            border: `1px solid ${copied ? "#16a34a" : "#cbd5e1"}`,
+            background: copied ? "#dcfce7" : "#f8fafc",
+            color: copied ? "#166534" : "#0f172a",
+            borderRadius: 6,
+            padding: "2px 8px",
+            fontWeight: 600,
+            transition: "all 120ms ease",
+          }}
         >
-          Copy
+          {copied ? "Copied" : "Copy"}
         </button>
       </div>
       <pre

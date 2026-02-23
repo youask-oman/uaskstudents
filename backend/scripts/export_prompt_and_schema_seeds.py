@@ -10,10 +10,12 @@ from sqlmodel import Session, select
 from app.database import engine
 from app.models import (
     JsonSchemaEntry,
+    LegalDocument,
     Plan,
     PromptBinding,
     PromptTemplateEntry,
     ProviderModelPricing,
+    TopUpProduct,
     SystemConfig,
     User,
     School,
@@ -129,11 +131,23 @@ def _ordered_internal_users(session: Session) -> List[Dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def _ordered_topup_products(session: Session) -> List[Dict[str, Any]]:
+    rows = session.exec(select(TopUpProduct).order_by(TopUpProduct.code.asc(), TopUpProduct.id.asc())).all()
+    return [_row_to_dict(r) for r in rows]
+
+
+def _ordered_legal_documents(session: Session) -> List[Dict[str, Any]]:
+    rows = session.exec(
+        select(LegalDocument).order_by(LegalDocument.key.asc(), LegalDocument.version.asc(), LegalDocument.id.asc())
+    ).all()
+    return [_row_to_dict(r) for r in rows]
+
+
 def _validate_payloads(
     prompt_templates: List[Dict[str, Any]],
     json_schemas: List[Dict[str, Any]],
     prompt_bindings: List[Dict[str, Any]],
-) -> None:
+) -> List[str]:
     prompt_ids = {row["prompt_id"] for row in prompt_templates}
     schema_ids = {row["schema_id"] for row in json_schemas}
 
@@ -141,15 +155,34 @@ def _validate_payloads(
     missing_developer = sorted({row["developer_prompt_id"] for row in prompt_bindings if row["developer_prompt_id"] not in prompt_ids})
     missing_schema = sorted({row["output_schema_id"] for row in prompt_bindings if row["output_schema_id"] not in schema_ids})
 
-    if missing_system or missing_developer or missing_schema:
-        parts: List[str] = []
-        if missing_system:
-            parts.append(f"missing system prompt_ids in prompt_templates: {missing_system}")
-        if missing_developer:
-            parts.append(f"missing developer prompt_ids in prompt_templates: {missing_developer}")
-        if missing_schema:
-            parts.append(f"missing output schema_ids in json_schemas: {missing_schema}")
-        raise RuntimeError("Export validation failed: " + "; ".join(parts))
+    warnings: List[str] = []
+    if missing_system:
+        warnings.append(f"missing system prompt_ids in prompt_templates: {missing_system}")
+    if missing_developer:
+        warnings.append(f"missing developer prompt_ids in prompt_templates: {missing_developer}")
+    if missing_schema:
+        warnings.append(f"missing output schema_ids in json_schemas: {missing_schema}")
+    return warnings
+
+
+def _filter_seedable_prompt_bindings(
+    prompt_templates: List[Dict[str, Any]],
+    json_schemas: List[Dict[str, Any]],
+    prompt_bindings: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], int]:
+    prompt_ids = {row.get("prompt_id") for row in prompt_templates}
+    schema_ids = {row.get("schema_id") for row in json_schemas}
+    filtered: List[Dict[str, Any]] = []
+    dropped = 0
+    for row in prompt_bindings:
+        system_id = row.get("global_system_prompt_id")
+        dev_id = row.get("developer_prompt_id")
+        schema_id = row.get("output_schema_id")
+        if system_id in prompt_ids and dev_id in prompt_ids and schema_id in schema_ids:
+            filtered.append(row)
+        else:
+            dropped += 1
+    return filtered, dropped
 
 
 def export_all(out_dir: Path) -> Dict[str, Dict[str, Any]]:
@@ -157,14 +190,21 @@ def export_all(out_dir: Path) -> Dict[str, Dict[str, Any]]:
         systemconfig = _ordered_systemconfig(session)
         json_schemas = _ordered_json_schemas(session)
         prompt_templates = _ordered_prompt_templates(session)
-        prompt_bindings = _ordered_prompt_bindings(session)
+        prompt_bindings_all = _ordered_prompt_bindings(session)
         providermodelpricing = _ordered_pricing(session)
         credit_programs = _ordered_credit_programs(session)
         plans = _ordered_plans(session)
         internal_users = _ordered_internal_users(session)
         schools = _ordered_schools(session)
+        topup_products = _ordered_topup_products(session)
+        legal_documents = _ordered_legal_documents(session)
 
-    _validate_payloads(prompt_templates, json_schemas, prompt_bindings)
+    validation_warnings = _validate_payloads(prompt_templates, json_schemas, prompt_bindings_all)
+    prompt_bindings, dropped_bindings = _filter_seedable_prompt_bindings(
+        prompt_templates, json_schemas, prompt_bindings_all
+    )
+    if dropped_bindings:
+        validation_warnings.append(f"dropped_unseedable_prompt_bindings={dropped_bindings}")
 
     credits_and_plans = {"credit_programs": credit_programs, "plans": plans}
 
@@ -197,11 +237,18 @@ def export_all(out_dir: Path) -> Dict[str, Dict[str, Any]]:
     count, checksum = _write_json(out_dir / "internal_users.json", internal_users)
     summary["internal_users.json"] = {"row_count": count, "sha256": checksum}
 
+    count, checksum = _write_json(out_dir / "topup_products.json", topup_products)
+    summary["topup_products.json"] = {"row_count": count, "sha256": checksum}
+
+    count, checksum = _write_json(out_dir / "legal_documents.json", legal_documents)
+    summary["legal_documents.json"] = {"row_count": count, "sha256": checksum}
+
     count, checksum = _write_json(out_dir / "schools.json", schools)
     summary["schools.json"] = {"row_count": count, "sha256": checksum}
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "validation_warnings": validation_warnings,
         "schema_table_map": {
             "schema_tables": ["json_schemas"],
             "prompt_binding_reference_model": "key-based strings",

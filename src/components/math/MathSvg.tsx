@@ -37,7 +37,7 @@ export default function MathSvg({ tex, display, className }: MathSvgProps) {
     const controller = new AbortController();
     setState({ status: "loading" });
 
-    fetch("/api/math/svg", {
+    fetch("/api/v1/math/svg", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tex, display }),
@@ -106,4 +106,3 @@ export default function MathSvg({ tex, display, className }: MathSvgProps) {
     />
   );
 }
-

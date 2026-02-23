@@ -26,8 +26,6 @@ class PlotEnvelope(BaseModel):
     def validate_recipe_object(cls, value: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(value, dict) or not value:
             raise ValueError("plot.recipe must be a non-empty object")
-        if not isinstance(value.get("kind"), str) or not str(value.get("kind")).strip():
-            raise ValueError("plot.recipe.kind is required")
         return value
 
 
@@ -53,4 +51,3 @@ class PlotRenderSvgResponse(BaseModel):
     cache_key: str
     svg: str
     meta: PlotRenderSvgMeta
-

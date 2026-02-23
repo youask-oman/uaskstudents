@@ -250,6 +250,9 @@ class OpenAIClient:
         )
         self._last_error_details: Optional[Dict[str, Any]] = None
         self._required_model = "gpt-5-mini"
+        # Prompt management SDK compatibility: some environments accept prompt.id,
+        # others require prompt.prompt_id.
+        self._managed_prompt_ref_key = (os.environ.get("OPENAI_PROMPT_REF_KEY") or "id").strip() or "id"
 
     @property
     def client(self):
@@ -308,6 +311,8 @@ class OpenAIClient:
         managed_prompt_use_latest: bool = False,
         managed_prompt_variables: Optional[Dict[str, Any]] = None,
         managed_prompt_input: Optional[str] = None,
+        prompt_cache_key: Optional[str] = None,
+        prompt_cache_retention: Optional[str] = None,
     ) -> LLMResponse:
         del stream
         if not self.api_key and not self.allow_missing_api_key and not _openai_dry_run_enabled():
@@ -435,8 +440,42 @@ class OpenAIClient:
                 }
                 managed_prompt_active = bool(str(managed_prompt_id or "").strip())
                 managed_prompt_ref: Optional[Dict[str, Any]] = None
+
+                def _set_prompt_ref_key(target_params: Dict[str, Any], key_name: str) -> None:
+                    prompt_obj = dict((target_params.get("prompt") or {}))
+                    prompt_obj.pop("id", None)
+                    prompt_obj.pop("prompt_id", None)
+                    prompt_obj[key_name] = str(managed_prompt_id or "").strip()
+                    target_params["prompt"] = prompt_obj
+
+                async def _responses_create_with_prompt_compat(base_params: Dict[str, Any]) -> Any:
+                    try:
+                        return await _responses_create_with_retry(base_params)
+                    except Exception as exc:
+                        if not managed_prompt_active:
+                            raise
+                        err = str(exc or "").lower()
+                        # One compatibility retry with the alternate prompt key.
+                        if (
+                            "prompt_id" in err
+                            or "prompt.id" in err
+                            or "prompt.prompt_id" in err
+                            or "'id'" in err
+                            or '"id"' in err
+                            or "unknown parameter: prompt.id" in err
+                            or "unknown parameter: prompt.prompt_id" in err
+                        ):
+                            alt_key = "id" if self._managed_prompt_ref_key == "prompt_id" else "prompt_id"
+                            retry_params = copy.deepcopy(base_params)
+                            _set_prompt_ref_key(retry_params, alt_key)
+                            response_retry = await _responses_create_with_retry(retry_params)
+                            self._managed_prompt_ref_key = alt_key
+                            return response_retry
+                        raise
+
                 if managed_prompt_active:
-                    managed_prompt_ref = {"id": str(managed_prompt_id).strip()}
+                    managed_prompt_ref = {}
+                    managed_prompt_ref[self._managed_prompt_ref_key] = str(managed_prompt_id).strip()
                     if not managed_prompt_use_latest and str(managed_prompt_version or "").strip():
                         managed_prompt_ref["version"] = str(managed_prompt_version).strip()
                     params["prompt"] = managed_prompt_ref
@@ -453,6 +492,10 @@ class OpenAIClient:
                     params["top_p"] = top_p
                 if reasoning_effort in {"minimal", "low", "medium", "high"}:
                     params["reasoning"] = {"effort": reasoning_effort}
+                if str(prompt_cache_key or "").strip():
+                    params["prompt_cache_key"] = str(prompt_cache_key).strip()
+                if str(prompt_cache_retention or "").strip():
+                    params["prompt_cache_retention"] = str(prompt_cache_retention).strip()
 
                 if text_format:
                     schema_obj = text_format.get("schema") if isinstance(text_format, dict) else {}
@@ -476,19 +519,21 @@ class OpenAIClient:
                 prompt_variables_used = False
                 prompt_variable_fallback_used = False
                 if managed_prompt_active:
+                    prompt_input_text = str(
+                        managed_prompt_input or prompt or _flatten_messages_for_input(messages)
+                    ).strip()
+                    if prompt_input_text:
+                        # Always send input as authoritative question content, even when variables are used.
+                        params["input"] = prompt_input_text
                     if isinstance(managed_prompt_variables, dict) and managed_prompt_variables:
                         prompt_variables_used = True
                     else:
-                        prompt_input_text = str(
-                            managed_prompt_input or prompt or _flatten_messages_for_input(messages)
-                        ).strip()
                         if not prompt_input_text:
                             raise LLMProviderError(
                                 "Managed prompt call requires input or variables.",
                                 provider="openai",
                                 status_code=400,
                             )
-                        params["input"] = prompt_input_text
 
                 if _openai_dry_run_enabled():
                     dump_path = _dump_openai_dry_run_payload(
@@ -514,26 +559,44 @@ class OpenAIClient:
                     embedded_prompt["variables"] = managed_prompt_variables
                     embedded_params["prompt"] = embedded_prompt
                     try:
-                        response = await _responses_create_with_retry(embedded_params)
+                        response = await _responses_create_with_prompt_compat(embedded_params)
                     except Exception as exc:
                         error_text = str(exc or "").lower()
-                        # SDK compatibility: if variables are rejected, keep prompt id/version
-                        # and retry with plain input only.
-                        if "unexpected keyword argument 'variables'" in error_text or 'unexpected keyword argument "variables"' in error_text:
-                            input_fallback_params = copy.deepcopy(params)
-                            if "input" not in input_fallback_params:
-                                prompt_input_text = str(
-                                    managed_prompt_input or prompt or _flatten_messages_for_input(messages)
-                                ).strip()
-                                if prompt_input_text:
-                                    input_fallback_params["input"] = prompt_input_text
-                            prompt_variable_fallback_used = True
-                            prompt_variables_used = False
-                            response = await _responses_create_with_retry(input_fallback_params)
+                        # SDK/API compatibility:
+                        # 1) Retry with top-level `variables` when prompt.variables is rejected.
+                        # 2) If that is also unsupported, fall back to input-only.
+                        variables_related_error = (
+                            "variables" in error_text
+                            or "unexpected keyword argument 'variables'" in error_text
+                            or 'unexpected keyword argument "variables"' in error_text
+                        )
+                        if variables_related_error:
+                            top_level_params = copy.deepcopy(params)
+                            top_level_params["variables"] = managed_prompt_variables
+                            try:
+                                prompt_variable_fallback_used = True
+                                response = await _responses_create_with_prompt_compat(top_level_params)
+                            except Exception as top_exc:
+                                top_error = str(top_exc or "").lower()
+                                if (
+                                    "unexpected keyword argument 'variables'" in top_error
+                                    or 'unexpected keyword argument "variables"' in top_error
+                                ):
+                                    input_fallback_params = copy.deepcopy(params)
+                                    if "input" not in input_fallback_params:
+                                        prompt_input_text = str(
+                                            managed_prompt_input or prompt or _flatten_messages_for_input(messages)
+                                        ).strip()
+                                        if prompt_input_text:
+                                            input_fallback_params["input"] = prompt_input_text
+                                    prompt_variables_used = False
+                                    response = await _responses_create_with_prompt_compat(input_fallback_params)
+                                else:
+                                    raise
                         else:
                             raise
                 else:
-                    response = await _responses_create_with_retry(params)
+                    response = await _responses_create_with_prompt_compat(params)
 
                 status_info["status"] = getattr(response, "status", "completed")
                 if status_info["status"] == "incomplete":
@@ -577,6 +640,8 @@ class OpenAIClient:
                     "openai_prompt_use_latest": bool(managed_prompt_use_latest) if managed_prompt_active else False,
                     "openai_prompt_variables_used": prompt_variables_used,
                     "openai_prompt_variable_fallback_used": prompt_variable_fallback_used,
+                    "openai_prompt_cache_key": str(prompt_cache_key or "").strip() or None,
+                    "openai_prompt_cache_retention": str(prompt_cache_retention or "").strip() or None,
                 }
                 try:
                     payload["openai_response_raw"] = response.model_dump(mode="json")
@@ -679,6 +744,8 @@ class OpenAIClient:
         managed_prompt_use_latest: bool = False,
         managed_prompt_variables: Optional[Dict[str, Any]] = None,
         managed_prompt_input: Optional[str] = None,
+        prompt_cache_key: Optional[str] = None,
+        prompt_cache_retention: Optional[str] = None,
     ) -> AsyncIterator[LLMStreamResponse]:
         response = await self.generate(
             messages=messages,
@@ -699,6 +766,8 @@ class OpenAIClient:
             managed_prompt_use_latest=managed_prompt_use_latest,
             managed_prompt_variables=managed_prompt_variables,
             managed_prompt_input=managed_prompt_input,
+            prompt_cache_key=prompt_cache_key,
+            prompt_cache_retention=prompt_cache_retention,
         )
         yield LLMStreamResponse(
             content=response.content,

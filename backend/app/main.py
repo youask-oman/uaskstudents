@@ -61,6 +61,7 @@ import time
 import uuid
 import asyncio
 import os
+from collections.abc import Mapping, Sequence
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.api import limiter
@@ -95,6 +96,16 @@ async def _start_math_render_safely() -> None:
         )
     except Exception:
         logging.exception("Failed to start math render service")
+
+
+def _json_safe(value):
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Mapping):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_json_safe(v) for v in value]
+    return str(value)
 
 # Global Exception Handlers
 @app.exception_handler(HTTPException)
@@ -136,6 +147,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     logger = logging.getLogger("api")
     logger.info(f"Response: 422 | Validation Error", extra=TraceContext.get_all())
     request_id = TraceContext.get().request_id if hasattr(TraceContext, 'get') else None
+    errors = _json_safe(exc.errors())
     return JSONResponse(
         status_code=422,
         content={
@@ -143,9 +155,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 "code": "validation_error",
                 "message": "Validation error",
                 "request_id": request_id,
-                "details": exc.errors(),
+                "details": errors,
             },
-            "detail": exc.errors(),
+            "detail": errors,
             "request_id": request_id,
         },
     )

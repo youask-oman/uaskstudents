@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from app.services.whatsapp.whatsapp_state import get_redis
+from app.plot.recipe_normalizer import normalize_recipe
 
 
-PLOT_RENDERER_VERSION = "plot_svg_renderer_v1"
+PLOT_RENDERER_VERSION = "plot_svg_renderer_v2"
 PLOT_SVG_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30
 PLOT_SVG_CACHE_DIR = Path(
     os.environ.get(
@@ -25,9 +26,10 @@ def _ensure_cache_dir() -> Path:
 
 
 def canonical_plot_payload(plot_recipe: Dict[str, Any], render_options: Dict[str, Any]) -> str:
+    normalized_recipe, _ = normalize_recipe(plot_recipe if isinstance(plot_recipe, dict) else {})
     payload = {
         "renderer_version": PLOT_RENDERER_VERSION,
-        "plot_recipe": plot_recipe,
+        "plot_recipe": normalized_recipe,
         "render_options": render_options,
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -73,4 +75,3 @@ def set_cached_svg(cache_key: str, svg: str) -> None:
         disk.write_text(svg, encoding="utf-8")
     except Exception:
         pass
-

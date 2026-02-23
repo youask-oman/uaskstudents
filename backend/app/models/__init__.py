@@ -842,6 +842,8 @@ class PromptBinding(SQLModel, table=True):
     openai_prompt_version: Optional[str] = Field(default=None)
     openai_prompt_use_latest: bool = Field(default=False)
     openai_prompt_variable_mapping: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    openai_prompt_cache_key_template: Optional[str] = Field(default=None)
+    openai_prompt_cache_retention: Optional[str] = Field(default=None)
 
     # Dynamic Token Configuration (Overrides SystemConfig Defaults if set)
     max_questions_allowed: Optional[int] = Field(default=None)

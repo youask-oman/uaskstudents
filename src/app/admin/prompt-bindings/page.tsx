@@ -16,6 +16,8 @@ type Binding = {
     openai_prompt_version?: string | null;
     openai_prompt_use_latest?: boolean;
     openai_prompt_variable_mapping?: Record<string, unknown> | null;
+    openai_prompt_cache_key_template?: string | null;
+    openai_prompt_cache_retention?: string | null;
     features: Record<string, unknown>;
     multipliers: Record<string, unknown>;
     is_active: boolean;
@@ -417,6 +419,8 @@ export default function PromptBindingsPage() {
             "openai_prompt_id",
             "openai_prompt_version",
             "openai_prompt_use_latest",
+            "openai_prompt_cache_key_template",
+            "openai_prompt_cache_retention",
             "is_active",
             "trim_strategy",
             ...numericKeys,
@@ -663,6 +667,27 @@ export default function PromptBindingsPage() {
                                         {draft.openai_prompt_use_latest ? "Enabled" : "Disabled"}
                                     </span>
                                 </label>
+                            </Field>
+                            <Field label="Prompt Cache Key Template">
+                                <input
+                                    value={asInput(draft.openai_prompt_cache_key_template)}
+                                    onChange={(e) => updateDraft("openai_prompt_cache_key_template", e.target.value)}
+                                    disabled={!canEdit}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 disabled:text-slate-500 disabled:bg-slate-100"
+                                    placeholder="solve:{TIER}:{MODE}:{DOMAIN_MODE}:{PREFERRED_RESPONSE_LANGUAGE}"
+                                />
+                            </Field>
+                            <Field label="Prompt Cache Retention">
+                                <select
+                                    value={asInput(draft.openai_prompt_cache_retention)}
+                                    onChange={(e) => updateDraft("openai_prompt_cache_retention", e.target.value)}
+                                    disabled={!canEdit}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white text-slate-900 disabled:text-slate-500 disabled:bg-slate-100"
+                                >
+                                    <option value="">(Default)</option>
+                                    <option value="in-memory">in-memory</option>
+                                    <option value="24h">24h</option>
+                                </select>
                             </Field>
                             <Field label="Variable Mapping (JSON)">
                                 <textarea

@@ -5,6 +5,7 @@ import random
 from typing import Any, Dict, List, Tuple
 
 from app.schemas.render_events import RenderEvent, RenderProfile
+from app.plot.python_codegen import generate_python_code_from_recipe
 
 
 def _as_dict(value: Any) -> Dict[str, Any]:
@@ -48,6 +49,8 @@ def _extract_question_text(solution_json: Dict[str, Any], item: Dict[str, Any]) 
     if _as_text(item.get("question_summary")).strip():
         return _as_text(item.get("question_summary")).strip()
     problem = _as_dict(item.get("problem"))
+    if _as_text(problem.get("normalized_text")).strip():
+        return _as_text(problem.get("normalized_text")).strip()
     if _as_text(problem.get("original_text")).strip():
         return _as_text(problem.get("original_text")).strip()
     if _as_text(item.get("question_text")).strip():
@@ -234,6 +237,11 @@ def build_render_events(
             )
 
         python_code = _as_text(plot.get("python_code")).strip()
+        if not python_code and bool(plot.get("should_visualize")) and isinstance(plot.get("recipe"), dict):
+            try:
+                python_code = generate_python_code_from_recipe(_as_dict(plot.get("recipe")))
+            except Exception:
+                python_code = ""
         if python_code:
             t_ms += int(used_profile.code_delay_ms)
             emit(

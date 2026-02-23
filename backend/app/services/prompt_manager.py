@@ -79,6 +79,8 @@ class PromptManager:
                     if isinstance(binding.openai_prompt_variable_mapping, dict)
                     else {}
                 ),
+                "openai_prompt_cache_key_template": str(binding.openai_prompt_cache_key_template or "").strip() or None,
+                "openai_prompt_cache_retention": str(binding.openai_prompt_cache_retention or "").strip() or None,
             },
             "global_system_prompt": global_prompt.content,
             "developer_prompt": developer_prompt.content,

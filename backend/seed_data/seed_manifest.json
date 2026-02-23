@@ -6,23 +6,27 @@
     },
     "internal_users.json": {
       "row_count": 5,
-      "sha256": "0685d7f73967ea08323b55eb842edca06555076a3ee9f7890cfa56921b593820"
+      "sha256": "9907a07a5406817bcf7dedaa206c1d044de1ca481b00e201ec65118548cf7080"
     },
     "json_schemas.json": {
-      "row_count": 8,
-      "sha256": "83645b3ab6a0e78bc11def3b13762d70e398ea72ae2e6be710cf752c9f60ff68"
+      "row_count": 3,
+      "sha256": "e35a87980842094f8df6586c6bc20b987b22394583cc5824c6c3ff1dd8721011"
+    },
+    "legal_documents.json": {
+      "row_count": 2,
+      "sha256": "c6dbacc924d1d0d5410fb6ccf8c6ee88de00651bcb3b070fc84a22811997ca5f"
     },
     "prompt_bindings.json": {
-      "row_count": 4,
-      "sha256": "f4ac2ea944248d8c7443435ce2184b9a7b3f0024e0e65e747af2a605f22276cd"
+      "row_count": 3,
+      "sha256": "f3c9eff9ba567dc082248c029096adb41149d68a2931b22506cb460625a64ea6"
     },
     "prompt_schema_links.json": {
       "row_count": 0,
       "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "prompt_templates.json": {
-      "row_count": 7,
-      "sha256": "bedc58500040b3c9aebd1d6923a0592e016db32582407ebf658707512d966e2b"
+      "row_count": 5,
+      "sha256": "239d9572dff6383b9717efe84cf7c13e59890000e676f4e1c9233358062e3e54"
     },
     "providermodelpricing.json": {
       "row_count": 8,
@@ -33,11 +37,15 @@
       "sha256": "971f03734d26248c9fe3ccc9d2c6289cde17d2ea7734971006b33eefd1a1aed4"
     },
     "systemconfig.json": {
-      "row_count": 55,
-      "sha256": "3bbce9b9f686da1622fba4bf1e71f02796408b95269d0997573024e260cf9389"
+      "row_count": 56,
+      "sha256": "86263eb42c5b87be108fce6efa6efb81369b08c9bb6e992e9a276c2499819d0b"
+    },
+    "topup_products.json": {
+      "row_count": 4,
+      "sha256": "b247ea715b6eb3af9dd3150bb6f6ea184f49dd43df78eb5296c67ec04d19e140"
     }
   },
-  "generated_at": "2026-02-22T06:03:23.627518+00:00",
+  "generated_at": "2026-02-23T07:30:30.323656+00:00",
   "schema_table_map": {
     "link_tables": [],
     "prompt_binding_reference_model": "key-based strings",
@@ -49,5 +57,11 @@
     "schema_tables": [
       "json_schemas"
     ]
-  }
+  },
+  "validation_warnings": [
+    "missing system prompt_ids in prompt_templates: ['global_system_prompt_batch_v1']",
+    "missing developer prompt_ids in prompt_templates: ['solve_dev_research_v2']",
+    "missing output schema_ids in json_schemas: ['solve_batch_research_v2']",
+    "dropped_unseedable_prompt_bindings=1"
+  ]
 }

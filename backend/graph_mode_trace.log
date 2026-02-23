@@ -112,3 +112,8 @@
 [2026-02-23T05:09:59.844473] graph_mode=auto, body.graph_mode=auto
 [2026-02-23T05:19:43.590417] graph_mode=auto, body.graph_mode=auto
 [2026-02-23T05:23:10.880345] graph_mode=auto, body.graph_mode=auto
+[2026-02-23T05:35:57.640533] graph_mode=OFF, body.graph_mode=OFF
+[2026-02-23T05:46:21.371196] graph_mode=OFF, body.graph_mode=OFF
+[2026-02-23T05:47:20.331807] graph_mode=OFF, body.graph_mode=OFF
+[2026-02-23T05:47:51.771874] graph_mode=OFF, body.graph_mode=OFF
+[2026-02-23T06:30:19.338602] graph_mode=on, body.graph_mode=on

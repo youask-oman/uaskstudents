@@ -33,7 +33,7 @@ ALLOWED_FUNCS: Dict[str, object] = {
     "Abs": sp.Abs,
 }
 ALLOWED_CONSTS: Dict[str, object] = {"pi": sp.pi, "E": sp.E, "e": sp.E}
-ALLOWED_SYMBOL_NAMES = {"x", "y", "t", "u"}
+ALLOWED_SYMBOL_NAMES = {"x", "y", "t", "u", "n"}
 FORBIDDEN_TOKEN_RE = re.compile(
     r"(__|import|lambda|eval|exec|open\(|os\.|sys\.|subprocess|@|;|\{|\}|\[|\]|while\s|for\s)",
     re.IGNORECASE,
@@ -118,4 +118,3 @@ def compile_expr_2d(expr: str) -> Tuple[str, Callable[[np.ndarray, np.ndarray], 
     y = sp.Symbol("y", real=True)
     fn = sp.lambdify((x, y), parsed, modules=["numpy"])
     return str(parsed), fn
-

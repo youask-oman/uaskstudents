@@ -4,6 +4,7 @@ import math
 import os
 import re
 import time
+import hashlib
 import unicodedata
 import uuid
 from datetime import datetime, timezone
@@ -45,6 +46,17 @@ SOLVER_RUNTIME_CONFIG_DEFAULTS: Dict[str, Dict[str, str]] = {
 }
 
 PLACEHOLDER_TOKEN_RE = re.compile(r"\{[A-Z_]+\}")
+FREE_BATCH_PROMPT_ID = "pmpt_699bd302d0f4819692162fd6066621fc011cbc57e13867cf"
+FREE_BATCH_PROMPT_VERSION = "2"
+FREE_BATCH_SCHEMA_NAME = "solve_batch_free_v2"
+FREE_BATCH_SCHEMA_VERSION = "v2"
+FREE_BATCH_MAX_QUESTIONS = 5
+FREE_BATCH_SCHEMA_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "schemas"
+    / "openai_schemas"
+    / "schema__solve_batch_free_v2.schema_openai_strict.json"
+)
 
 
 def _tier_default_max_steps(external_tier: str) -> int:
@@ -380,6 +392,55 @@ def _build_managed_prompt_batch_input(questions: List[Dict[str, Any]]) -> str:
     return "\n\n".join(lines).strip()
 
 
+def _questions_json_compact(questions: List[Dict[str, Any]]) -> str:
+    return json.dumps(questions or [], ensure_ascii=False, separators=(",", ":"))
+
+
+def _load_free_batch_schema_wrapper() -> Dict[str, Any]:
+    try:
+        raw = json.loads(FREE_BATCH_SCHEMA_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise BatchSolveError(
+            "Failed to load FREE batch schema file.",
+            status_code=500,
+            code="schema_load_failed",
+            details={"path": str(FREE_BATCH_SCHEMA_PATH), "error": str(exc)},
+        ) from exc
+    wrapper = _coerce_to_openai_schema_wrapper(raw, schema_name_fallback=FREE_BATCH_SCHEMA_NAME)
+    if str(wrapper.get("name") or "").strip() != FREE_BATCH_SCHEMA_NAME:
+        raise BatchSolveError(
+            "FREE batch schema wrapper has unexpected schema name.",
+            status_code=500,
+            code="schema_wrapper_invalid",
+            details={"expected": FREE_BATCH_SCHEMA_NAME, "actual": wrapper.get("name")},
+        )
+    return wrapper
+
+
+def _build_free_batch_prompt_variables(
+    *,
+    runtime_request_id: str,
+    runtime_attempt_id: str,
+    runtime_mode: str,
+    runtime_graph: str,
+    runtime_domain: str,
+    runtime_lang: str,
+    normalized_questions: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    questions_json_str = _questions_json_compact(normalized_questions)
+    return {
+        "REQUEST_ID": runtime_request_id,
+        "ATTEMPT_ID": runtime_attempt_id,
+        "TIER": "FREE",
+        "MAX_QUESTIONS": str(FREE_BATCH_MAX_QUESTIONS),
+        "MODE": runtime_mode,
+        "GRAPH_MODE": runtime_graph,
+        "DOMAIN_MODE": runtime_domain,
+        "PREFERRED_RESPONSE_LANGUAGE": runtime_lang,
+        "QUESTIONS_JSON": questions_json_str,
+    }
+
+
 def _resolve_mapping_path(source: Dict[str, Any], path: str) -> Any:
     cursor: Any = source
     for token in str(path or "").split("."):
@@ -399,23 +460,43 @@ def _build_managed_prompt_variables(
     runtime_request_id: str,
     runtime_attempt_id: str,
     external_tier: str,
+    runtime_mode: str = "SOLVE",
+    runtime_graph: str = "AUTO",
+    runtime_domain: str = "reals",
+    runtime_lang: str = "English",
+    max_questions_allowed: int = 0,
     normalized_questions: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     first_question = str((normalized_questions[0] or {}).get("question_text") or "").strip() if normalized_questions else ""
+    joined_questions = _build_managed_prompt_batch_input(normalized_questions)
+    questions_json_str = _questions_json_compact(normalized_questions)
     context: Dict[str, Any] = {
         "request_id": runtime_request_id,
         "attempt_id": runtime_attempt_id,
         "tier": external_tier,
+        "mode": runtime_mode,
+        "graph_mode": runtime_graph,
+        "domain_mode": runtime_domain,
+        "preferred_response_language": runtime_lang,
+        "max_questions": int(max_questions_allowed or 0),
         "question": first_question,
         "question_text": first_question,
-        "questions_joined": _build_managed_prompt_batch_input(normalized_questions),
+        "questions_joined": joined_questions,
+        "questions_json_str": questions_json_str,
         "questions_json": normalized_questions,
         "payload": {
             "request_id": runtime_request_id,
             "attempt_id": runtime_attempt_id,
             "tier": external_tier,
+            "mode": runtime_mode,
+            "graph_mode": runtime_graph,
+            "domain_mode": runtime_domain,
+            "preferred_response_language": runtime_lang,
+            "max_questions_allowed": int(max_questions_allowed or 0),
+            "question": first_question,
             "question_text": first_question,
-            "questions_joined": _build_managed_prompt_batch_input(normalized_questions),
+            "questions_joined": joined_questions,
+            "questions_json_str": questions_json_str,
             "questions_json": normalized_questions,
         },
     }
@@ -430,8 +511,35 @@ def _build_managed_prompt_variables(
             value = rule
         if value is None:
             value = ""
+        if not isinstance(value, (str, dict, list)):
+            value = str(value)
+        if isinstance(value, str) and not value.strip():
+            # Safety defaults for common prompt variables if mapping path is wrong.
+            if key in {"question", "question_text"}:
+                value = first_question
+            elif key == "questions_joined":
+                value = joined_questions
+            elif key == "request_id":
+                value = runtime_request_id
+            elif key == "attempt_id":
+                value = runtime_attempt_id
+            elif key == "tier":
+                value = external_tier
         out[key] = value
     return out
+
+
+def _render_prompt_cache_key(template: str, replacements: Dict[str, Any]) -> str:
+    raw_template = str(template or "").strip()
+    if not raw_template:
+        return ""
+    str_replacements = {str(k): str(v) for k, v in (replacements or {}).items()}
+    rendered = _replace_prompt_tokens(raw_template, str_replacements).strip()
+    rendered = PLACEHOLDER_TOKEN_RE.sub("", rendered).strip()
+    if len(rendered) <= 64:
+        return rendered
+    digest = hashlib.sha256(rendered.encode("utf-8")).hexdigest()[:48]
+    return f"pbk:{digest}"
 
 
 def _coerce_graph_mode(value: Optional[str]) -> str:
@@ -2048,6 +2156,13 @@ async def execute_batch_solve(
             code="batch_limit_exceeded",
             details={"max_questions": max_questions_allowed, "count": len(normalized_questions)},
         )
+    if external_tier == "SHORT_STEPS" and len(normalized_questions) > FREE_BATCH_MAX_QUESTIONS:
+        raise BatchSolveError(
+            f"FREE tier supports at most {FREE_BATCH_MAX_QUESTIONS} questions.",
+            status_code=400,
+            code="free_batch_limit_exceeded",
+            details={"max_questions": FREE_BATCH_MAX_QUESTIONS, "count": len(normalized_questions)},
+        )
     system_prompt = str(binding_bundle["global_system_prompt"] or "")
     developer_prompt_template = str(binding_bundle["developer_prompt"] or "")
     raw_schema_payload = binding_bundle["schema"]
@@ -2071,6 +2186,7 @@ async def execute_batch_solve(
     runtime_allow_auto_split = is_multi_question or bool(allow_auto_split)
     runtime_max_tasks_per_question = int(max_tasks_per_question or 6)
     questions_json_text = json.dumps(normalized_questions, ensure_ascii=False)
+    questions_json_text_compact = _questions_json_compact(normalized_questions)
     binding_features_prompt = _bget("features") if isinstance(_bget("features"), dict) else {}
 
     def _binding_field(name: str, default: Any = None) -> Any:
@@ -2082,6 +2198,8 @@ async def execute_batch_solve(
     binding_openai_prompt_version = str(_binding_field("openai_prompt_version", "") or "").strip()
     binding_openai_prompt_use_latest = bool(_binding_field("openai_prompt_use_latest", False))
     binding_openai_prompt_variable_mapping_raw = _binding_field("openai_prompt_variable_mapping", None)
+    binding_openai_prompt_cache_key_template = str(_binding_field("openai_prompt_cache_key_template", "") or "").strip()
+    binding_openai_prompt_cache_retention = str(_binding_field("openai_prompt_cache_retention", "") or "").strip()
     binding_openai_prompt_variable_mapping = (
         binding_openai_prompt_variable_mapping_raw
         if isinstance(binding_openai_prompt_variable_mapping_raw, dict)
@@ -2110,23 +2228,137 @@ async def execute_batch_solve(
         else binding_features_prompt.get("openai_prompt_variable_mapping")
     )
     managed_prompt_variable_mapping = mapping_candidate if isinstance(mapping_candidate, dict) else {}
+    managed_prompt_cache_key_template = str(
+        binding_openai_prompt_cache_key_template
+        or binding_features_prompt.get("openai_prompt_cache_key_template")
+        or ""
+    ).strip()
+    managed_prompt_cache_retention = str(
+        binding_openai_prompt_cache_retention
+        or binding_features_prompt.get("openai_prompt_cache_retention")
+        or ""
+    ).strip()
+    if external_tier == "SHORT_STEPS":
+        # FREE batch solve v2 wiring:
+        # prefer admin-configured managed prompt fields when present,
+        # otherwise fall back to safe defaults.
+        managed_prompt_id = str(binding_openai_prompt_id or FREE_BATCH_PROMPT_ID).strip()
+        managed_prompt_version = str(binding_openai_prompt_version or FREE_BATCH_PROMPT_VERSION).strip()
+        managed_prompt_use_latest = bool(binding_openai_prompt_use_latest)
+        schema_wrapper = _load_free_batch_schema_wrapper()
+        schema_body = _extract_schema_body(schema_wrapper)
+        allowed_task_enum = _extract_allowed_task_enum(schema_body)
     managed_prompt_input = _build_managed_prompt_batch_input(normalized_questions)
+    managed_prompt_cache_key = _render_prompt_cache_key(
+        managed_prompt_cache_key_template,
+        {
+            "REQUEST_ID": runtime_request_id,
+            "ATTEMPT_ID": runtime_attempt_id,
+            "TIER": external_tier,
+            "MODE": runtime_mode,
+            "GRAPH_MODE": runtime_graph,
+            "DOMAIN_MODE": runtime_domain,
+            "PREFERRED_RESPONSE_LANGUAGE": runtime_lang,
+            "MAX_QUESTIONS": max_questions_allowed,
+        },
+    )
+    if not managed_prompt_cache_key and managed_prompt_id:
+        raw_fallback_cache_key = (
+            f"solve:{managed_prompt_id}:{managed_prompt_version or 'latest'}:"
+            f"{external_tier}:{runtime_mode}:{runtime_graph}:{runtime_domain}:{runtime_lang}"
+        )
+        if len(raw_fallback_cache_key) <= 64:
+            managed_prompt_cache_key = raw_fallback_cache_key
+        else:
+            managed_prompt_cache_key = "pbk:" + hashlib.sha256(raw_fallback_cache_key.encode("utf-8")).hexdigest()[:48]
     managed_prompt_variables = (
         _build_managed_prompt_variables(
             managed_prompt_variable_mapping,
             runtime_request_id=runtime_request_id,
             runtime_attempt_id=runtime_attempt_id,
             external_tier=external_tier,
+            runtime_mode=runtime_mode,
+            runtime_graph=runtime_graph,
+            runtime_domain=runtime_domain,
+            runtime_lang=runtime_lang,
+            max_questions_allowed=max_questions_allowed,
             normalized_questions=normalized_questions,
         )
         if managed_prompt_variable_mapping
         else {}
     )
+    if external_tier == "SHORT_STEPS":
+        if managed_prompt_variable_mapping:
+            managed_prompt_variables = _build_managed_prompt_variables(
+                managed_prompt_variable_mapping,
+                runtime_request_id=runtime_request_id,
+                runtime_attempt_id=runtime_attempt_id,
+                external_tier="FREE",
+                runtime_mode=runtime_mode,
+                runtime_graph=runtime_graph,
+                runtime_domain=runtime_domain,
+                runtime_lang=runtime_lang,
+                max_questions_allowed=FREE_BATCH_MAX_QUESTIONS,
+                normalized_questions=normalized_questions,
+            )
+        else:
+            managed_prompt_variables = _build_free_batch_prompt_variables(
+                runtime_request_id=runtime_request_id,
+                runtime_attempt_id=runtime_attempt_id,
+                runtime_mode=runtime_mode,
+                runtime_graph=runtime_graph,
+                runtime_domain=runtime_domain,
+                runtime_lang=runtime_lang,
+                normalized_questions=normalized_questions,
+            )
+    if isinstance(managed_prompt_variables, dict) and managed_prompt_variables:
+        if not any(str(v).strip() for v in managed_prompt_variables.values() if v is not None):
+            logger.warning(
+                "managed_prompt_variables_empty_fallback_to_input request_id=%s attempt_id=%s",
+                runtime_request_id,
+                runtime_attempt_id,
+            )
+            managed_prompt_variables = {}
     managed_prompt_active = (
         _managed_prompt_feature_enabled()
         and managed_prompt_id != ""
         and (managed_prompt_use_latest or managed_prompt_version != "")
     )
+    if external_tier == "SHORT_STEPS":
+        # FREE batch solve must use managed prompt id + variables.
+        managed_prompt_active = True
+    if external_tier == "SHORT_STEPS" and managed_prompt_active:
+        required_vars = {
+            "REQUEST_ID",
+            "ATTEMPT_ID",
+            "TIER",
+            "MAX_QUESTIONS",
+            "MODE",
+            "GRAPH_MODE",
+            "DOMAIN_MODE",
+            "PREFERRED_RESPONSE_LANGUAGE",
+            "QUESTIONS_JSON",
+        }
+        if not isinstance(managed_prompt_variables, dict) or not managed_prompt_variables:
+            raise BatchSolveError(
+                "Managed prompt variables are required for FREE tier.",
+                status_code=500,
+                code="managed_prompt_variables_missing",
+            )
+        missing_vars = sorted(
+            [
+                key
+                for key in required_vars
+                if str((managed_prompt_variables or {}).get(key) or "").strip() == ""
+            ]
+        )
+        if missing_vars:
+            raise BatchSolveError(
+                "Managed prompt variables missing required FREE runtime bindings.",
+                status_code=500,
+                code="managed_prompt_variables_missing",
+                details={"missing": missing_vars},
+            )
     schema_name_for_prompt = str(schema_wrapper.get("name") or _bget("output_schema_id") or "youask_math_openai_v1").strip()
     schema_version_for_prompt = _schema_version_for_prompt(schema_body, default="v1")
     max_steps_value = int(_bget("max_steps") or binding_features_prompt.get("max_steps") or _tier_default_max_steps(external_tier))
@@ -2270,6 +2502,7 @@ async def execute_batch_solve(
                     "latency_ms_openai": 0,
                     "latency_ms_total": int((time.perf_counter() - started) * 1000),
                     "schema_name": str(schema_wrapper.get("name") or _bget("output_schema_id") or external_tier),
+                    "schema_version": schema_version_for_prompt,
                     "model_bound": "sympy-numpy-local",
                     "temperature_bound": 0,
                     "top_p_bound": 1,
@@ -2336,7 +2569,7 @@ async def execute_batch_solve(
             "STEP_STYLE": step_style_value,
             "INCLUDE_TASK_RESULTS": include_task_results_value,
             "PREFER_EXACT": prefer_exact_value,
-            "QUESTIONS_JSON": questions_json_text,
+            "QUESTIONS_JSON": questions_json_text_compact,
             "ALLOW_AUTO_SPLIT": "true" if runtime_allow_auto_split else "false",
             "allow_auto_split": "true" if runtime_allow_auto_split else "false",
             "MAX_TASKS_PER_QUESTION": str(runtime_max_tasks_per_question),
@@ -2403,6 +2636,9 @@ async def execute_batch_solve(
     primary_provider = llm_manager.get_active_provider(session)
     binding_provider = str(_bget("provider") or "").strip().lower()
     provider_candidates: List[str] = [primary_provider]
+    if external_tier == "SHORT_STEPS":
+        # FREE batch solve v2 is pinned to OpenAI managed prompt.
+        provider_candidates = ["openai"]
     ollama_first_tier = external_tier in {"SHORT_STEPS", "FINAL"}
     if binding_provider in {"openai", "ollama"}:
         provider_candidates = [binding_provider]
@@ -2579,7 +2815,9 @@ async def execute_batch_solve(
             managed_prompt_version=(managed_prompt_version if (provider_name == "openai" and managed_prompt_active) else None),
             managed_prompt_use_latest=(managed_prompt_use_latest if (provider_name == "openai" and managed_prompt_active) else False),
             managed_prompt_variables=(managed_prompt_variables if (provider_name == "openai" and managed_prompt_active and managed_prompt_variables) else None),
-            managed_prompt_input=(managed_prompt_input if (provider_name == "openai" and managed_prompt_active and not managed_prompt_variables) else None),
+            managed_prompt_input=(managed_prompt_input if (provider_name == "openai" and managed_prompt_active) else None),
+            prompt_cache_key=(managed_prompt_cache_key if (provider_name == "openai" and managed_prompt_active and managed_prompt_cache_key) else None),
+            prompt_cache_retention=(managed_prompt_cache_retention if (provider_name == "openai" and managed_prompt_active and managed_prompt_cache_retention) else None),
         )
 
     def _provider_fallback_allowed() -> bool:
@@ -2978,6 +3216,7 @@ async def execute_batch_solve(
         "latency_ms_openai": int(response.latency_ms or 0),
         "latency_ms_total": int((time.perf_counter() - started) * 1000),
         "schema_name": str(schema_wrapper.get("name") or _bget("output_schema_id") or external_tier),
+        "schema_version": schema_version_for_prompt,
         "model_bound": model_name if selected_provider == "openai" else str(response.model or selected_provider),
         "temperature_bound": bound_temperature,
         "top_p_bound": bound_top_p,
@@ -2992,6 +3231,8 @@ async def execute_batch_solve(
         "openai_prompt_version": (response.payload or {}).get("openai_prompt_version"),
         "openai_prompt_use_latest": (response.payload or {}).get("openai_prompt_use_latest"),
         "openai_prompt_variables_used": (response.payload or {}).get("openai_prompt_variables_used"),
+        "openai_prompt_cache_key": (response.payload or {}).get("openai_prompt_cache_key"),
+        "openai_prompt_cache_retention": (response.payload or {}).get("openai_prompt_cache_retention"),
         "repair_attempted": repair_attempted,
         "schema_valid": True,
         "sympy_numpy_reports": sympy_numpy_reports,

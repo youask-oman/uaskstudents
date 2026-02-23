@@ -78,6 +78,8 @@ async def test_prompt_id_call_uses_input_when_no_variables() -> None:
         managed_prompt_use_latest=False,
         managed_prompt_variables=None,
         managed_prompt_input="Q1: Solve x+1=2",
+        prompt_cache_key="solve:SHORT_STEPS:SOLVE:reals:en",
+        prompt_cache_retention="24h",
     )
 
     fake = client._client  # type: ignore[attr-defined]
@@ -86,8 +88,12 @@ async def test_prompt_id_call_uses_input_when_no_variables() -> None:
     assert sent["prompt"]["id"] == "pmpt_699bd302d0f4819692162fd6066621fc011cbc57e13867cf"
     assert sent["prompt"]["version"] == "1"
     assert isinstance(sent.get("input"), str) and sent["input"] == "Q1: Solve x+1=2"
+    assert sent.get("prompt_cache_key") == "solve:SHORT_STEPS:SOLVE:reals:en"
+    assert sent.get("prompt_cache_retention") == "24h"
     assert response.payload.get("openai_prompt_id") == "pmpt_699bd302d0f4819692162fd6066621fc011cbc57e13867cf"
     assert response.payload.get("openai_prompt_version") == "1"
+    assert response.payload.get("openai_prompt_cache_key") == "solve:SHORT_STEPS:SOLVE:reals:en"
+    assert response.payload.get("openai_prompt_cache_retention") == "24h"
 
 
 @pytest.mark.asyncio
@@ -137,4 +143,3 @@ async def test_prompt_id_requires_input_or_variables() -> None:
             managed_prompt_variables=None,
             managed_prompt_input=None,
         )
-

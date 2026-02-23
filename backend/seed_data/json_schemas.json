@@ -77,1486 +77,12 @@
       },
       "strict": true
     },
-    "created_at": "2026-02-22T02:59:43.549666+00:00",
-    "id": "ab4e542f-a781-4510-b26c-62d94e039986",
-    "is_active": true,
-    "schema_id": "openai_image_extract_v1",
-    "updated_at": "2026-02-22T02:59:43.549722+00:00",
-    "updated_by": "alembic:20260215_ocr_registry_restore",
-    "version": 1
-  },
-  {
-    "content": {
-      "name": "openai_image_extract_v1",
-      "schema": {
-        "additionalProperties": false,
-        "properties": {
-          "questions": {
-            "default": [],
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "answer_choices": {
-                  "default": [],
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "confidence": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "page_index": {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "question_id": {
-                  "type": "string"
-                },
-                "question_latex": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "question_text": {
-                  "type": "string"
-                },
-                "subparts": {
-                  "default": [],
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              },
-              "required": [
-                "question_id",
-                "page_index",
-                "question_text"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "request_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "warnings": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "questions"
-        ],
-        "type": "object"
-      },
-      "strict": true
-    },
-    "created_at": "2026-02-22T02:59:43.551245+00:00",
-    "id": "104b6337-0c3f-4024-9862-0d39d872ded6",
-    "is_active": true,
-    "schema_id": "openai_image_extract_v1.schema.json",
-    "updated_at": "2026-02-22T02:59:43.551297+00:00",
-    "updated_by": "alembic:20260215_ocr_registry_restore",
-    "version": 1
-  },
-  {
-    "content": {
-      "name": "openai_image_extract_v1",
-      "schema": {
-        "additionalProperties": false,
-        "properties": {
-          "questions": {
-            "default": [],
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "answer_choices": {
-                  "default": [],
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "confidence": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "page_index": {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "question_id": {
-                  "type": "string"
-                },
-                "question_latex": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "question_text": {
-                  "type": "string"
-                },
-                "subparts": {
-                  "default": [],
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              },
-              "required": [
-                "question_id",
-                "page_index",
-                "question_text"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "request_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "warnings": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "questions"
-        ],
-        "type": "object"
-      },
-      "strict": true
-    },
     "created_at": "2026-02-22T02:59:43.552101+00:00",
     "id": "b900e092-f473-4fbc-8a23-3ba0b8adf2eb",
     "is_active": true,
     "schema_id": "openai_image_extract_v1_schema_json",
     "updated_at": "2026-02-22T02:59:43.552156+00:00",
     "updated_by": "alembic:20260215_ocr_registry_restore",
-    "version": 1
-  },
-  {
-    "content": {
-      "name": "solve_batch_final_min_v1",
-      "schema": {
-        "$defs": {
-          "classification": {
-            "additionalProperties": false,
-            "properties": {
-              "difficulty": {
-                "enum": [
-                  "very_easy",
-                  "easy",
-                  "medium",
-                  "hard",
-                  "very_hard",
-                  "research"
-                ],
-                "type": "string"
-              },
-              "domain": {
-                "enum": [
-                  "arithmetic",
-                  "pre_algebra",
-                  "algebra",
-                  "geometry",
-                  "trigonometry",
-                  "precalculus",
-                  "calculus",
-                  "linear_algebra",
-                  "analysis",
-                  "number_theory",
-                  "discrete_math",
-                  "probability",
-                  "statistics",
-                  "optimization",
-                  "differential_equations",
-                  "numerical_analysis",
-                  "abstract_algebra",
-                  "complex_analysis",
-                  "topology",
-                  "applied_math",
-                  "other"
-                ],
-                "type": "string"
-              },
-              "grade_band": {
-                "enum": [
-                  "grades_6_8",
-                  "grades_9_10",
-                  "grades_11_12",
-                  "college_intro",
-                  "undergraduate_lower",
-                  "undergraduate_upper",
-                  "graduate"
-                ],
-                "type": "string"
-              },
-              "topic": {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "grade_band",
-              "domain",
-              "topic",
-              "difficulty"
-            ],
-            "type": "object"
-          },
-          "extra_kv": {
-            "additionalProperties": false,
-            "properties": {
-              "k": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
-              },
-              "v": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "k",
-              "v"
-            ],
-            "type": "object"
-          },
-          "final_answer": {
-            "additionalProperties": false,
-            "properties": {
-              "answer_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "answer_text": {
-                "maxLength": 4000,
-                "minLength": 1,
-                "type": "string"
-              },
-              "units": {
-                "maxLength": 200,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "values": {
-                "items": {
-                  "$ref": "#/$defs/value_item"
-                },
-                "maxItems": 30,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "answer_text",
-              "answer_latex",
-              "values",
-              "units"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "language": {
-            "additionalProperties": false,
-            "properties": {
-              "preferred_response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "user_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              }
-            },
-            "required": [
-              "user_language",
-              "preferred_response_language",
-              "response_language"
-            ],
-            "type": "object"
-          },
-          "problem": {
-            "additionalProperties": false,
-            "properties": {
-              "detected_tasks": {
-                "items": {
-                  "enum": [
-                    "solve",
-                    "simplify",
-                    "factor",
-                    "expand",
-                    "evaluate",
-                    "equation",
-                    "inequality",
-                    "system",
-                    "word_problem",
-                    "graph",
-                    "plot",
-                    "geometry",
-                    "trigonometry",
-                    "calculus",
-                    "probability",
-                    "statistics",
-                    "linear_algebra",
-                    "matrix_algebra",
-                    "diagonalization",
-                    "eigenvalues",
-                    "eigenvectors",
-                    "svd",
-                    "pca",
-                    "determinants",
-                    "rank",
-                    "nullspace",
-                    "orthogonality",
-                    "quadratic_forms",
-                    "spectral_theory",
-                    "numerical_linear_algebra",
-                    "real_analysis",
-                    "complex_analysis",
-                    "functional_analysis",
-                    "measure_theory",
-                    "topology",
-                    "differential_equations",
-                    "ode",
-                    "pde",
-                    "dynamical_systems",
-                    "stability_analysis",
-                    "bifurcation_analysis",
-                    "chaos",
-                    "fourier_analysis",
-                    "laplace_transform",
-                    "z_transform",
-                    "number_theory",
-                    "discrete_math",
-                    "combinatorics",
-                    "graph_theory",
-                    "logic",
-                    "set_theory",
-                    "optimization",
-                    "convex_optimization",
-                    "nonconvex_optimization",
-                    "linear_programming",
-                    "integer_programming",
-                    "variational_methods",
-                    "stochastic_processes",
-                    "markov_chains",
-                    "bayesian_inference",
-                    "time_series",
-                    "regression",
-                    "hypothesis_testing",
-                    "statistical_learning",
-                    "information_theory",
-                    "numerical_analysis",
-                    "approximation",
-                    "interpolation",
-                    "integration",
-                    "differentiation",
-                    "monte_carlo",
-                    "simulation",
-                    "abstract_algebra",
-                    "group_theory",
-                    "ring_theory",
-                    "field_theory",
-                    "galois_theory",
-                    "geometry_analytic",
-                    "geometry_differential",
-                    "tensor_calculus",
-                    "vector_calculus",
-                    "physics_math",
-                    "signals_systems",
-                    "control_theory",
-                    "computer_algebra",
-                    "proof",
-                    "counterexample",
-                    "derivation",
-                    "verification",
-                    "error_analysis",
-                    "data_science",
-                    "machine_learning_math",
-                    "other"
-                  ],
-                  "type": "string"
-                },
-                "maxItems": 30,
-                "minItems": 0,
-                "type": "array"
-              },
-              "extra": {
-                "items": {
-                  "$ref": "#/$defs/extra_kv"
-                },
-                "maxItems": 40,
-                "minItems": 0,
-                "type": "array"
-              },
-              "normalized_text": {
-                "maxLength": 200000,
-                "minLength": 1,
-                "type": "string"
-              },
-              "original_text": {
-                "maxLength": 200000,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "original_text",
-              "normalized_text",
-              "detected_tasks",
-              "extra"
-            ],
-            "type": "object"
-          },
-          "quality": {
-            "additionalProperties": false,
-            "properties": {
-              "common_mistakes": {
-                "items": {
-                  "maxLength": 200,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 0,
-                "minItems": 0,
-                "type": "array"
-              },
-              "confidence": {
-                "maximum": 1,
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "required": [
-              "confidence",
-              "common_mistakes"
-            ],
-            "type": "object"
-          },
-          "refusal": {
-            "additionalProperties": false,
-            "properties": {
-              "is_refusal": {
-                "type": "boolean"
-              },
-              "reason": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "safe_next_step": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "is_refusal",
-              "reason",
-              "safe_next_step"
-            ],
-            "type": "object"
-          },
-          "solution_item": {
-            "additionalProperties": false,
-            "properties": {
-              "classification": {
-                "$ref": "#/$defs/classification"
-              },
-              "final_answer": {
-                "$ref": "#/$defs/final_answer"
-              },
-              "mode": {
-                "enum": [
-                  "SOLVE",
-                  "SIMPLIFY",
-                  "FACTOR",
-                  "EXPAND",
-                  "EVALUATE",
-                  "DERIVATIVE",
-                  "INTEGRAL",
-                  "LIMIT",
-                  "PLOT",
-                  "PROOF",
-                  "CHECK_WORK",
-                  "OTHER"
-                ],
-                "type": "string"
-              },
-              "problem": {
-                "$ref": "#/$defs/problem"
-              },
-              "quality": {
-                "$ref": "#/$defs/quality"
-              },
-              "question_id": {
-                "maxLength": 64,
-                "minLength": 1,
-                "type": "string"
-              },
-              "question_index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "refusal": {
-                "$ref": "#/$defs/refusal"
-              },
-              "steps": {
-                "items": {
-                  "$ref": "#/$defs/step"
-                },
-                "maxItems": 2,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "question_id",
-              "question_index",
-              "mode",
-              "problem",
-              "classification",
-              "steps",
-              "final_answer",
-              "refusal",
-              "quality"
-            ],
-            "type": "object"
-          },
-          "step": {
-            "additionalProperties": false,
-            "properties": {
-              "explanation": {
-                "maxLength": 220,
-                "minLength": 1,
-                "type": "string"
-              },
-              "index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "math_latex": {
-                "items": {
-                  "maxLength": 20000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 6,
-                "minItems": 0,
-                "type": "array"
-              },
-              "title": {
-                "maxLength": 120,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "index",
-              "title",
-              "explanation",
-              "math_latex"
-            ],
-            "type": "object"
-          },
-          "value_item": {
-            "additionalProperties": false,
-            "properties": {
-              "label": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
-              },
-              "value": {
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
-                ]
-              },
-              "value_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "label",
-              "value",
-              "value_latex"
-            ],
-            "type": "object"
-          }
-        },
-        "$id": "https://youask.ai/schemas/solve_batch_final_min_v1.schema.json",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/$defs/solution_item"
-            },
-            "maxItems": 15,
-            "minItems": 1,
-            "type": "array"
-          },
-          "language": {
-            "$ref": "#/$defs/language"
-          },
-          "schema_version": {
-            "enum": [
-              "min_v1"
-            ],
-            "type": "string"
-          },
-          "tier": {
-            "enum": [
-              "FINAL"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "schema_version",
-          "tier",
-          "language",
-          "items"
-        ],
-        "type": "object"
-      },
-      "strict": true,
-      "type": "json_schema"
-    },
-    "created_at": "2026-02-22T02:59:43.553068+00:00",
-    "id": "6ae220ff-141f-4eea-8eeb-53288805142f",
-    "is_active": true,
-    "schema_id": "solve_batch_final_min_v1",
-    "updated_at": "2026-02-22T02:59:43.553130+00:00",
-    "updated_by": "Loai",
-    "version": 1
-  },
-  {
-    "content": {
-      "name": "solve_batch_final_v2",
-      "schema": {
-        "$defs": {
-          "clarification": {
-            "additionalProperties": false,
-            "properties": {
-              "needs_clarification": {
-                "const": false,
-                "type": "boolean"
-              },
-              "note": {
-                "maxLength": 300,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "questions": {
-                "items": {
-                  "maxLength": 300,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 0,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "needs_clarification",
-              "questions",
-              "note"
-            ],
-            "type": "object"
-          },
-          "classification": {
-            "additionalProperties": false,
-            "properties": {
-              "difficulty": {
-                "enum": [
-                  "very_easy",
-                  "easy",
-                  "medium",
-                  "hard",
-                  "very_hard",
-                  "research"
-                ],
-                "type": "string"
-              },
-              "domain": {
-                "enum": [
-                  "arithmetic",
-                  "pre_algebra",
-                  "algebra",
-                  "geometry",
-                  "trigonometry",
-                  "precalculus",
-                  "calculus",
-                  "linear_algebra",
-                  "analysis",
-                  "number_theory",
-                  "discrete_math",
-                  "probability",
-                  "statistics",
-                  "optimization",
-                  "differential_equations",
-                  "numerical_analysis",
-                  "abstract_algebra",
-                  "complex_analysis",
-                  "topology",
-                  "applied_math",
-                  "other"
-                ],
-                "type": "string"
-              },
-              "grade_band": {
-                "enum": [
-                  "grades_6_8",
-                  "grades_9_10",
-                  "grades_11_12",
-                  "college_intro",
-                  "undergraduate_lower",
-                  "undergraduate_upper",
-                  "graduate"
-                ],
-                "type": "string"
-              },
-              "topic": {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "grade_band",
-              "domain",
-              "topic",
-              "difficulty"
-            ],
-            "type": "object"
-          },
-          "extra_kv": {
-            "additionalProperties": false,
-            "properties": {
-              "k": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
-              },
-              "v": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "k",
-              "v"
-            ],
-            "type": "object"
-          },
-          "final_answer": {
-            "additionalProperties": false,
-            "properties": {
-              "answer_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "answer_text": {
-                "maxLength": 4000,
-                "minLength": 1,
-                "type": "string"
-              },
-              "units": {
-                "maxLength": 200,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "values": {
-                "items": {
-                  "$ref": "#/$defs/value_item"
-                },
-                "maxItems": 30,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "answer_text",
-              "answer_latex",
-              "values",
-              "units"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "language": {
-            "additionalProperties": false,
-            "properties": {
-              "preferred_response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "user_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              }
-            },
-            "required": [
-              "user_language",
-              "preferred_response_language",
-              "response_language"
-            ],
-            "type": "object"
-          },
-          "plot": {
-            "additionalProperties": false,
-            "properties": {
-              "decision_reason": {
-                "maxLength": 600,
-                "minLength": 1,
-                "type": "string"
-              },
-              "recipe": {
-                "$ref": "#/$defs/plot_recipe"
-              },
-              "should_visualize": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "should_visualize",
-              "decision_reason",
-              "recipe"
-            ],
-            "type": "object"
-          },
-          "plot_recipe": {
-            "additionalProperties": false,
-            "properties": {
-              "axis_labels": {
-                "additionalProperties": false,
-                "properties": {
-                  "x": {
-                    "maxLength": 40,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "y": {
-                    "maxLength": 40,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "x",
-                  "y"
-                ],
-                "type": [
-                  "object",
-                  "null"
-                ]
-              },
-              "domain": {
-                "additionalProperties": false,
-                "properties": {
-                  "x_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "x_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "y_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "y_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "x_min",
-                  "x_max",
-                  "y_min",
-                  "y_max"
-                ],
-                "type": "object"
-              },
-              "expressions": {
-                "items": {
-                  "maxLength": 20000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 4,
-                "minItems": 1,
-                "type": "array"
-              },
-              "key_points": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "label": {
-                      "maxLength": 80,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "x": {
-                      "type": [
-                        "number",
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "y": {
-                      "type": [
-                        "number",
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "label",
-                    "x",
-                    "y"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 10,
-                "minItems": 0,
-                "type": "array"
-              },
-              "plot_intent": {
-                "enum": [
-                  "function_2d",
-                  "implicit_2d",
-                  "parametric_2d",
-                  "scatter_2d",
-                  "histogram",
-                  "custom"
-                ],
-                "type": "string"
-              },
-              "sampling": {
-                "additionalProperties": false,
-                "properties": {
-                  "n_points": {
-                    "maximum": 60,
-                    "minimum": 10,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "n_points"
-                ],
-                "type": "object"
-              },
-              "symbols": {
-                "items": {
-                  "maxLength": 20,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 4,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "plot_intent",
-              "expressions",
-              "symbols",
-              "domain",
-              "axis_labels",
-              "sampling",
-              "key_points"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "problem": {
-            "additionalProperties": false,
-            "properties": {
-              "detected_tasks": {
-                "items": {
-                  "enum": [
-                    "solve",
-                    "simplify",
-                    "factor",
-                    "expand",
-                    "evaluate",
-                    "equation",
-                    "inequality",
-                    "system",
-                    "word_problem",
-                    "graph",
-                    "plot",
-                    "geometry",
-                    "trigonometry",
-                    "calculus",
-                    "probability",
-                    "statistics",
-                    "linear_algebra",
-                    "matrix_algebra",
-                    "diagonalization",
-                    "eigenvalues",
-                    "eigenvectors",
-                    "svd",
-                    "pca",
-                    "determinants",
-                    "rank",
-                    "nullspace",
-                    "orthogonality",
-                    "quadratic_forms",
-                    "spectral_theory",
-                    "numerical_linear_algebra",
-                    "real_analysis",
-                    "complex_analysis",
-                    "functional_analysis",
-                    "measure_theory",
-                    "topology",
-                    "differential_equations",
-                    "ode",
-                    "pde",
-                    "dynamical_systems",
-                    "stability_analysis",
-                    "bifurcation_analysis",
-                    "chaos",
-                    "fourier_analysis",
-                    "laplace_transform",
-                    "z_transform",
-                    "number_theory",
-                    "discrete_math",
-                    "combinatorics",
-                    "graph_theory",
-                    "logic",
-                    "set_theory",
-                    "optimization",
-                    "convex_optimization",
-                    "nonconvex_optimization",
-                    "linear_programming",
-                    "integer_programming",
-                    "variational_methods",
-                    "stochastic_processes",
-                    "markov_chains",
-                    "bayesian_inference",
-                    "time_series",
-                    "regression",
-                    "hypothesis_testing",
-                    "statistical_learning",
-                    "information_theory",
-                    "numerical_analysis",
-                    "approximation",
-                    "interpolation",
-                    "integration",
-                    "differentiation",
-                    "monte_carlo",
-                    "simulation",
-                    "abstract_algebra",
-                    "group_theory",
-                    "ring_theory",
-                    "field_theory",
-                    "galois_theory",
-                    "geometry_analytic",
-                    "geometry_differential",
-                    "tensor_calculus",
-                    "vector_calculus",
-                    "physics_math",
-                    "signals_systems",
-                    "control_theory",
-                    "computer_algebra",
-                    "proof",
-                    "counterexample",
-                    "derivation",
-                    "verification",
-                    "error_analysis",
-                    "data_science",
-                    "machine_learning_math",
-                    "other"
-                  ],
-                  "type": "string"
-                },
-                "maxItems": 30,
-                "minItems": 0,
-                "type": "array"
-              },
-              "extra": {
-                "items": {
-                  "$ref": "#/$defs/extra_kv"
-                },
-                "maxItems": 40,
-                "minItems": 0,
-                "type": "array"
-              },
-              "normalized_text": {
-                "maxLength": 200000,
-                "minLength": 1,
-                "type": "string"
-              },
-              "original_text": {
-                "maxLength": 200000,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "original_text",
-              "normalized_text",
-              "detected_tasks",
-              "extra"
-            ],
-            "type": "object"
-          },
-          "quality": {
-            "additionalProperties": false,
-            "properties": {
-              "common_mistakes": {
-                "items": {
-                  "maxLength": 200,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 0,
-                "minItems": 0,
-                "type": "array"
-              },
-              "confidence": {
-                "maximum": 1,
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "required": [
-              "confidence",
-              "common_mistakes"
-            ],
-            "type": "object"
-          },
-          "refusal": {
-            "additionalProperties": false,
-            "properties": {
-              "is_refusal": {
-                "type": "boolean"
-              },
-              "reason": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "safe_next_step": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "is_refusal",
-              "reason",
-              "safe_next_step"
-            ],
-            "type": "object"
-          },
-          "solution_item": {
-            "additionalProperties": false,
-            "properties": {
-              "assumptions": {
-                "items": {
-                  "maxLength": 400,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 10,
-                "minItems": 0,
-                "type": "array"
-              },
-              "clarification": {
-                "$ref": "#/$defs/clarification"
-              },
-              "classification": {
-                "$ref": "#/$defs/classification"
-              },
-              "final_answer": {
-                "$ref": "#/$defs/final_answer"
-              },
-              "mode": {
-                "enum": [
-                  "SOLVE",
-                  "SIMPLIFY",
-                  "FACTOR",
-                  "EXPAND",
-                  "EVALUATE",
-                  "DERIVATIVE",
-                  "INTEGRAL",
-                  "LIMIT",
-                  "PLOT",
-                  "PROOF",
-                  "CHECK_WORK",
-                  "OTHER"
-                ],
-                "type": "string"
-              },
-              "plot": {
-                "$ref": "#/$defs/plot"
-              },
-              "problem": {
-                "$ref": "#/$defs/problem"
-              },
-              "quality": {
-                "$ref": "#/$defs/quality"
-              },
-              "question_id": {
-                "maxLength": 64,
-                "minLength": 1,
-                "type": "string"
-              },
-              "question_index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "refusal": {
-                "$ref": "#/$defs/refusal"
-              },
-              "steps": {
-                "items": {
-                  "$ref": "#/$defs/step"
-                },
-                "maxItems": 2,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "question_id",
-              "question_index",
-              "mode",
-              "problem",
-              "classification",
-              "assumptions",
-              "steps",
-              "final_answer",
-              "plot",
-              "refusal",
-              "quality",
-              "clarification"
-            ],
-            "type": "object"
-          },
-          "step": {
-            "additionalProperties": false,
-            "properties": {
-              "explanation": {
-                "maxLength": 220,
-                "minLength": 1,
-                "type": "string"
-              },
-              "index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "math_latex": {
-                "items": {
-                  "maxLength": 20000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 6,
-                "minItems": 0,
-                "type": "array"
-              },
-              "title": {
-                "maxLength": 120,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "index",
-              "title",
-              "explanation",
-              "math_latex"
-            ],
-            "type": "object"
-          },
-          "value_item": {
-            "additionalProperties": false,
-            "properties": {
-              "label": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
-              },
-              "value": {
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
-                ]
-              },
-              "value_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "label",
-              "value",
-              "value_latex"
-            ],
-            "type": "object"
-          }
-        },
-        "$id": "https://youask.ai/schemas/solve_batch_final_v2.schema.json",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/$defs/solution_item"
-            },
-            "maxItems": 15,
-            "minItems": 1,
-            "type": "array"
-          },
-          "language": {
-            "$ref": "#/$defs/language"
-          },
-          "schema_version": {
-            "enum": [
-              "v2"
-            ],
-            "type": "string"
-          },
-          "tier": {
-            "enum": [
-              "FINAL"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "schema_version",
-          "tier",
-          "language",
-          "items"
-        ],
-        "type": "object"
-      },
-      "strict": true,
-      "type": "json_schema"
-    },
-    "created_at": "2026-02-22T02:59:43.554536+00:00",
-    "id": "4f5df9f7-8f7a-48f2-97df-d16433cf4aa1",
-    "is_active": true,
-    "schema_id": "solve_batch_final_v2",
-    "updated_at": "2026-02-22T02:59:43.554593+00:00",
-    "updated_by": "alembic:20260214_db_only_prompt_binding_cleanup",
     "version": 1
   },
   {
@@ -2329,31 +855,56 @@
   },
   {
     "content": {
-      "name": "solve_batch_research_v2",
+      "name": "youask_math_openai_v1",
       "schema": {
         "$defs": {
-          "clarification": {
+          "Block": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "display": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "enum": [
+                  "text",
+                  "math"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "content",
+              "display"
+            ],
+            "type": "object"
+          },
+          "Clarification": {
             "additionalProperties": false,
             "properties": {
               "needs_clarification": {
-                "const": false,
+                "enum": [
+                  false
+                ],
                 "type": "boolean"
               },
               "note": {
-                "maxLength": 300,
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": "null"
               },
               "questions": {
                 "items": {
-                  "maxLength": 300,
-                  "minLength": 1,
                   "type": "string"
                 },
-                "maxItems": 0,
-                "minItems": 0,
                 "type": "array"
               }
             },
@@ -2364,175 +915,323 @@
             ],
             "type": "object"
           },
-          "classification": {
+          "Classification": {
             "additionalProperties": false,
             "properties": {
-              "difficulty": {
-                "enum": [
-                  "very_easy",
-                  "easy",
-                  "medium",
-                  "hard",
-                  "very_hard",
-                  "research"
-                ],
-                "type": "string"
+              "detected_tasks": {
+                "$ref": "#/$defs/DetectedTasks"
               },
               "domain": {
-                "enum": [
-                  "arithmetic",
-                  "pre_algebra",
-                  "algebra",
-                  "geometry",
-                  "trigonometry",
-                  "precalculus",
-                  "calculus",
-                  "linear_algebra",
-                  "analysis",
-                  "number_theory",
-                  "discrete_math",
-                  "probability",
-                  "statistics",
-                  "optimization",
-                  "differential_equations",
-                  "numerical_analysis",
-                  "abstract_algebra",
-                  "complex_analysis",
-                  "topology",
-                  "applied_math",
-                  "other"
-                ],
-                "type": "string"
-              },
-              "grade_band": {
-                "enum": [
-                  "grades_6_8",
-                  "grades_9_10",
-                  "grades_11_12",
-                  "college_intro",
-                  "undergraduate_lower",
-                  "undergraduate_upper",
-                  "graduate"
-                ],
-                "type": "string"
-              },
-              "topic": {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
+                "$ref": "#/$defs/Domain"
               }
             },
             "required": [
-              "grade_band",
               "domain",
-              "topic",
-              "difficulty"
+              "detected_tasks"
             ],
             "type": "object"
           },
-          "extra_kv": {
+          "Context": {
             "additionalProperties": false,
             "properties": {
-              "k": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
+              "country": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
-              "v": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
+              "course": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "curriculum": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "grade_level": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "notation_profile": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "region": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             },
             "required": [
-              "k",
-              "v"
+              "country",
+              "region",
+              "curriculum",
+              "grade_level",
+              "course",
+              "notation_profile"
             ],
             "type": "object"
           },
-          "final_answer": {
+          "DetectedTasks": {
+            "items": {
+              "enum": [
+                "solve",
+                "simplify",
+                "factor",
+                "expand",
+                "evaluate",
+                "equation",
+                "inequality",
+                "system",
+                "word_problem",
+                "graph",
+                "plot",
+                "geometry",
+                "trigonometry",
+                "calculus",
+                "probability",
+                "statistics",
+                "linear_algebra",
+                "matrix_algebra",
+                "diagonalization",
+                "eigenvalues",
+                "eigenvectors",
+                "svd",
+                "pca",
+                "determinants",
+                "rank",
+                "nullspace",
+                "orthogonality",
+                "quadratic_forms",
+                "spectral_theory",
+                "numerical_linear_algebra",
+                "real_analysis",
+                "complex_analysis",
+                "functional_analysis",
+                "measure_theory",
+                "topology",
+                "differential_equations",
+                "ode",
+                "pde",
+                "dynamical_systems",
+                "stability_analysis",
+                "bifurcation_analysis",
+                "chaos",
+                "fourier_analysis",
+                "laplace_transform",
+                "z_transform",
+                "number_theory",
+                "discrete_math",
+                "combinatorics",
+                "graph_theory",
+                "logic",
+                "set_theory",
+                "optimization",
+                "convex_optimization",
+                "nonconvex_optimization",
+                "linear_programming",
+                "integer_programming",
+                "variational_methods",
+                "stochastic_processes",
+                "markov_chains",
+                "bayesian_inference",
+                "time_series",
+                "regression",
+                "hypothesis_testing",
+                "statistical_learning",
+                "information_theory",
+                "numerical_analysis",
+                "approximation",
+                "interpolation",
+                "integration",
+                "differentiation",
+                "monte_carlo",
+                "simulation",
+                "abstract_algebra",
+                "group_theory",
+                "ring_theory",
+                "field_theory",
+                "galois_theory",
+                "geometry_analytic",
+                "geometry_differential",
+                "tensor_calculus",
+                "vector_calculus",
+                "physics_math",
+                "signals_systems",
+                "control_theory",
+                "computer_algebra",
+                "proof",
+                "counterexample",
+                "derivation",
+                "verification",
+                "error_analysis",
+                "data_science",
+                "machine_learning_math",
+                "other"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "Domain": {
+            "enum": [
+              "arithmetic",
+              "pre_algebra",
+              "algebra",
+              "geometry",
+              "trigonometry",
+              "precalculus",
+              "calculus",
+              "linear_algebra",
+              "analysis",
+              "number_theory",
+              "discrete_math",
+              "probability",
+              "statistics",
+              "optimization",
+              "differential_equations",
+              "numerical_analysis",
+              "abstract_algebra",
+              "complex_analysis",
+              "topology",
+              "applied_math",
+              "other"
+            ],
+            "type": "string"
+          },
+          "FinalAnswer": {
             "additionalProperties": false,
             "properties": {
               "answer_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "answer_text": {
-                "maxLength": 4000,
-                "minLength": 1,
                 "type": "string"
-              },
-              "units": {
-                "maxLength": 200,
-                "type": [
-                  "string",
-                  "null"
-                ]
               },
               "values": {
                 "items": {
-                  "$ref": "#/$defs/value_item"
+                  "$ref": "#/$defs/ValueEntry"
                 },
-                "maxItems": 30,
-                "minItems": 0,
                 "type": "array"
               }
             },
             "required": [
               "answer_text",
               "answer_latex",
-              "values",
-              "units"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "language": {
-            "additionalProperties": false,
-            "properties": {
-              "preferred_response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "user_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              }
-            },
-            "required": [
-              "user_language",
-              "preferred_response_language",
-              "response_language"
+              "values"
             ],
             "type": "object"
           },
-          "plot": {
+          "Param": {
             "additionalProperties": false,
             "properties": {
-              "decision_reason": {
-                "maxLength": 600,
-                "minLength": 1,
+              "latex": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
                 "type": "string"
               },
+              "number": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "text": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "text",
+              "latex",
+              "number"
+            ],
+            "type": "object"
+          },
+          "Plot": {
+            "additionalProperties": false,
+            "properties": {
+              "notes": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "python_code": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "recipe": {
-                "$ref": "#/$defs/plot_recipe"
+                "$ref": "#/$defs/PlotRecipe"
               },
               "should_visualize": {
                 "type": "boolean"
@@ -2540,348 +1239,254 @@
             },
             "required": [
               "should_visualize",
-              "decision_reason",
-              "recipe"
+              "recipe",
+              "python_code",
+              "notes"
             ],
             "type": "object"
           },
-          "plot_recipe": {
+          "PlotPoint": {
             "additionalProperties": false,
             "properties": {
-              "axis_labels": {
-                "additionalProperties": false,
-                "properties": {
-                  "x": {
-                    "maxLength": 40,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+              "kind": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "root",
+                      "intercept",
+                      "extremum",
+                      "inflection",
+                      "intersection",
+                      "asymptote_point",
+                      "custom"
+                    ],
+                    "type": "string"
                   },
-                  "y": {
-                    "maxLength": 40,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                  {
+                    "type": "null"
                   }
-                },
-                "required": [
-                  "x",
-                  "y"
-                ],
-                "type": [
-                  "object",
-                  "null"
                 ]
               },
-              "domain": {
-                "additionalProperties": false,
-                "properties": {
-                  "x_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "string"
                   },
-                  "x_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "y_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "y_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
+                  {
+                    "type": "null"
                   }
-                },
-                "required": [
-                  "x_min",
-                  "x_max",
-                  "y_min",
-                  "y_max"
-                ],
-                "type": "object"
+                ]
               },
-              "expressions": {
-                "items": {
-                  "maxLength": 20000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 4,
-                "minItems": 1,
-                "type": "array"
+              "x": {
+                "type": "number"
               },
-              "key_points": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "label": {
-                      "maxLength": 80,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "x": {
-                      "type": [
-                        "number",
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "y": {
-                      "type": [
-                        "number",
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "label",
-                    "x",
-                    "y"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 10,
-                "minItems": 0,
-                "type": "array"
-              },
-              "plot_intent": {
-                "enum": [
-                  "function_2d",
-                  "implicit_2d",
-                  "parametric_2d",
-                  "scatter_2d",
-                  "histogram",
-                  "custom"
-                ],
-                "type": "string"
-              },
-              "sampling": {
-                "additionalProperties": false,
-                "properties": {
-                  "n_points": {
-                    "maximum": 60,
-                    "minimum": 10,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "n_points"
-                ],
-                "type": "object"
-              },
-              "symbols": {
-                "items": {
-                  "maxLength": 20,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 4,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "plot_intent",
-              "expressions",
-              "symbols",
-              "domain",
-              "axis_labels",
-              "sampling",
-              "key_points"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "problem": {
-            "additionalProperties": false,
-            "properties": {
-              "detected_tasks": {
-                "items": {
-                  "enum": [
-                    "solve",
-                    "simplify",
-                    "factor",
-                    "expand",
-                    "evaluate",
-                    "equation",
-                    "inequality",
-                    "system",
-                    "word_problem",
-                    "graph",
-                    "plot",
-                    "geometry",
-                    "trigonometry",
-                    "calculus",
-                    "probability",
-                    "statistics",
-                    "linear_algebra",
-                    "matrix_algebra",
-                    "diagonalization",
-                    "eigenvalues",
-                    "eigenvectors",
-                    "svd",
-                    "pca",
-                    "determinants",
-                    "rank",
-                    "nullspace",
-                    "orthogonality",
-                    "quadratic_forms",
-                    "spectral_theory",
-                    "numerical_linear_algebra",
-                    "real_analysis",
-                    "complex_analysis",
-                    "functional_analysis",
-                    "measure_theory",
-                    "topology",
-                    "differential_equations",
-                    "ode",
-                    "pde",
-                    "dynamical_systems",
-                    "stability_analysis",
-                    "bifurcation_analysis",
-                    "chaos",
-                    "fourier_analysis",
-                    "laplace_transform",
-                    "z_transform",
-                    "number_theory",
-                    "discrete_math",
-                    "combinatorics",
-                    "graph_theory",
-                    "logic",
-                    "set_theory",
-                    "optimization",
-                    "convex_optimization",
-                    "nonconvex_optimization",
-                    "linear_programming",
-                    "integer_programming",
-                    "variational_methods",
-                    "stochastic_processes",
-                    "markov_chains",
-                    "bayesian_inference",
-                    "time_series",
-                    "regression",
-                    "hypothesis_testing",
-                    "statistical_learning",
-                    "information_theory",
-                    "numerical_analysis",
-                    "approximation",
-                    "interpolation",
-                    "integration",
-                    "differentiation",
-                    "monte_carlo",
-                    "simulation",
-                    "abstract_algebra",
-                    "group_theory",
-                    "ring_theory",
-                    "field_theory",
-                    "galois_theory",
-                    "geometry_analytic",
-                    "geometry_differential",
-                    "tensor_calculus",
-                    "vector_calculus",
-                    "physics_math",
-                    "signals_systems",
-                    "control_theory",
-                    "computer_algebra",
-                    "proof",
-                    "counterexample",
-                    "derivation",
-                    "verification",
-                    "error_analysis",
-                    "data_science",
-                    "machine_learning_math",
-                    "other"
-                  ],
-                  "type": "string"
-                },
-                "maxItems": 30,
-                "minItems": 0,
-                "type": "array"
-              },
-              "extra": {
-                "items": {
-                  "$ref": "#/$defs/extra_kv"
-                },
-                "maxItems": 40,
-                "minItems": 0,
-                "type": "array"
-              },
-              "normalized_text": {
-                "maxLength": 200000,
-                "minLength": 1,
-                "type": "string"
-              },
-              "original_text": {
-                "maxLength": 200000,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "original_text",
-              "normalized_text",
-              "detected_tasks",
-              "extra"
-            ],
-            "type": "object"
-          },
-          "quality": {
-            "additionalProperties": false,
-            "properties": {
-              "common_mistakes": {
-                "items": {
-                  "maxLength": 200,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 6,
-                "minItems": 0,
-                "type": "array"
-              },
-              "confidence": {
-                "maximum": 1,
-                "minimum": 0,
+              "y": {
                 "type": "number"
               }
             },
             "required": [
-              "confidence",
-              "common_mistakes"
+              "x",
+              "y",
+              "label",
+              "kind"
             ],
             "type": "object"
           },
-          "refusal": {
+          "PlotRecipe": {
+            "additionalProperties": false,
+            "properties": {
+              "axes_lines": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "grid": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "enum": [
+                  "none",
+                  "function_2d",
+                  "parametric_2d",
+                  "complex_plane",
+                  "geometry_2d",
+                  "stats_chart"
+                ],
+                "type": "string"
+              },
+              "legend": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "points": {
+                "items": {
+                  "$ref": "#/$defs/PlotPoint"
+                },
+                "type": "array"
+              },
+              "series": {
+                "items": {
+                  "$ref": "#/$defs/Series"
+                },
+                "type": "array"
+              },
+              "shapes": {
+                "items": {
+                  "$ref": "#/$defs/Shape"
+                },
+                "type": "array"
+              },
+              "title": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "x_domain": {
+                "$ref": "#/$defs/Range"
+              },
+              "x_label": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "y_domain": {
+                "$ref": "#/$defs/Range"
+              },
+              "y_label": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "title",
+              "x_label",
+              "y_label",
+              "x_domain",
+              "y_domain",
+              "grid",
+              "axes_lines",
+              "legend",
+              "series",
+              "points",
+              "shapes"
+            ],
+            "type": "object"
+          },
+          "Quality": {
+            "additionalProperties": false,
+            "properties": {
+              "assumptions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "warnings": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "confidence",
+              "assumptions",
+              "warnings"
+            ],
+            "type": "object"
+          },
+          "Range": {
+            "additionalProperties": false,
+            "properties": {
+              "max": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "min": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "type": "object"
+          },
+          "Refusal": {
             "additionalProperties": false,
             "properties": {
               "is_refusal": {
                 "type": "boolean"
               },
               "reason": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "safe_next_step": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             },
@@ -2892,962 +1497,446 @@
             ],
             "type": "object"
           },
-          "solution_item": {
+          "Results": {
             "additionalProperties": false,
             "properties": {
-              "assumptions": {
+              "task_results": {
                 "items": {
-                  "maxLength": 400,
-                  "minLength": 1,
-                  "type": "string"
+                  "$ref": "#/$defs/TaskResult"
                 },
-                "maxItems": 10,
-                "minItems": 0,
-                "type": "array"
-              },
-              "clarification": {
-                "$ref": "#/$defs/clarification"
-              },
-              "classification": {
-                "$ref": "#/$defs/classification"
-              },
-              "final_answer": {
-                "$ref": "#/$defs/final_answer"
-              },
-              "mode": {
-                "enum": [
-                  "SOLVE",
-                  "SIMPLIFY",
-                  "FACTOR",
-                  "EXPAND",
-                  "EVALUATE",
-                  "DERIVATIVE",
-                  "INTEGRAL",
-                  "LIMIT",
-                  "PLOT",
-                  "PROOF",
-                  "CHECK_WORK",
-                  "OTHER"
-                ],
-                "type": "string"
-              },
-              "plot": {
-                "$ref": "#/$defs/plot"
-              },
-              "problem": {
-                "$ref": "#/$defs/problem"
-              },
-              "quality": {
-                "$ref": "#/$defs/quality"
-              },
-              "question_id": {
-                "maxLength": 64,
-                "minLength": 1,
-                "type": "string"
-              },
-              "question_index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "refusal": {
-                "$ref": "#/$defs/refusal"
-              },
-              "steps": {
-                "items": {
-                  "$ref": "#/$defs/step"
-                },
-                "maxItems": 40,
-                "minItems": 0,
                 "type": "array"
               }
             },
             "required": [
-              "question_id",
-              "question_index",
-              "mode",
-              "problem",
-              "classification",
-              "assumptions",
-              "steps",
-              "final_answer",
-              "plot",
-              "refusal",
-              "quality",
-              "clarification"
+              "task_results"
             ],
             "type": "object"
           },
-          "step": {
+          "Series": {
             "additionalProperties": false,
             "properties": {
-              "explanation": {
-                "maxLength": 1200,
-                "minLength": 1,
-                "type": "string"
-              },
-              "index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "math_latex": {
-                "items": {
-                  "maxLength": 20000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 6,
-                "minItems": 0,
-                "type": "array"
-              },
-              "title": {
-                "maxLength": 120,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "index",
-              "title",
-              "explanation",
-              "math_latex"
-            ],
-            "type": "object"
-          },
-          "value_item": {
-            "additionalProperties": false,
-            "properties": {
-              "label": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
-              },
-              "value": {
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
-                ]
-              },
-              "value_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "label",
-              "value",
-              "value_latex"
-            ],
-            "type": "object"
-          }
-        },
-        "$id": "https://youask.ai/schemas/solve_batch_research_v2.schema.json",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/$defs/solution_item"
-            },
-            "maxItems": 1,
-            "minItems": 1,
-            "type": "array"
-          },
-          "language": {
-            "$ref": "#/$defs/language"
-          },
-          "schema_version": {
-            "enum": [
-              "v2"
-            ],
-            "type": "string"
-          },
-          "tier": {
-            "enum": [
-              "RESEARCH"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "schema_version",
-          "tier",
-          "language",
-          "items"
-        ],
-        "type": "object"
-      },
-      "strict": true,
-      "type": "json_schema"
-    },
-    "created_at": "2026-02-22T02:59:43.557340+00:00",
-    "id": "99fee4b8-5011-4fb2-b7cd-1bd17b6418ef",
-    "is_active": true,
-    "schema_id": "solve_batch_research_v2",
-    "updated_at": "2026-02-22T02:59:43.557394+00:00",
-    "updated_by": "alembic:20260214_db_only_prompt_binding_cleanup",
-    "version": 1
-  },
-  {
-    "content": {
-      "name": "solve_batch_standard_v2",
-      "schema": {
-        "$defs": {
-          "clarification": {
-            "additionalProperties": false,
-            "properties": {
-              "needs_clarification": {
-                "const": false,
-                "type": "boolean"
-              },
-              "note": {
-                "maxLength": 300,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "questions": {
-                "items": {
-                  "maxLength": 300,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 0,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "needs_clarification",
-              "questions",
-              "note"
-            ],
-            "type": "object"
-          },
-          "classification": {
-            "additionalProperties": false,
-            "properties": {
-              "difficulty": {
-                "enum": [
-                  "very_easy",
-                  "easy",
-                  "medium",
-                  "hard",
-                  "very_hard",
-                  "research"
-                ],
-                "type": "string"
-              },
-              "domain": {
-                "enum": [
-                  "arithmetic",
-                  "pre_algebra",
-                  "algebra",
-                  "geometry",
-                  "trigonometry",
-                  "precalculus",
-                  "calculus",
-                  "linear_algebra",
-                  "analysis",
-                  "number_theory",
-                  "discrete_math",
-                  "probability",
-                  "statistics",
-                  "optimization",
-                  "differential_equations",
-                  "numerical_analysis",
-                  "abstract_algebra",
-                  "complex_analysis",
-                  "topology",
-                  "applied_math",
-                  "other"
-                ],
-                "type": "string"
-              },
-              "grade_band": {
-                "enum": [
-                  "grades_6_8",
-                  "grades_9_10",
-                  "grades_11_12",
-                  "college_intro",
-                  "undergraduate_lower",
-                  "undergraduate_upper",
-                  "graduate"
-                ],
-                "type": "string"
-              },
-              "topic": {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "grade_band",
-              "domain",
-              "topic",
-              "difficulty"
-            ],
-            "type": "object"
-          },
-          "extra_kv": {
-            "additionalProperties": false,
-            "properties": {
-              "k": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
-              },
-              "v": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "k",
-              "v"
-            ],
-            "type": "object"
-          },
-          "final_answer": {
-            "additionalProperties": false,
-            "properties": {
-              "answer_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "answer_text": {
-                "maxLength": 4000,
-                "minLength": 1,
-                "type": "string"
-              },
-              "units": {
-                "maxLength": 200,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "values": {
-                "items": {
-                  "$ref": "#/$defs/value_item"
-                },
-                "maxItems": 30,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "answer_text",
-              "answer_latex",
-              "values",
-              "units"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "language": {
-            "additionalProperties": false,
-            "properties": {
-              "preferred_response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "response_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              },
-              "user_language": {
-                "maxLength": 32,
-                "minLength": 2,
-                "type": "string"
-              }
-            },
-            "required": [
-              "user_language",
-              "preferred_response_language",
-              "response_language"
-            ],
-            "type": "object"
-          },
-          "plot": {
-            "additionalProperties": false,
-            "properties": {
-              "decision_reason": {
-                "maxLength": 600,
-                "minLength": 1,
-                "type": "string"
-              },
-              "recipe": {
-                "$ref": "#/$defs/plot_recipe"
-              },
-              "should_visualize": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "should_visualize",
-              "decision_reason",
-              "recipe"
-            ],
-            "type": "object"
-          },
-          "plot_recipe": {
-            "additionalProperties": false,
-            "properties": {
-              "axis_labels": {
-                "additionalProperties": false,
-                "properties": {
-                  "x": {
-                    "maxLength": 40,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+              "expr_latex": {
+                "anyOf": [
+                  {
+                    "type": "string"
                   },
-                  "y": {
-                    "maxLength": 40,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                  {
+                    "type": "null"
                   }
-                },
-                "required": [
-                  "x",
-                  "y"
-                ],
-                "type": [
-                  "object",
-                  "null"
                 ]
               },
-              "domain": {
-                "additionalProperties": false,
-                "properties": {
-                  "x_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "x_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "y_max": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "y_min": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "x_min",
-                  "x_max",
-                  "y_min",
-                  "y_max"
-                ],
-                "type": "object"
-              },
-              "expressions": {
-                "items": {
-                  "maxLength": 20000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 4,
-                "minItems": 1,
-                "type": "array"
-              },
-              "key_points": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "label": {
-                      "maxLength": 80,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "x": {
-                      "type": [
-                        "number",
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "y": {
-                      "type": [
-                        "number",
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "label",
-                    "x",
-                    "y"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 10,
-                "minItems": 0,
-                "type": "array"
-              },
-              "plot_intent": {
+              "kind": {
                 "enum": [
-                  "function_2d",
-                  "implicit_2d",
-                  "parametric_2d",
-                  "scatter_2d",
+                  "function",
+                  "parametric",
+                  "points",
+                  "scatter",
                   "histogram",
-                  "custom"
+                  "bar"
                 ],
                 "type": "string"
               },
-              "sampling": {
-                "additionalProperties": false,
-                "properties": {
-                  "n_points": {
-                    "maximum": 60,
-                    "minimum": 10,
-                    "type": "integer"
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
                   }
+                ]
+              },
+              "params": {
+                "items": {
+                  "$ref": "#/$defs/Param"
                 },
-                "required": [
-                  "n_points"
+                "type": "array"
+              },
+              "samples": {
+                "items": {
+                  "$ref": "#/$defs/PlotPoint"
+                },
+                "type": "array"
+              },
+              "series_id": {
+                "type": "string"
+              },
+              "variable": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "x_expr_latex": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "y_expr_latex": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "series_id",
+              "label",
+              "kind",
+              "expr_latex",
+              "x_expr_latex",
+              "y_expr_latex",
+              "variable",
+              "samples",
+              "params"
+            ],
+            "type": "object"
+          },
+          "Shape": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "line",
+                  "vline",
+                  "hline",
+                  "segment",
+                  "circle",
+                  "ellipse",
+                  "polygon",
+                  "asymptote"
                 ],
-                "type": "object"
-              },
-              "symbols": {
-                "items": {
-                  "maxLength": 20,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 4,
-                "minItems": 0,
-                "type": "array"
-              }
-            },
-            "required": [
-              "plot_intent",
-              "expressions",
-              "symbols",
-              "domain",
-              "axis_labels",
-              "sampling",
-              "key_points"
-            ],
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "problem": {
-            "additionalProperties": false,
-            "properties": {
-              "detected_tasks": {
-                "items": {
-                  "enum": [
-                    "solve",
-                    "simplify",
-                    "factor",
-                    "expand",
-                    "evaluate",
-                    "equation",
-                    "inequality",
-                    "system",
-                    "word_problem",
-                    "graph",
-                    "plot",
-                    "geometry",
-                    "trigonometry",
-                    "calculus",
-                    "probability",
-                    "statistics",
-                    "linear_algebra",
-                    "matrix_algebra",
-                    "diagonalization",
-                    "eigenvalues",
-                    "eigenvectors",
-                    "svd",
-                    "pca",
-                    "determinants",
-                    "rank",
-                    "nullspace",
-                    "orthogonality",
-                    "quadratic_forms",
-                    "spectral_theory",
-                    "numerical_linear_algebra",
-                    "real_analysis",
-                    "complex_analysis",
-                    "functional_analysis",
-                    "measure_theory",
-                    "topology",
-                    "differential_equations",
-                    "ode",
-                    "pde",
-                    "dynamical_systems",
-                    "stability_analysis",
-                    "bifurcation_analysis",
-                    "chaos",
-                    "fourier_analysis",
-                    "laplace_transform",
-                    "z_transform",
-                    "number_theory",
-                    "discrete_math",
-                    "combinatorics",
-                    "graph_theory",
-                    "logic",
-                    "set_theory",
-                    "optimization",
-                    "convex_optimization",
-                    "nonconvex_optimization",
-                    "linear_programming",
-                    "integer_programming",
-                    "variational_methods",
-                    "stochastic_processes",
-                    "markov_chains",
-                    "bayesian_inference",
-                    "time_series",
-                    "regression",
-                    "hypothesis_testing",
-                    "statistical_learning",
-                    "information_theory",
-                    "numerical_analysis",
-                    "approximation",
-                    "interpolation",
-                    "integration",
-                    "differentiation",
-                    "monte_carlo",
-                    "simulation",
-                    "abstract_algebra",
-                    "group_theory",
-                    "ring_theory",
-                    "field_theory",
-                    "galois_theory",
-                    "geometry_analytic",
-                    "geometry_differential",
-                    "tensor_calculus",
-                    "vector_calculus",
-                    "physics_math",
-                    "signals_systems",
-                    "control_theory",
-                    "computer_algebra",
-                    "proof",
-                    "counterexample",
-                    "derivation",
-                    "verification",
-                    "error_analysis",
-                    "data_science",
-                    "machine_learning_math",
-                    "other"
-                  ],
-                  "type": "string"
-                },
-                "maxItems": 30,
-                "minItems": 0,
-                "type": "array"
-              },
-              "extra": {
-                "items": {
-                  "$ref": "#/$defs/extra_kv"
-                },
-                "maxItems": 40,
-                "minItems": 0,
-                "type": "array"
-              },
-              "normalized_text": {
-                "maxLength": 200000,
-                "minLength": 1,
                 "type": "string"
               },
-              "original_text": {
-                "maxLength": 200000,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "original_text",
-              "normalized_text",
-              "detected_tasks",
-              "extra"
-            ],
-            "type": "object"
-          },
-          "quality": {
-            "additionalProperties": false,
-            "properties": {
-              "common_mistakes": {
-                "items": {
-                  "maxLength": 200,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 4,
-                "minItems": 0,
-                "type": "array"
-              },
-              "confidence": {
-                "maximum": 1,
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "required": [
-              "confidence",
-              "common_mistakes"
-            ],
-            "type": "object"
-          },
-          "refusal": {
-            "additionalProperties": false,
-            "properties": {
-              "is_refusal": {
-                "type": "boolean"
-              },
-              "reason": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
-              "safe_next_step": {
-                "maxLength": 2000,
-                "type": [
-                  "string",
-                  "null"
+              "points": {
+                "items": {
+                  "$ref": "#/$defs/PlotPoint"
+                },
+                "type": "array"
+              },
+              "radius": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "shape_id": {
+                "type": "string"
+              },
+              "x1": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "x2": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "y1": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "y2": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             },
             "required": [
-              "is_refusal",
-              "reason",
-              "safe_next_step"
+              "shape_id",
+              "kind",
+              "x1",
+              "y1",
+              "x2",
+              "y2",
+              "radius",
+              "points",
+              "label"
             ],
             "type": "object"
           },
-          "solution_item": {
+          "SolveItem": {
             "additionalProperties": false,
             "properties": {
-              "assumptions": {
-                "items": {
-                  "maxLength": 400,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 10,
-                "minItems": 0,
-                "type": "array"
-              },
               "clarification": {
-                "$ref": "#/$defs/clarification"
+                "$ref": "#/$defs/Clarification"
               },
               "classification": {
-                "$ref": "#/$defs/classification"
+                "$ref": "#/$defs/Classification"
               },
-              "final_answer": {
-                "$ref": "#/$defs/final_answer"
-              },
-              "mode": {
+              "domain_mode": {
                 "enum": [
-                  "SOLVE",
-                  "SIMPLIFY",
-                  "FACTOR",
-                  "EXPAND",
-                  "EVALUATE",
-                  "DERIVATIVE",
-                  "INTEGRAL",
-                  "LIMIT",
-                  "PLOT",
-                  "PROOF",
-                  "CHECK_WORK",
-                  "OTHER"
+                  "reals",
+                  "complex",
+                  "auto"
                 ],
                 "type": "string"
               },
-              "plot": {
-                "$ref": "#/$defs/plot"
+              "final_answer": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/FinalAnswer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
-              "problem": {
-                "$ref": "#/$defs/problem"
+              "plot": {
+                "$ref": "#/$defs/Plot"
               },
               "quality": {
-                "$ref": "#/$defs/quality"
+                "$ref": "#/$defs/Quality"
               },
               "question_id": {
-                "maxLength": 64,
-                "minLength": 1,
                 "type": "string"
               },
-              "question_index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
+              "question_summary": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "refusal": {
-                "$ref": "#/$defs/refusal"
+                "$ref": "#/$defs/Refusal"
+              },
+              "results": {
+                "$ref": "#/$defs/Results"
               },
               "steps": {
                 "items": {
-                  "$ref": "#/$defs/step"
+                  "$ref": "#/$defs/Step"
                 },
-                "maxItems": 14,
-                "minItems": 0,
                 "type": "array"
               }
             },
             "required": [
               "question_id",
-              "question_index",
-              "mode",
-              "problem",
+              "domain_mode",
+              "question_summary",
               "classification",
-              "assumptions",
+              "clarification",
+              "refusal",
               "steps",
+              "results",
               "final_answer",
               "plot",
-              "refusal",
-              "quality",
-              "clarification"
+              "quality"
             ],
             "type": "object"
           },
-          "step": {
+          "Step": {
             "additionalProperties": false,
             "properties": {
-              "explanation": {
-                "maxLength": 400,
-                "minLength": 1,
-                "type": "string"
-              },
-              "index": {
-                "maximum": 50,
-                "minimum": 1,
-                "type": "integer"
-              },
-              "math_latex": {
+              "blocks": {
                 "items": {
-                  "maxLength": 20000,
-                  "minLength": 1,
-                  "type": "string"
+                  "$ref": "#/$defs/Block"
                 },
-                "maxItems": 6,
-                "minItems": 0,
                 "type": "array"
               },
+              "index": {
+                "type": "integer"
+              },
               "title": {
-                "maxLength": 120,
-                "minLength": 1,
                 "type": "string"
               }
             },
             "required": [
               "index",
               "title",
-              "explanation",
-              "math_latex"
+              "blocks"
             ],
             "type": "object"
           },
-          "value_item": {
+          "TaskResult": {
             "additionalProperties": false,
             "properties": {
-              "label": {
-                "maxLength": 80,
-                "minLength": 1,
-                "type": "string"
-              },
-              "value": {
-                "type": [
-                  "string",
-                  "number",
-                  "integer",
-                  "boolean",
-                  "null"
+              "result_latex": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
-              "value_latex": {
-                "maxLength": 20000,
-                "type": [
-                  "string",
-                  "null"
+              "result_text": {
+                "type": "string"
+              },
+              "task_index": {
+                "type": "integer"
+              },
+              "task_label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "task_index",
+              "task_label",
+              "result_text",
+              "result_latex"
+            ],
+            "type": "object"
+          },
+          "ValueEntry": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "latex": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "number": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "text": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             },
             "required": [
-              "label",
-              "value",
-              "value_latex"
+              "key",
+              "text",
+              "latex",
+              "number",
+              "unit"
             ],
             "type": "object"
           }
         },
-        "$id": "https://youask.ai/schemas/solve_batch_standard_v2.schema.json",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/$defs/Context"
+          },
           "items": {
             "items": {
-              "$ref": "#/$defs/solution_item"
+              "$ref": "#/$defs/SolveItem"
             },
-            "maxItems": 2,
-            "minItems": 1,
             "type": "array"
           },
-          "language": {
-            "$ref": "#/$defs/language"
+          "mode": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "response_language": {
+            "type": "string"
+          },
+          "schema_name": {
+            "enum": [
+              "youask_math_openai_v1"
+            ],
+            "type": "string"
           },
           "schema_version": {
             "enum": [
-              "v2"
+              "v1"
             ],
             "type": "string"
           },
           "tier": {
-            "enum": [
-              "STANDARD"
-            ],
             "type": "string"
           }
         },
         "required": [
+          "schema_name",
           "schema_version",
+          "mode",
           "tier",
-          "language",
+          "request_id",
+          "attempt_id",
+          "response_language",
+          "context",
           "items"
         ],
         "type": "object"
@@ -3855,12 +1944,12 @@
       "strict": true,
       "type": "json_schema"
     },
-    "created_at": "2026-02-22T02:59:43.558743+00:00",
-    "id": "6c1720a5-eadb-464c-95f4-a89150af1fdd",
+    "created_at": "2026-02-23T03:16:50.591747+00:00",
+    "id": "7fdb5453-f3fa-421e-b083-e7a8ae09c5d9",
     "is_active": true,
-    "schema_id": "solve_batch_standard_v2",
-    "updated_at": "2026-02-22T02:59:43.558806+00:00",
-    "updated_by": "alembic:20260214_db_only_prompt_binding_cleanup",
+    "schema_id": "youask_math_openai_v1",
+    "updated_at": "2026-02-23T03:19:06.365587+00:00",
+    "updated_by": "codex_schema_update",
     "version": 1
   }
 ]
