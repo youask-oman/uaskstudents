@@ -359,7 +359,10 @@ const buildInitialPages = (
     });
   }
 
-  if ((solution && (solution.steps.length > 0 || solution.result)) || (isShortTier && shortSource?.sections?.length)) {
+  if (
+    (solution && (solution.steps.length > 0 || solution.result || solution.plotPayload || solution.pythonCode)) ||
+    (isShortTier && shortSource?.sections?.length)
+  ) {
     const shortResult = shortSource?.global_final_answer || solution?.result;
     blocks.push({
       id: "steps-block",
@@ -378,6 +381,8 @@ const buildInitialPages = (
       normalizedProblem: localSympy ? undefined : solution?.normalizedProblem,
       commonMistakes: isShortTier ? undefined : solution?.commonMistakes,
       autocorrectApplied: isShortTier ? undefined : solution?.autocorrectApplied,
+      plotPayload: isShortTier ? undefined : solution?.plotPayload,
+      pythonCode: isShortTier ? undefined : solution?.pythonCode,
       playbackMessageId: shortPlayback?.messageId,
       playbackFallbackContent: shortPlayback?.assistantContent,
       playbackSegments: shortPlayback?.segments,
@@ -482,6 +487,8 @@ const buildBatchInitialPages = (
       commonMistakes: entry.solution.commonMistakes,
       autocorrectApplied: entry.solution.autocorrectApplied,
       plots: entry.solution.plots,
+      plotPayload: entry.solution.plotPayload,
+      pythonCode: entry.solution.pythonCode,
       confidence: entry.solution.confidence,
     });
 

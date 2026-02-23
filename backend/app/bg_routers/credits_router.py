@@ -15,6 +15,7 @@ from app.auth import SECRET_KEY, ALGORITHM
 from app.services.credit_transfer_config import load_credit_transfer_config
 from app.services.credit_transfer_service import credit_transfer_service, CreditTransferError
 from app.services.notification_service import notification_service
+from app.services.solve.single_task_parser import parse_single_question_tasks
 from app.admin_billing.deps import get_current_user as get_current_user_strict
 # from app.auth import get_current_user # Not available in auth.py, defining locally
 
@@ -320,9 +321,31 @@ async def estimate_credits(
     session: Session = Depends(get_session),
     user: Optional[User] = Depends(get_optional_user)
 ):
+    if int(body.question_count or 1) != 1:
+        raise HTTPException(status_code=400, detail="Only one question per solve is allowed.")
+
+    max_tasks_allowed_global = 15
+    detected_task_count_raw = 0
+    if isinstance(body.tasks, list) and body.tasks:
+        detected_task_count_raw = len(body.tasks)
+    else:
+        parsed = parse_single_question_tasks(
+            str(body.original_input_text or body.context_text or ""),
+            max_tasks=max_tasks_allowed_global,
+        )
+        detected_task_count_raw = int(parsed.get("detected_task_count_raw") or 0)
+    if detected_task_count_raw > max_tasks_allowed_global:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum {max_tasks_allowed_global} tasks per question.",
+        )
+
     # 1. Resolve pricing from active SOLVE prompt binding for the selected tier.
     subscription: Optional[Subscription] = None
-    tier_key = _normalize_tier_key(body.tier)
+    requested_tier_key = _normalize_tier_key(body.tier)
+    tier_key = requested_tier_key
+    if requested_tier_key in {"short_steps", "final"} and detected_task_count_raw > 3:
+        tier_key = "standard"
     features, multipliers, binding = resolve_binding_pricing(session, tier_key)
 
     if user:
@@ -341,6 +364,8 @@ async def estimate_credits(
     base_cost = float(costs.get(base_key, 0.0))
 
     reason_str = f"solve.{tier_key}.{source_type}"
+    if tier_key != requested_tier_key:
+        reason_str += ".tier_forced_standard"
         
     # Addons
     addons_cost = 0.0
@@ -373,7 +398,7 @@ async def estimate_credits(
     per_question = base_cost + addons_cost
     total = per_question * body.question_count
     workload_payload: Dict[str, Any] = {}
-    max_tasks_allowed = int(getattr(binding, "max_questions_allowed", 0) or 15)
+    max_tasks_allowed = max_tasks_allowed_global
 
     # Workload-based estimate for single-question task bundles.
     if body.tasks is not None or body.context_text is not None or body.original_input_text is not None:

@@ -1,0 +1,26 @@
+{
+  "error": {
+    "code": "not_found",
+    "message": null,
+    "request_id": null,
+    "details": {
+      "code": "NOT_FOUND",
+      "status": "not_found",
+      "reason": "No attempt runtime evidence found.",
+      "attempt_id": "52fcf400-d1ab-4305-90fb-a0033f6e9f0b",
+      "request_id": null,
+      "user_id": null,
+      "retryable": false
+    }
+  },
+  "detail": {
+    "code": "NOT_FOUND",
+    "status": "not_found",
+    "reason": "No attempt runtime evidence found.",
+    "attempt_id": "52fcf400-d1ab-4305-90fb-a0033f6e9f0b",
+    "request_id": null,
+    "user_id": null,
+    "retryable": false
+  },
+  "request_id": null
+}

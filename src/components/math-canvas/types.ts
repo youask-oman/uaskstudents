@@ -213,6 +213,8 @@ export interface FinalAnswerValue {
   label: string;
   value: string | number | boolean | Record<string, unknown> | null;
   value_latex?: string;
+  key?: string;
+  unit?: string;
 }
 
 export interface FinalAnswer {
@@ -233,6 +235,8 @@ export interface MathSolutionPayload {
   result?: string;
   finalAnswer?: FinalAnswer;
   plots?: ChartPayload[];
+  plotPayload?: Record<string, unknown>;
+  pythonCode?: string;
   verificationChecks?: VerificationCheck[];
   autocorrectApplied?: boolean;
   confidence?: number;
@@ -270,6 +274,8 @@ export type CanvasBlock =
     normalizedProblem?: string;
     finalAnswer?: FinalAnswer;
     plots?: ChartPayload[];
+    plotPayload?: Record<string, unknown>;
+    pythonCode?: string;
     confidence?: number;
     commonMistakes?: string[];
     shortSections?: ShortSection[];

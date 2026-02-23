@@ -307,6 +307,21 @@ const parseStepsFromObject = (value: unknown): StepRow[] => {
     const fallbackIndex = Number.isFinite(stepId) && stepId > 0 ? stepId : index + 1;
     const title = asString(entry.title) || `Step ${fallbackIndex}`;
     const rawExplanation = asString(entry.explanation) || "";
+    const blocksRaw = Array.isArray(entry.blocks) ? entry.blocks : [];
+    const blockTextParts: string[] = [];
+    const blockMathParts: string[] = [];
+    blocksRaw.forEach((blockLike) => {
+      const block = asRecord(blockLike);
+      if (!block) return;
+      const blockContent = (asString(block.content) || "").trim();
+      if (!blockContent) return;
+      const blockKind = (asString(block.kind) || "text").toLowerCase();
+      if (blockKind === "math") {
+        blockMathParts.push(blockContent);
+        return;
+      }
+      blockTextParts.push(blockContent);
+    });
     const extractedMath = extractDisplayMath(rawExplanation);
     const cleanedExplanationRaw = stripBoilerplate(rawExplanation);
     const cleanedExplanation = cleanedExplanationRaw
@@ -322,10 +337,21 @@ const parseStepsFromObject = (value: unknown): StepRow[] => {
     if (extractedMath && (!mathLatex || looksLikeAnswerList(mathLatex))) {
       mathLatex = extractedMath;
     }
+    const explanationFromBlocks = blockTextParts.join(" ").trim();
+    const mathFromBlocks = blockMathParts.join(" \\\\ ").trim();
+    const resolvedMath =
+      mathFromBlocks ||
+      (mathLatex ? mathLatex.trim() : "");
+    const resolvedExplanation =
+      explanationFromBlocks ||
+      cleanedExplanation ||
+      recoveredExplanation ||
+      undefined;
+
     directSteps.push({
       title,
-      explanation: cleanedExplanation || recoveredExplanation || undefined,
-      mathLatex,
+      explanation: resolvedExplanation,
+      mathLatex: resolvedMath || undefined,
       rulesUsed: asStringArray(entry.rules_used),
       checks: asStringArray(entry.checks),
       notes: asString(entry.notes) || undefined,
@@ -360,6 +386,31 @@ const parseStepsFromObject = (value: unknown): StepRow[] => {
   });
 
   return mappedFromBlocks;
+};
+
+const parseTaskResultSteps = (value: unknown): StepRow[] => {
+  const obj = asRecord(value);
+  if (!obj) return [];
+  const results = asRecord(obj.results);
+  const taskResults = Array.isArray(results?.task_results) ? results?.task_results : [];
+  return taskResults
+    .map((taskLike, idx) => {
+      const task = asRecord(taskLike);
+      if (!task) return null;
+      const label = (asString(task.task_label) || "").trim();
+      const indexRaw = Number(task.task_index);
+      const indexLabel = Number.isFinite(indexRaw) && indexRaw > 0 ? indexRaw : idx + 1;
+      const title = label || `Task ${indexLabel}`;
+      const explanation = cleanAnswerCandidate(asString(task.result_text) || undefined);
+      const mathLatex = cleanAnswerCandidate(asString(task.result_latex) || undefined);
+      if (!explanation && !mathLatex) return null;
+      return {
+        title,
+        explanation: explanation || undefined,
+        mathLatex: mathLatex || undefined,
+      } as StepRow;
+    })
+    .filter((row): row is StepRow => Boolean(row));
 };
 
 const parseResultFromObject = (value: unknown): string | undefined => {
@@ -562,10 +613,20 @@ const parseFinalAnswerFromObject = (value: unknown): MathSolutionPayload["finalA
     .map((v) => {
       const vObj = asRecord(v);
       if (!vObj) return null;
+      const legacyLabel = asString(vObj.label);
+      const key = asString(vObj.key) || undefined;
+      const label = (legacyLabel || key || "Value").trim();
+      const legacyValue = vObj.value as string | number | boolean | Record<string, unknown> | null;
+      const valueFromV2 =
+        (vObj.number as string | number | boolean | Record<string, unknown> | null) ??
+        (vObj.text as string | number | boolean | Record<string, unknown> | null) ??
+        null;
       return {
-        label: asString(vObj.label) || "Value",
-        value: (vObj.value as string | number | boolean | Record<string, unknown> | null) ?? null,
-        value_latex: asString(vObj.value_latex) || undefined,
+        key,
+        label,
+        value: legacyValue ?? valueFromV2,
+        value_latex: asString(vObj.value_latex) || asString(vObj.latex) || undefined,
+        unit: asString(vObj.unit) || undefined,
       };
     })
     .filter((v): v is NonNullable<typeof v> => v !== null);
@@ -729,27 +790,58 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
 
   const layoutTitle = parseLayoutTitleFromObject(obj);
   const steps = parseStepsFromObject(obj);
+  const taskResultSteps = parseTaskResultSteps(obj);
+  const combinedSteps =
+    steps.length > 0
+      ? [...steps, ...taskResultSteps]
+      : taskResultSteps;
   const result = parseResultFromObject(obj);
   const recognizedLatex = parseRecognizedLatexFromObject(obj);
   const plots = parsePlotFromObject(obj);
   const verificationChecks = parseVerificationChecks(obj);
   const finalAnswer = parseFinalAnswerFromObject(obj.final_answer ?? asRecord(obj.solution)?.final_answer);
+  const plotPayload = asRecord(obj.plot) || undefined;
+  const pythonCode =
+    asString(obj.python_code) ||
+    asString(plotPayload?.python_code) ||
+    undefined;
 
-  if (!recognizedLatex && steps.length === 0 && !result && plots.length === 0 && verificationChecks.length === 0 && !finalAnswer) {
+  if (
+    !recognizedLatex &&
+    combinedSteps.length === 0 &&
+    !result &&
+    plots.length === 0 &&
+    verificationChecks.length === 0 &&
+    !finalAnswer &&
+    !plotPayload &&
+    !pythonCode
+  ) {
     return null;
   }
 
+  const questionText = compactQuestionText(asString(obj.question_text) || undefined);
+  const questionSummary = asString(obj.question_summary) || undefined;
   return {
     layoutTitle,
-    recognizedLatex,
-    steps,
+    recognizedLatex: recognizedLatex || questionSummary || questionText,
+    steps: combinedSteps,
     result,
     finalAnswer,
     plots,
+    plotPayload,
+    pythonCode,
     verificationChecks,
     assumptions: asStringArray(obj.assumptions),
-    originalProblem: asString(asRecord(obj.problem)?.original_text) || asString(asRecord(obj.problem)?.text) || undefined,
-    normalizedProblem: asString(asRecord(obj.problem)?.normalized_text) || undefined,
+    originalProblem:
+      questionSummary ||
+      questionText ||
+      asString(asRecord(obj.problem)?.original_text) ||
+      asString(asRecord(obj.problem)?.text) ||
+      undefined,
+    normalizedProblem:
+      asString(asRecord(obj.problem)?.normalized_text) ||
+      questionSummary ||
+      undefined,
     confidence: Number(asRecord(obj.quality)?.confidence) || Number(asRecord(obj.accuracy)?.confidence) || undefined,
     commonMistakes: asStringArray(asRecord(obj.quality)?.common_mistakes),
   };
@@ -874,6 +966,16 @@ const cleanAnswerCandidate = (value: string | undefined): string | undefined => 
   if (/^sub(?:stitution)?\.?$/i.test(cleaned)) return undefined;
   if (/^\(?\d+\)?[.)-]?\s*[A-Za-z]{1,20}$/.test(cleaned)) return undefined;
   return cleaned;
+};
+
+const compactQuestionText = (value: string | undefined): string | undefined => {
+  const raw = (value || "").trim();
+  if (!raw) return undefined;
+  const normalized = raw.replace(/\r\n/g, "\n");
+  const taskStart = normalized.search(/\n\s*tasks?\s*:/i);
+  const base = taskStart >= 0 ? normalized.slice(0, taskStart).trim() : normalized;
+  if (!base) return undefined;
+  return base.replace(/^q\d+\s*:\s*/i, "").trim();
 };
 
 const isPlaceholderLine = (value: string): boolean =>
@@ -1184,6 +1286,8 @@ export const normalizeAssistantMessage = (
       (mergedSolution.steps?.length || 0) > 0 ||
       Boolean(cleanAnswerCandidate(mergedSolution.result)) ||
       (mergedSolution.plots?.length || 0) > 0 ||
+      Boolean(mergedSolution.plotPayload) ||
+      Boolean((mergedSolution.pythonCode || "").trim()) ||
       (mergedSolution.verificationChecks?.length || 0) > 0;
     if (!hasMeaningfulSolution && contentText.trim()) {
       base.items.push({ type: "text", text: contentText.trim() });

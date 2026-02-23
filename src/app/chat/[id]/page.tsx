@@ -15,10 +15,11 @@ import {
   normalizeSessionMessages,
   parseStepTitles,
 } from "@/components/math-canvas/normalizer";
-import { CanvasPageData, SavedPaperVersion, SessionMessage, StepRow } from "@/components/math-canvas/types";
+import { CanvasPageData, SavedPaperVersion, SessionMessage, ShortSourcePayload, StepRow } from "@/components/math-canvas/types";
 import { buildInitialDocumentState, createPageId, documentReducer } from "@/components/math-canvas/documentModel";
 import { DEMO_SOLUTION } from "@/lib/mock-response";
 import { DEMO_BATCH_MESSAGES } from "@/lib/mock-batch-session";
+import { resolvePlaybackFromMessage, type PlaybackSegment } from "@/lib/chat_final_playback";
 
 interface ChatSessionPayload {
   id: number | string;
@@ -36,29 +37,56 @@ interface OutlineItem {
   tag: string;
 }
 
+type SolveTier = "SHORT_STEPS" | "STANDARD" | "RESEARCH" | "FINAL";
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+const asString = (value: unknown): string | null =>
+  typeof value === "string" ? value : (typeof value === "number" || typeof value === "boolean" ? String(value) : null);
 
-const resolveSessionTier = (messages: SessionMessage[]): string | undefined => {
-  const keys = ["tier_effective", "effective_tier", "tier_requested", "tier"] as const;
+const normalizeSolveTier = (value: unknown): SolveTier | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  if (!normalized) return null;
+  if (normalized === "SHORT" || normalized === "SHORT_STEPS") return "SHORT_STEPS";
+  if (normalized === "STANDARD") return "STANDARD";
+  if (normalized === "RESEARCH") return "RESEARCH";
+  if (normalized === "FINAL") return "FINAL";
+  return null;
+};
+
+const inferSessionSolveTier = (session: ChatSessionPayload | null): SolveTier => {
+  if (!session) return "FINAL";
+  const messages = Array.isArray(session.messages) ? session.messages : [];
+  const candidates: unknown[] = [];
+
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const message = messages[i];
     const structured = asRecord(message.structured_data);
     const telemetry = asRecord(message.telemetry);
-    const containers: Array<Record<string, unknown> | null> = [
-      structured,
-      asRecord(structured?.solve_meta),
-      telemetry,
-    ];
-    for (const container of containers) {
-      if (!container) continue;
-      for (const key of keys) {
-        const value = container[key];
-        if (typeof value === "string" && value.trim()) return value.trim().toUpperCase();
-      }
-    }
+    const solveMeta = asRecord(structured?.solve_meta);
+
+    candidates.push(
+      structured?.tier,
+      structured?.tier_effective,
+      structured?.tier_requested,
+      structured?.effective_tier,
+      solveMeta?.tier,
+      solveMeta?.tier_effective,
+      solveMeta?.tier_requested,
+      solveMeta?.effective_tier,
+      telemetry?.tier,
+      telemetry?.tier_effective,
+      telemetry?.tier_requested,
+      telemetry?.effective_tier
+    );
   }
-  return undefined;
+
+  for (const candidate of candidates) {
+    const tier = normalizeSolveTier(candidate);
+    if (tier) return tier;
+  }
+  return "FINAL";
 };
 
 const isSolvePrimaryAssistantMessage = (message: SessionMessage): boolean => {
@@ -138,13 +166,15 @@ const getSavedPaperVersions = (messages: SessionMessage[]): SavedPaperVersion[] 
 
 const heuristicallyWrapMath = (text: string): string => {
   if (!text) return "";
-  const normalized = text
+  let normalized = text
     .replace(/\\\\\(/g, "\\(")
     .replace(/\\\\\)/g, "\\)")
     .replace(/\\\\\[/g, "\\[")
     .replace(/\\\\\]/g, "\\]");
+  normalized = normalized.replace(/\\text\{([^}]*)\}/g, "$1");
   // If already has delimiters, leave it alone
   if (normalized.includes("\\(") || normalized.includes("\\[") || normalized.includes("$")) return normalized;
+  if (/\\[a-zA-Z]+/.test(normalized)) return normalized;
 
   // Pattern: "Solve for x, 2x + 7 = 19"
   const solveMatch = normalized.match(/^(Solve for\s+)([a-zA-Z])([,:]?\s*)(.+)$/i);
@@ -210,11 +240,87 @@ const extractRecognitionLatex = (text: string): string => {
   return normalized;
 };
 
+const isLocalSympySolution = (solution: {
+  steps?: StepRow[];
+  finalAnswer?: { answer_text?: string | null };
+} | null | undefined): boolean => {
+  if (!solution) return false;
+  const steps = Array.isArray(solution.steps) ? solution.steps : [];
+  const markerInSteps = steps.some((step) => {
+    const title = String(step?.title || "").toLowerCase();
+    const explanation = String(step?.explanation || "").toLowerCase();
+    return (
+      title.includes("local result") ||
+      explanation.includes("sympy") ||
+      explanation.includes("numpy")
+    );
+  });
+  if (markerInSteps) return true;
+  const answerText = String(solution.finalAnswer?.answer_text || "").toLowerCase();
+  return answerText.includes("sympy") || answerText.includes("numpy");
+};
+
+const extractShortSourcePayload = (messages: SessionMessage[]): ShortSourcePayload | null => {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message.role !== "assistant") continue;
+    const structured = asRecord(message.structured_data);
+    if (!structured) continue;
+
+    const rawCandidate = asRecord(structured.raw_user_extraction) || structured;
+    const sections = Array.isArray(rawCandidate.sections)
+      ? (rawCandidate.sections as ShortSourcePayload["sections"])
+      : [];
+    if (sections.length === 0) continue;
+
+    const questionText =
+      asString(asRecord(structured.problem)?.original_text) ||
+      asString(asRecord(structured.question)?.text) ||
+      undefined;
+
+    return {
+      sections,
+      global_final_answer: asString(rawCandidate.global_final_answer) || undefined,
+      warnings: Array.isArray(rawCandidate.warnings) ? rawCandidate.warnings : undefined,
+      meta: asRecord(rawCandidate.meta) || undefined,
+      question: questionText,
+      model: message.model_used || undefined,
+    };
+  }
+  return null;
+};
+
+const extractAssistantPlaybackSource = (
+  messages: SessionMessage[]
+): { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null => {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (String(message?.role || "").toLowerCase() !== "assistant") continue;
+    const messageIdRaw = message?.id;
+    const messageId = messageIdRaw === undefined || messageIdRaw === null ? "" : String(messageIdRaw).trim();
+    if (!messageId) continue;
+    const resolved = resolvePlaybackFromMessage(message);
+    const assistantContent = (resolved.content || "").trim();
+    if (!assistantContent) continue;
+    return { messageId, assistantContent, segments: resolved.segments, source: resolved.source };
+  }
+  return null;
+};
+
 const buildInitialPages = (
   messages: ReturnType<typeof normalizeSessionMessages>,
-  sessionTitle?: string
+  sessionTitle?: string,
+  options?: {
+    shortTier?: boolean;
+    shortSource?: ShortSourcePayload | null;
+    shortPlayback?: { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null;
+  }
 ): CanvasPageData[] => {
+  const isShortTier = Boolean(options?.shortTier);
+  const shortSource = options?.shortSource || null;
+  const shortPlayback = options?.shortPlayback || null;
   const solution = extractPrimarySolution(messages);
+  const localSympy = isLocalSympySolution(solution);
   const firstPage = createPage();
   const now = Date.now();
   const layoutTitle = solution?.layoutTitle?.trim();
@@ -230,14 +336,21 @@ const buildInitialPages = (
   const userMessage = messages.find((m) => m.role === "user");
   const userText = userMessage ? flattenTextItems(userMessage) : "";
 
-  // Prioritize sessionTitle if valid, then layoutTitle, then recognizedLatex, then userText
+  // Prefer full problem text from structured payload first; session title can be truncated.
   // Avoid using sessionTitle if it's generic like "Untitled Session"
   const validSessionTitle = sessionTitle && sessionTitle !== "Untitled Session" ? sessionTitle : undefined;
-  const rawProblemStatement = validSessionTitle || layoutTitle || solution?.recognizedLatex || userText || "";
-  const problemStatement = heuristicallyWrapMath(rawProblemStatement);
-  const recognitionLatex = extractRecognitionLatex(problemStatement || rawProblemStatement);
+  const rawProblemStatement =
+    solution?.originalProblem ||
+    (isShortTier ? shortSource?.question : undefined) ||
+    userText ||
+    validSessionTitle ||
+    layoutTitle ||
+    solution?.recognizedLatex ||
+    "";
+  const problemStatement = rawProblemStatement;
+  const recognitionLatex = heuristicallyWrapMath((problemStatement || "").trim());
 
-  if (solution && recognitionLatex) {
+  if (!isShortTier && solution && recognitionLatex) {
     blocks.push({
       id: "recognized-block",
       type: "recognition",
@@ -246,20 +359,34 @@ const buildInitialPages = (
     });
   }
 
-  if (solution && (solution.steps.length > 0 || solution.result)) {
+  if (
+    (solution && (solution.steps.length > 0 || solution.result || solution.plotPayload || solution.pythonCode)) ||
+    (isShortTier && shortSource?.sections?.length)
+  ) {
+    const shortResult = shortSource?.global_final_answer || solution?.result;
     blocks.push({
       id: "steps-block",
       type: "steps",
-      steps: solution.steps,
-      result: solution.result,
-      finalAnswer: solution.finalAnswer,
-      verificationChecks: solution.verificationChecks,
-      domainConstraints: solution.domainConstraints,
-      assumptions: solution.assumptions,
-      originalProblem: solution.originalProblem,
-      normalizedProblem: solution.normalizedProblem,
-      commonMistakes: solution.commonMistakes,
-      autocorrectApplied: solution.autocorrectApplied,
+      steps: localSympy ? [] : (solution?.steps || []),
+      shortSections: localSympy ? undefined : solution?.shortSections,
+      shortSource: isShortTier ? shortSource || undefined : undefined,
+      result: isShortTier ? shortResult : solution?.result,
+      finalAnswer: localSympy && solution?.finalAnswer
+        ? { ...solution.finalAnswer, values: [] }
+        : (isShortTier ? undefined : solution?.finalAnswer),
+      verificationChecks: isShortTier ? undefined : solution?.verificationChecks,
+      domainConstraints: isShortTier ? undefined : solution?.domainConstraints,
+      assumptions: isShortTier ? undefined : solution?.assumptions,
+      originalProblem: localSympy ? undefined : solution?.originalProblem,
+      normalizedProblem: localSympy ? undefined : solution?.normalizedProblem,
+      commonMistakes: isShortTier ? undefined : solution?.commonMistakes,
+      autocorrectApplied: isShortTier ? undefined : solution?.autocorrectApplied,
+      plotPayload: isShortTier ? undefined : solution?.plotPayload,
+      pythonCode: isShortTier ? undefined : solution?.pythonCode,
+      playbackMessageId: shortPlayback?.messageId,
+      playbackFallbackContent: shortPlayback?.assistantContent,
+      playbackSegments: shortPlayback?.segments,
+      playbackSource: shortPlayback?.source,
     });
   }
 
@@ -268,7 +395,7 @@ const buildInitialPages = (
     .find((message) => message.role === "assistant");
   const latestText = latestAssistantText ? flattenTextItems(latestAssistantText) : "";
 
-  if (latestText && (blocks.length === 0 || (solution?.steps.length ?? 0) <= 1)) {
+  if (latestText && blocks.length === 0) {
     blocks.push({
       id: "text-block",
       type: "text",
@@ -326,7 +453,13 @@ const buildBatchInitialPages = (
 
   batchSolutions.forEach((entry, index) => {
     const questionLabel = `Question ${entry.questionId}`;
-    const recognized = entry.questionText || entry.solution.recognizedLatex || questionLabel;
+    const localSympy = isLocalSympySolution(entry.solution);
+    const recognizedRaw =
+      entry.solution.originalProblem ||
+      entry.questionText ||
+      entry.solution.recognizedLatex ||
+      questionLabel;
+    const recognized = heuristicallyWrapMath((recognizedRaw || "").trim());
 
     blocks.push({
       id: `batch-recognition-${entry.questionId}-${index + 1}`,
@@ -338,17 +471,24 @@ const buildBatchInitialPages = (
     blocks.push({
       id: `batch-steps-${entry.questionId}-${index + 1}`,
       type: "steps",
-      steps: Array.isArray(entry.solution.steps) ? entry.solution.steps : ([] as StepRow[]),
+      steps: localSympy
+        ? []
+        : (Array.isArray(entry.solution.steps) ? entry.solution.steps : ([] as StepRow[])),
+      shortSections: localSympy ? undefined : entry.solution.shortSections,
       result: entry.solution.result,
-      finalAnswer: entry.solution.finalAnswer,
+      finalAnswer: localSympy && entry.solution.finalAnswer
+        ? { ...entry.solution.finalAnswer, values: [] }
+        : entry.solution.finalAnswer,
       verificationChecks: entry.solution.verificationChecks,
       domainConstraints: entry.solution.domainConstraints,
       assumptions: entry.solution.assumptions,
-      originalProblem: entry.solution.originalProblem,
-      normalizedProblem: entry.solution.normalizedProblem,
+      originalProblem: localSympy ? undefined : entry.solution.originalProblem,
+      normalizedProblem: localSympy ? undefined : entry.solution.normalizedProblem,
       commonMistakes: entry.solution.commonMistakes,
       autocorrectApplied: entry.solution.autocorrectApplied,
       plots: entry.solution.plots,
+      plotPayload: entry.solution.plotPayload,
+      pythonCode: entry.solution.pythonCode,
       confidence: entry.solution.confidence,
     });
 
@@ -373,7 +513,7 @@ const buildBatchInitialPages = (
   return [page];
 };
 
-export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ChatFinalPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const searchParams = useSearchParams();
   const [session, setSession] = useState<ChatSessionPayload | null>(null);
@@ -514,6 +654,24 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     () => normalizeSessionMessages(session?.messages || []),
     [session?.messages]
   );
+  const solveTier = useMemo(() => inferSessionSolveTier(session), [session]);
+  const shortSourcePayload = useMemo(
+    () => (solveTier === "SHORT_STEPS" ? extractShortSourcePayload(session?.messages || []) : null),
+    [session?.messages, solveTier]
+  );
+  const shortPlaybackSource = useMemo(
+    () => extractAssistantPlaybackSource(session?.messages || []),
+    [session?.messages]
+  );
+  useEffect(() => {
+    if (!shortPlaybackSource) return;
+    console.log("[chat_final] playback_source", {
+      messageId: shortPlaybackSource.messageId,
+      source: shortPlaybackSource.source,
+      contentLen: shortPlaybackSource.assistantContent.length,
+      segments: shortPlaybackSource.segments.length,
+    });
+  }, [shortPlaybackSource]);
   const batchSolutions = useMemo(
     () => extractBatchSolutionsFromSessionMessages(session?.messages || []),
     [session?.messages]
@@ -579,15 +737,34 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         if (isShortOutline) {
           const questionSuffix = (qMatch?.[1] || "Q1").toUpperCase();
           const questionTag = `QUESTION ${questionSuffix}`;
-          const solutionAnchorId = hasPlayback
-            ? `${block.id}-playback-solution`
-            : hasShortSections
+          const solutionAnchorId = hasShortSections
               ? `${block.id}-section-0`
               : hasShortSourceSections
                 ? `${block.id}-source-section-0`
-                : `${block.id}-final-answer`;
+                : `${block.id}-playback-solution`;
           items.push({ id: `${block.id}-problem`, label: `Question ${questionSuffix}`, tag: questionTag });
-          items.push({ id: solutionAnchorId, label: "Solution", tag: "SOLUTION" });
+
+          if (hasPlayback && Array.isArray(block.playbackSegments) && block.playbackSegments.length > 0) {
+            const playbackStepTitles = block.playbackSegments
+              .filter((segment) => segment.kind === "step_title")
+              .map((segment) => String(segment.text || "").trim())
+              .filter(Boolean);
+
+            if (playbackStepTitles.length > 0) {
+              playbackStepTitles.forEach((title, index) => {
+                items.push({
+                  id: `${block.id}-playback-step-${index + 1}`,
+                  label: title,
+                  tag: "STEP",
+                });
+              });
+            } else {
+              items.push({ id: solutionAnchorId, label: "Solution", tag: "SOLUTION" });
+            }
+          } else {
+            items.push({ id: solutionAnchorId, label: "Solution", tag: "SOLUTION" });
+          }
+
           items.push({ id: `${block.id}-final-answer`, label: "Final Answer", tag: "FINAL" });
           return;
         }
@@ -644,16 +821,29 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     for (let i = sourceMessages.length - 1; i >= 0; i -= 1) {
       const payload = sourceMessages[i].structured_data;
       if (!payload || typeof payload !== "object") continue;
-      const rawClassification = (payload as Record<string, unknown>).classification;
-      if (!rawClassification || typeof rawClassification !== "object") continue;
-      const entry = rawClassification as Record<string, unknown>;
-      const domain = typeof entry.domain === "string" ? entry.domain : undefined;
-      const topic = typeof entry.topic === "string" ? entry.topic : undefined;
-      const grade_band = typeof entry.grade_band === "string" ? entry.grade_band : undefined;
-      const difficulty = typeof entry.difficulty === "string" ? entry.difficulty : undefined;
+      const root = payload as Record<string, unknown>;
+      const candidates: Record<string, unknown>[] = [];
+      const rootClassification = root.classification;
+      if (rootClassification && typeof rootClassification === "object") {
+        candidates.push(rootClassification as Record<string, unknown>);
+      }
+      const items = Array.isArray(root.items) ? root.items : [];
+      for (const item of items) {
+        if (!item || typeof item !== "object") continue;
+        const itemClassification = (item as Record<string, unknown>).classification;
+        if (itemClassification && typeof itemClassification === "object") {
+          candidates.push(itemClassification as Record<string, unknown>);
+        }
+      }
 
-      if (domain || topic || grade_band || difficulty) {
-        return { domain, topic, grade_band, difficulty };
+      for (const entry of candidates) {
+        const domain = typeof entry.domain === "string" ? entry.domain : undefined;
+        const topic = typeof entry.topic === "string" ? entry.topic : undefined;
+        const grade_band = typeof entry.grade_band === "string" ? entry.grade_band : undefined;
+        const difficulty = typeof entry.difficulty === "string" ? entry.difficulty : undefined;
+        if (domain || topic || grade_band || difficulty) {
+          return { domain, topic, grade_band, difficulty };
+        }
       }
     }
     return undefined;
@@ -713,16 +903,21 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   useEffect(() => {
     if (!session) return;
     const latestSavedPages = savedPaperVersions[0]?.pages;
+    const isShortTierSession = solveTier === "SHORT_STEPS";
     const initialPages = latestSavedPages && latestSavedPages.length > 0
       ? latestSavedPages
-      : batchSolutions.length > 0
+      : (!isShortTierSession && batchSolutions.length > 0)
         ? buildBatchInitialPages(batchSolutions)
-        : buildInitialPages(normalizedMessages, session.title || "");
+        : buildInitialPages(normalizedMessages, session.title || "", {
+          shortTier: isShortTierSession,
+          shortSource: shortSourcePayload,
+          shortPlayback: shortPlaybackSource,
+        });
     dispatch({
       type: "RESET",
       state: buildInitialDocumentState(initialPages, "none"),
     });
-  }, [batchSolutions, normalizedMessages, savedPaperVersions, session]);
+  }, [batchSolutions, normalizedMessages, savedPaperVersions, session, shortPlaybackSource, shortSourcePayload, solveTier]);
 
   const tokenUsage = useMemo(() => {
     let input = 0;
@@ -742,10 +937,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     return { input_tokens: input, output_tokens: output, total_tokens: total };
   }, [session?.messages]);
 
-  const effectiveSolveTier = useMemo(
-    () => resolveSessionTier(session?.messages || []),
-    [session?.messages]
-  );
+  const isFinalTier = solveTier === "FINAL";
+  const tierLabel = solveTier === "SHORT_STEPS" ? "SHORT STEPS" : solveTier;
 
   if (loading) {
     return (
@@ -763,16 +956,26 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     );
   }
 
-  const notebookTitle = session.subject || "Math Notebook";
-  const notebookSubtitle = session.title || "Untitled Session";
-  const paperVariant: "default" | "final_handwritten" | "short_paper" =
-    effectiveSolveTier === "SHORT_STEPS" ? "short_paper" : "default";
+  const notebookTitle = session.subject ? `${tierLabel} - ${session.subject}` : `${tierLabel} Math Notebook`;
+  const baseSubtitleRaw = session.title || "Untitled Session";
+  const baseSubtitle =
+    solveTier === "SHORT_STEPS" && baseSubtitleRaw.length > 30
+      ? `${baseSubtitleRaw.slice(0, 30)}...`
+      : baseSubtitleRaw;
+  const notebookSubtitle = baseSubtitle.toUpperCase().startsWith(tierLabel)
+    ? baseSubtitle
+    : `${tierLabel} Paper - ${baseSubtitle}`;
 
   const viewMode: "edit" | "student_report" =
     (searchParams.get("view") || "").toLowerCase() === "student_report" ? "student_report" : "edit";
 
   return (
-    <div dir={layoutDirection}>
+    <div dir={layoutDirection} className="bg-amber-50/30 dark:bg-amber-950/10">
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+        {isFinalTier
+          ? "FINAL Tier Workspace - Structured paper rendering for final-grade output"
+          : `${tierLabel} Tier Workspace - Structured paper rendering for short-step output`}
+      </div>
       <MathCanvasLayout
         header={<DashboardNavBar />}
         leftSidebar={
@@ -795,19 +998,21 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           <CanvasWorkspace
             sessionId={String(session.id)}
             attemptId={effectiveAttemptId}
-            solveTier={effectiveSolveTier}
+            solveTier={solveTier}
             onOpenShare={() => setShareModalOpen(true)}
             savedVersions={savedPaperVersions}
             state={documentState}
             dispatch={dispatch}
             viewMode={viewMode}
-            paperVariant={paperVariant}
+            hideStepLabels={isFinalTier}
+            paperVariant={isFinalTier ? "final_handwritten" : "short_paper"}
           />
         }
         rightSidebar={
           <RightTutorChat
             sessionId={String(session.id)}
             initialMessages={tutorNormalizedMessages}
+            sourceMessages={session?.messages || []}
             originalProblem={originalProblemStatement}
             stepTitles={stepTitles}
             classification={classification}

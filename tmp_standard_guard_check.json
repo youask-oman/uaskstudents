@@ -1,0 +1,124 @@
+[
+  {
+    "event": "meta",
+    "data": {
+      "request_id": "std-check-7246017b-6681-46ca-a851-4f9622194f7b",
+      "attempt_id": "ef338ce3-2299-43b7-97a8-647660a78c92",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "tier_requested": "standard",
+      "effective_tier": "standard",
+      "tier_enforced": false,
+      "tier_enforced_reason": null,
+      "detected_task_count": 1,
+      "type": "meta"
+    },
+    "raw": "{\"request_id\": \"std-check-7246017b-6681-46ca-a851-4f9622194f7b\", \"attempt_id\": \"ef338ce3-2299-43b7-97a8-647660a78c92\", \"provider\": \"openai\", \"model\": \"gpt-5-mini\", \"tier_requested\": \"standard\", \"effective_tier\": \"standard\", \"tier_enforced\": false, \"tier_enforced_reason\": null, \"detected_task_count\": 1, \"type\": \"meta\"}"
+  },
+  {
+    "event": "delta",
+    "data": {
+      "type": "delta",
+      "text": "{\"attempt_id\": \"eea47c34-ee21-4858-8406-530a1fa0c885\", \"context\": {\"country\": null, \"course\": null, \"curriculum\": null, \"grade_level\": null, \"notation_profile\": null, \"region\": null}, \"items\": [{\"clarification\": {\"needs_clarification\": false, \"note\": null, \"questions\": []}, \"classification\": {\"detected_tasks\": [\"differential_equations\", \"ode\", \"set_theory\", \"plot\", \"evaluate\"], \"domain\": \"differential_equations\"}, \"domain_mode\": \"reals\", \"final_answer\": {\"answer_latex\": null, \"answer_text\": \"Solution: y(x)=1/(1+4 e^{-x}). Time to reach y=0.5: x=ln(4). Time to reach y=0.8: x=ln(16).\", \"values\": [{\"key\": \"general_solution\", \"latex\": \"y(x)=\\\\dfrac{1}{1+4e^{-x}}\", \"number\": null, \"text\": \"y(x)=1/(1+4 e^{-x})\", \"unit\": null}, {\"key\": \"time_y_0.5\", \"latex\": \"x=\\\\ln(4)\", \"number\": null, \"text\": \"x=ln(4) \\\\approx 1.3862943611\", \"unit\": null}, {\"key\": \"time_y_0.8\", \"latex\": \"x=\\\\ln(16)\", \"number\": null, \"text\": \"x=ln(16) \\\\approx 2.7725887222\", \"unit\": null}]}, \"plot\": {\"notes\": null, \"python_code\": null, \"recipe\": {\"axes_lines\": true, \"grid\": true, \"kind\": \"function_2d\", \"legend\": true, \"points\": [{\"kind\": \"custom\", \"label\": \"y(0)=0.2\", \"x\": 0, \"y\": 0.2}, {\"kind\": \"custom\", \"label\": \"y=0.5 at x=ln4\", \"x\": 1.3862943611, \"y\": 0.5}, {\"kind\": \"custom\", \"label\": \"y=0.8 at x=ln16\", \"x\": 2.7725887222, \"y\": 0.8}], \"series\": [{\"expr_latex\": \"y=\\\\dfrac{1}{1+4e^{-x}}\", \"kind\": \"function\", \"label\": \"y(x)=1/(1+4e^{-x})\", \"params\": [], \"samples\": [], \"series_id\": \"sol\", \"variable\": \"x\", \"x_expr_latex\": null, \"y_expr_latex\": null}], \"shapes\": [], \"title\": \"Solution of IVP: y' = y(1-y), y(0)=0.2\", \"x_domain\": {\"max\": 6, \"min\": -6}, \"x_label\": \"x\", \"y_domain\": {\"max\": 1.1, \"min\": -0.1}, \"y_label\": \"y\", \"layers\": []}, \"should_visualize\": true, \"decision_reason\": \"graph_mode_forced\"}, \"quality\": {\"assumptions\": [\"Solution interpreted on real x\", \"Use exact forms (natural logs) where possible\"], \"confidence\": 0.92, \"warnings\": []}, \"question_id\": \"q1\", \"question_summary\": \"Solve logistic IVP and find times to reach y=0.5 and y=0.8; plot solution.\", \"refusal\": {\"is_refusal\": false, \"refusal_code\": null, \"refusal_message\": null}, \"results\": {\"task_results\": [{\"result_latex\": null, \"result_text\": \"y(x)=1/(1+4 e^{-x})\", \"task_index\": 1, \"task_label\": \"Solve\"}, {\"result_latex\": null, \"result_text\": \"Final: y(x)=1/(1+4 e^{-x})\", \"task_index\": 2, \"task_label\": \"Final answer\"}, {\"result_latex\": null, \"result_text\": \"x=ln(4) (≈1.3862943611)\", \"task_index\": 3, \"task_label\": \"Time for y=0.5\"}, {\"result_latex\": null, \"result_text\": \"x=ln(16) (≈2.7725887222)\", \"task_index\": 4, \"task_label\": \"Time for y=0.8\"}, {\"result_latex\": null, \"result_text\": \"Plot specification provided\", \"task_index\": 5, \"task_label\": \"Plot\"}]}, \"steps\": [{\"blocks\": [{\"content\": \"Separate variables: dy/[y(1-y)] = dx.\", \"display\": true, \"kind\": \"text\"}, {\"content\": \"\\\\int \\\\frac{1}{y(1-y)}\\\\,dy = \\\\int 1\\\\,dx\", \"display\": true, \"kind\": \"math\"}, {\"content\": \"Integrate using partial fractions: 1/[y(1-y)]=1/y + 1/(1-y).\", \"display\": true, \"kind\": \"text\"}, {\"content\": \"\\\\int\\\\left(\\\\frac{1}{y}+\\\\frac{1}{1-y}\\\\right)dy = x+C\", \"display\": true, \"kind\": \"math\"}, {\"content\": \"Compute integrals: ln|y| - ln|1-y| = x + C.\", \"display\": true, \"kind\": \"text\"}, {\"content\": \"\\\\ln\\\\frac{y}{1-y}=x+C\", \"display\": true, \"kind\": \"math\"}, {\"content\": \"Apply initial condition y(0)=0.2 to find C: ln(0.2/0.8)=C = \\\\ln(1/4) = -\\\\ln 4.\", \"display\": true, \"kind\": \"text\"}, {\"content\": \"\\\\ln\\\\frac{y}{1-y}=x-\\\\ln 4\", \"display\": true, \"kind\": \"math\"}, {\"content\": \"Solve for y: exponentiate and rearrange to get y=1/(1+4 e^{-x}).\", \"display\": true, \"kind\": \"text\"}, {\"content\": \"y=\\\\dfrac{1}{1+4e^{-x}}\", \"display\": true, \"kind\": \"math\"}, {\"content\": \"Find x for y=0.5: set 0.5=1/(1+4e^{-x}) ⇒ 4e^{-x}=1 ⇒ x=\\\\ln 4.\", \"display\": true, \"kind\": \"text\"}, {\"content\": \"x=\\\\ln 4\", \"display\": true, \"kind\": \"math\"}, {\"content\": \"Find x for y=0.8: set 0.8=1/(1+4e^{-x}) ⇒ 4e^{-x}=0.25 ⇒ e^{-x}=1/16 ⇒ x=\\\\ln 16.\", \"display\": true, \"kind\": \"text\"}, {\"content\": \"x=\\\\ln 16\", \"display\": true, \"kind\": \"math\"}], \"index\": 1, \"title\": \"Solution and evaluations\"}], \"question_text\": \"Solve the IVP: dy/dx = y(1-y), y(0)=0.2. Tasks: 1) solve 2) final answer 3) y=0.5 time 4) y=0.8 time 5) plot.\", \"task_count\": 5, \"tasks\": [{\"task_index\": 1, \"task_label\": \"Solve\"}, {\"task_index\": 2, \"task_label\": \"Final answer\"}, {\"task_index\": 3, \"task_label\": \"Time y=0.5\"}, {\"task_index\": 4, \"task_label\": \"Time y=0.8\"}, {\"task_index\": 5, \"task_label\": \"Plot\"}], \"question_index\": 1}], \"mode\": \"step_by_step\", \"request_id\": \"50bfc163-474b-453a-99a8-4298895a0e51\", \"response_language\": \"English\", \"schema_name\": \"youask_math_openai_detailed_v2\", \"schema_version\": \"v2\", \"tier\": \"STANDARD\"}"
+    },
+    "raw": "{\"type\": \"delta\", \"text\": \"{\\\"attempt_id\\\": \\\"eea47c34-ee21-4858-8406-530a1fa0c885\\\", \\\"context\\\": {\\\"country\\\": null, \\\"course\\\": null, \\\"curriculum\\\": null, \\\"grade_level\\\": null, \\\"notation_profile\\\": null, \\\"region\\\": null}, \\\"items\\\": [{\\\"clarification\\\": {\\\"needs_clarification\\\": false, \\\"note\\\": null, \\\"questions\\\": []}, \\\"classification\\\": {\\\"detected_tasks\\\": [\\\"differential_equations\\\", \\\"ode\\\", \\\"set_theory\\\", \\\"plot\\\", \\\"evaluate\\\"], \\\"domain\\\": \\\"differential_equations\\\"}, \\\"domain_mode\\\": \\\"reals\\\", \\\"final_answer\\\": {\\\"answer_latex\\\": null, \\\"answer_text\\\": \\\"Solution: y(x)=1/(1+4 e^{-x}). Time to reach y=0.5: x=ln(4). Time to reach y=0.8: x=ln(16).\\\", \\\"values\\\": [{\\\"key\\\": \\\"general_solution\\\", \\\"latex\\\": \\\"y(x)=\\\\\\\\dfrac{1}{1+4e^{-x}}\\\", \\\"number\\\": null, \\\"text\\\": \\\"y(x)=1/(1+4 e^{-x})\\\", \\\"unit\\\": null}, {\\\"key\\\": \\\"time_y_0.5\\\", \\\"latex\\\": \\\"x=\\\\\\\\ln(4)\\\", \\\"number\\\": null, \\\"text\\\": \\\"x=ln(4) \\\\\\\\approx 1.3862943611\\\", \\\"unit\\\": null}, {\\\"key\\\": \\\"time_y_0.8\\\", \\\"latex\\\": \\\"x=\\\\\\\\ln(16)\\\", \\\"number\\\": null, \\\"text\\\": \\\"x=ln(16) \\\\\\\\approx 2.7725887222\\\", \\\"unit\\\": null}]}, \\\"plot\\\": {\\\"notes\\\": null, \\\"python_code\\\": null, \\\"recipe\\\": {\\\"axes_lines\\\": true, \\\"grid\\\": true, \\\"kind\\\": \\\"function_2d\\\", \\\"legend\\\": true, \\\"points\\\": [{\\\"kind\\\": \\\"custom\\\", \\\"label\\\": \\\"y(0)=0.2\\\", \\\"x\\\": 0, \\\"y\\\": 0.2}, {\\\"kind\\\": \\\"custom\\\", \\\"label\\\": \\\"y=0.5 at x=ln4\\\", \\\"x\\\": 1.3862943611, \\\"y\\\": 0.5}, {\\\"kind\\\": \\\"custom\\\", \\\"label\\\": \\\"y=0.8 at x=ln16\\\", \\\"x\\\": 2.7725887222, \\\"y\\\": 0.8}], \\\"series\\\": [{\\\"expr_latex\\\": \\\"y=\\\\\\\\dfrac{1}{1+4e^{-x}}\\\", \\\"kind\\\": \\\"function\\\", \\\"label\\\": \\\"y(x)=1/(1+4e^{-x})\\\", \\\"params\\\": [], \\\"samples\\\": [], \\\"series_id\\\": \\\"sol\\\", \\\"variable\\\": \\\"x\\\", \\\"x_expr_latex\\\": null, \\\"y_expr_latex\\\": null}], \\\"shapes\\\": [], \\\"title\\\": \\\"Solution of IVP: y' = y(1-y), y(0)=0.2\\\", \\\"x_domain\\\": {\\\"max\\\": 6, \\\"min\\\": -6}, \\\"x_label\\\": \\\"x\\\", \\\"y_domain\\\": {\\\"max\\\": 1.1, \\\"min\\\": -0.1}, \\\"y_label\\\": \\\"y\\\", \\\"layers\\\": []}, \\\"should_visualize\\\": true, \\\"decision_reason\\\": \\\"graph_mode_forced\\\"}, \\\"quality\\\": {\\\"assumptions\\\": [\\\"Solution interpreted on real x\\\", \\\"Use exact forms (natural logs) where possible\\\"], \\\"confidence\\\": 0.92, \\\"warnings\\\": []}, \\\"question_id\\\": \\\"q1\\\", \\\"question_summary\\\": \\\"Solve logistic IVP and find times to reach y=0.5 and y=0.8; plot solution.\\\", \\\"refusal\\\": {\\\"is_refusal\\\": false, \\\"refusal_code\\\": null, \\\"refusal_message\\\": null}, \\\"results\\\": {\\\"task_results\\\": [{\\\"result_latex\\\": null, \\\"result_text\\\": \\\"y(x)=1/(1+4 e^{-x})\\\", \\\"task_index\\\": 1, \\\"task_label\\\": \\\"Solve\\\"}, {\\\"result_latex\\\": null, \\\"result_text\\\": \\\"Final: y(x)=1/(1+4 e^{-x})\\\", \\\"task_index\\\": 2, \\\"task_label\\\": \\\"Final answer\\\"}, {\\\"result_latex\\\": null, \\\"result_text\\\": \\\"x=ln(4) (\\u22481.3862943611)\\\", \\\"task_index\\\": 3, \\\"task_label\\\": \\\"Time for y=0.5\\\"}, {\\\"result_latex\\\": null, \\\"result_text\\\": \\\"x=ln(16) (\\u22482.7725887222)\\\", \\\"task_index\\\": 4, \\\"task_label\\\": \\\"Time for y=0.8\\\"}, {\\\"result_latex\\\": null, \\\"result_text\\\": \\\"Plot specification provided\\\", \\\"task_index\\\": 5, \\\"task_label\\\": \\\"Plot\\\"}]}, \\\"steps\\\": [{\\\"blocks\\\": [{\\\"content\\\": \\\"Separate variables: dy/[y(1-y)] = dx.\\\", \\\"display\\\": true, \\\"kind\\\": \\\"text\\\"}, {\\\"content\\\": \\\"\\\\\\\\int \\\\\\\\frac{1}{y(1-y)}\\\\\\\\,dy = \\\\\\\\int 1\\\\\\\\,dx\\\", \\\"display\\\": true, \\\"kind\\\": \\\"math\\\"}, {\\\"content\\\": \\\"Integrate using partial fractions: 1/[y(1-y)]=1/y + 1/(1-y).\\\", \\\"display\\\": true, \\\"kind\\\": \\\"text\\\"}, {\\\"content\\\": \\\"\\\\\\\\int\\\\\\\\left(\\\\\\\\frac{1}{y}+\\\\\\\\frac{1}{1-y}\\\\\\\\right)dy = x+C\\\", \\\"display\\\": true, \\\"kind\\\": \\\"math\\\"}, {\\\"content\\\": \\\"Compute integrals: ln|y| - ln|1-y| = x + C.\\\", \\\"display\\\": true, \\\"kind\\\": \\\"text\\\"}, {\\\"content\\\": \\\"\\\\\\\\ln\\\\\\\\frac{y}{1-y}=x+C\\\", \\\"display\\\": true, \\\"kind\\\": \\\"math\\\"}, {\\\"content\\\": \\\"Apply initial condition y(0)=0.2 to find C: ln(0.2/0.8)=C = \\\\\\\\ln(1/4) = -\\\\\\\\ln 4.\\\", \\\"display\\\": true, \\\"kind\\\": \\\"text\\\"}, {\\\"content\\\": \\\"\\\\\\\\ln\\\\\\\\frac{y}{1-y}=x-\\\\\\\\ln 4\\\", \\\"display\\\": true, \\\"kind\\\": \\\"math\\\"}, {\\\"content\\\": \\\"Solve for y: exponentiate and rearrange to get y=1/(1+4 e^{-x}).\\\", \\\"display\\\": true, \\\"kind\\\": \\\"text\\\"}, {\\\"content\\\": \\\"y=\\\\\\\\dfrac{1}{1+4e^{-x}}\\\", \\\"display\\\": true, \\\"kind\\\": \\\"math\\\"}, {\\\"content\\\": \\\"Find x for y=0.5: set 0.5=1/(1+4e^{-x}) \\u21d2 4e^{-x}=1 \\u21d2 x=\\\\\\\\ln 4.\\\", \\\"display\\\": true, \\\"kind\\\": \\\"text\\\"}, {\\\"content\\\": \\\"x=\\\\\\\\ln 4\\\", \\\"display\\\": true, \\\"kind\\\": \\\"math\\\"}, {\\\"content\\\": \\\"Find x for y=0.8: set 0.8=1/(1+4e^{-x}) \\u21d2 4e^{-x}=0.25 \\u21d2 e^{-x}=1/16 \\u21d2 x=\\\\\\\\ln 16.\\\", \\\"display\\\": true, \\\"kind\\\": \\\"text\\\"}, {\\\"content\\\": \\\"x=\\\\\\\\ln 16\\\", \\\"display\\\": true, \\\"kind\\\": \\\"math\\\"}], \\\"index\\\": 1, \\\"title\\\": \\\"Solution and evaluations\\\"}], \\\"question_text\\\": \\\"Solve the IVP: dy/dx = y(1-y), y(0)=0.2. Tasks: 1) solve 2) final answer 3) y=0.5 time 4) y=0.8 time 5) plot.\\\", \\\"task_count\\\": 5, \\\"tasks\\\": [{\\\"task_index\\\": 1, \\\"task_label\\\": \\\"Solve\\\"}, {\\\"task_index\\\": 2, \\\"task_label\\\": \\\"Final answer\\\"}, {\\\"task_index\\\": 3, \\\"task_label\\\": \\\"Time y=0.5\\\"}, {\\\"task_index\\\": 4, \\\"task_label\\\": \\\"Time y=0.8\\\"}, {\\\"task_index\\\": 5, \\\"task_label\\\": \\\"Plot\\\"}], \\\"question_index\\\": 1}], \\\"mode\\\": \\\"step_by_step\\\", \\\"request_id\\\": \\\"50bfc163-474b-453a-99a8-4298895a0e51\\\", \\\"response_language\\\": \\\"English\\\", \\\"schema_name\\\": \\\"youask_math_openai_detailed_v2\\\", \\\"schema_version\\\": \\\"v2\\\", \\\"tier\\\": \\\"STANDARD\\\"}\"}"
+  },
+  {
+    "event": "telemetry",
+    "data": {
+      "telemetry": {
+        "request_id": "std-check-7246017b-6681-46ca-a851-4f9622194f7b",
+        "attempt_id": "ef338ce3-2299-43b7-97a8-647660a78c92",
+        "tier": "STANDARD",
+        "questions_count": 1,
+        "allow_auto_split_effective": false,
+        "model": "gpt-5-mini-2025-08-07",
+        "provider": "openai",
+        "input_tokens": 4926,
+        "output_tokens": 3044,
+        "total_tokens": 7970,
+        "latency_ms_openai": 47289,
+        "latency_ms_total": 47310,
+        "schema_name": "youask_math_openai_detailed_v2",
+        "schema_version": "v2",
+        "model_bound": "gpt-5-mini",
+        "temperature_bound": 0.0,
+        "top_p_bound": 1.0,
+        "timeout_ms_bound": 180000,
+        "max_questions_allowed_bound": 1,
+        "prompt_binding_id": "d11d98c8-569e-4089-9b71-aebe8c6d92af",
+        "global_system_prompt_id": "global_system_prompt_openai_v1",
+        "developer_prompt_id": "solve_dev_detalied_openai_v1",
+        "output_schema_id": "youask_math_openai_detailed_v2",
+        "openai_calls_count": 1,
+        "openai_prompt_id": "pmpt_699c1d0dcb08819598146751dce7657d08b7369fb62b9fb2",
+        "openai_prompt_version": "latest",
+        "openai_prompt_use_latest": true,
+        "openai_prompt_variables_used": true,
+        "openai_prompt_cache_key": "pbk:4b9c8b3afa3ed0b7ff740c86d46d37d4c70e1f6b1c9e5dd2",
+        "openai_prompt_cache_retention": null,
+        "repair_attempted": false,
+        "schema_valid": true,
+        "sympy_numpy_reports": [
+          {
+            "question_id": "q1",
+            "sympy_used": true,
+            "numpy_used": true,
+            "parsed_expressions": 1,
+            "solved_equations": 0,
+            "differentiated": 0,
+            "integrated": 0,
+            "equivalence_checks": 0,
+            "numpy_finite_ratio": 1.0
+          }
+        ],
+        "sympy_used": true,
+        "numpy_used": true,
+        "local_sympy_numpy_enabled": true,
+        "provider_chain": [
+          "openai"
+        ],
+        "providers_attempted": [
+          "openai"
+        ],
+        "ollama_attempted": false,
+        "ollama_fallback_to_openai": false,
+        "billing_settlement": {
+          "hold_id": 111,
+          "status": "settled",
+          "charged_total_credits": 4.0
+        },
+        "workload_billing": {
+          "billing_version": "work_units_v1",
+          "context_credits": 1.0,
+          "per_task_credits": {
+            "t1": 3.0
+          },
+          "bundle_factor": 0.85,
+          "estimated_total_credits": 4.0,
+          "charged_total_credits": 4.0,
+          "selected_task_ids": [
+            "t1"
+          ],
+          "breakdown_reasons": {
+            "t1": [
+              "base_task=1",
+              "graphing=+2"
+            ]
+          },
+          "original_input_hash": "bcfb9290918e83fbe83c526e5aa391a214d27b4c551b6ee40f8767e846641d6b"
+        }
+      }
+    },
+    "raw": "{\"telemetry\": {\"request_id\": \"std-check-7246017b-6681-46ca-a851-4f9622194f7b\", \"attempt_id\": \"ef338ce3-2299-43b7-97a8-647660a78c92\", \"tier\": \"STANDARD\", \"questions_count\": 1, \"allow_auto_split_effective\": false, \"model\": \"gpt-5-mini-2025-08-07\", \"provider\": \"openai\", \"input_tokens\": 4926, \"output_tokens\": 3044, \"total_tokens\": 7970, \"latency_ms_openai\": 47289, \"latency_ms_total\": 47310, \"schema_name\": \"youask_math_openai_detailed_v2\", \"schema_version\": \"v2\", \"model_bound\": \"gpt-5-mini\", \"temperature_bound\": 0.0, \"top_p_bound\": 1.0, \"timeout_ms_bound\": 180000, \"max_questions_allowed_bound\": 1, \"prompt_binding_id\": \"d11d98c8-569e-4089-9b71-aebe8c6d92af\", \"global_system_prompt_id\": \"global_system_prompt_openai_v1\", \"developer_prompt_id\": \"solve_dev_detalied_openai_v1\", \"output_schema_id\": \"youask_math_openai_detailed_v2\", \"openai_calls_count\": 1, \"openai_prompt_id\": \"pmpt_699c1d0dcb08819598146751dce7657d08b7369fb62b9fb2\", \"openai_prompt_version\": \"latest\", \"openai_prompt_use_latest\": true, \"openai_prompt_variables_used\": true, \"openai_prompt_cache_key\": \"pbk:4b9c8b3afa3ed0b7ff740c86d46d37d4c70e1f6b1c9e5dd2\", \"openai_prompt_cache_retention\": null, \"repair_attempted\": false, \"schema_valid\": true, \"sympy_numpy_reports\": [{\"question_id\": \"q1\", \"sympy_used\": true, \"numpy_used\": true, \"parsed_expressions\": 1, \"solved_equations\": 0, \"differentiated\": 0, \"integrated\": 0, \"equivalence_checks\": 0, \"numpy_finite_ratio\": 1.0}], \"sympy_used\": true, \"numpy_used\": true, \"local_sympy_numpy_enabled\": true, \"provider_chain\": [\"openai\"], \"providers_attempted\": [\"openai\"], \"ollama_attempted\": false, \"ollama_fallback_to_openai\": false, \"billing_settlement\": {\"hold_id\": 111, \"status\": \"settled\", \"charged_total_credits\": 4.0}, \"workload_billing\": {\"billing_version\": \"work_units_v1\", \"context_credits\": 1.0, \"per_task_credits\": {\"t1\": 3.0}, \"bundle_factor\": 0.85, \"estimated_total_credits\": 4.0, \"charged_total_credits\": 4.0, \"selected_task_ids\": [\"t1\"], \"breakdown_reasons\": {\"t1\": [\"base_task=1\", \"graphing=+2\"]}, \"original_input_hash\": \"bcfb9290918e83fbe83c526e5aa391a214d27b4c551b6ee40f8767e846641d6b\"}}}"
+  },
+  {
+    "event": "done",
+    "data": {
+      "ok": true,
+      "session_id": 72,
+      "message_id": 136
+    },
+    "raw": "{\"ok\": true, \"session_id\": 72, \"message_id\": 136}"
+  }
+]

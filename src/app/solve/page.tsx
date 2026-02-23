@@ -141,7 +141,31 @@ interface VoiceFeatures {
     voice_transcript_confidence?: number;
 }
 
-const ALL_SOLVE_TIERS: SolveTier[] = ["SHORT_STEPS", "FINAL", "STANDARD", "RESEARCH"];
+const ALL_SOLVE_TIERS: SolveTier[] = ["SHORT_STEPS", "FINAL", "STANDARD"];
+const MAX_TASKS_PER_QUESTION = 15;
+const SHORT_FINAL_MAX_TASKS = 3;
+
+const detectExplicitTaskCount = (text: string): number => {
+    const src = String(text || "");
+    const header = src.match(/(?:^|\n)\s*(Tasks|Instructions|Steps|Do the following|Part)\s*:\s*/i);
+    const body = (!header || header.index == null)
+        ? src
+        : src.slice(header.index + header[0].length);
+    const lines = body.split(/\r?\n/);
+    let count = 0;
+    for (const line of lines) {
+        if (/^\s*(\d+[.)]|[-*\u2022])\s+/.test(line)) count += 1;
+    }
+    if (count <= 0) {
+        const regexCount = (body.match(/(?:^|\\n|\n)\s*(?:\d+[.)]|[-*\u2022])\s+/g) || []).length;
+        if (regexCount > 0) count = regexCount;
+    }
+    if (count <= 0) {
+        const inlineCount = (body.match(/\b\d+[.)]\s+/g) || []).length;
+        if (inlineCount > 0) count = inlineCount;
+    }
+    return count;
+};
 
 const formatBatchFinalAnswer = (value: unknown): string => {
     if (typeof value === "string") return value;
@@ -922,11 +946,20 @@ export default function DashboardPage() {
     // Tier-Aware Solve State
     const selectedGoal = 'solve';
     const [selectedSolveTier, setSelectedSolveTier] = useState<SolveTier>("SHORT_STEPS");
-    const isPlotLockedByTier = selectedSolveTier === "FINAL";
+    const explicitTaskCountRaw = useMemo(() => detectExplicitTaskCount(query), [query]);
+    const explicitTaskCountCapped = useMemo(
+        () => Math.min(MAX_TASKS_PER_QUESTION, Math.max(0, explicitTaskCountRaw)),
+        [explicitTaskCountRaw],
+    );
+    const exceedsMaxTasks = explicitTaskCountRaw > MAX_TASKS_PER_QUESTION;
+    const mustForceDetailedTier = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL")
+        && explicitTaskCountCapped > SHORT_FINAL_MAX_TASKS;
+    const effectiveSolveTier: SolveTier = mustForceDetailedTier ? "STANDARD" : selectedSolveTier;
+    const isPlotLockedByTier = effectiveSolveTier === "FINAL";
     const resolveSessionRoute = useCallback((sessionId: string | number) =>
-        (selectedSolveTier === "FINAL" || selectedSolveTier === "SHORT_STEPS")
+        (effectiveSolveTier === "FINAL" || effectiveSolveTier === "SHORT_STEPS")
             ? `/chat_final/${sessionId}`
-            : `/chat/${sessionId}`, [selectedSolveTier]);
+            : `/chat/${sessionId}`, [effectiveSolveTier]);
     const resolveHistorySessionRoute = (session: ChatSession) => {
         const telemetry = session?.telemetry;
         const rawTier =
@@ -1015,7 +1048,7 @@ export default function DashboardPage() {
         return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : null;
     }, [estimate?.max_questions_allowed]);
     const currentTaskBundle = useMemo(() => {
-        const maxTasks = Math.max(1, maxQuestionsAllowed ?? 15);
+        const maxTasks = MAX_TASKS_PER_QUESTION;
         const splitsForTasks = activeTab === "text"
             ? (suggestedSplits.length > 0 ? suggestedSplits : multiQuestionResult.suggestedSplits)
             : [];
@@ -1037,7 +1070,7 @@ export default function DashboardPage() {
             tasks_truncated: effective.length > capped.length,
             tasks_truncated_from: effective.length > capped.length ? effective.length : null,
         };
-    }, [activeTab, suggestedSplits, multiQuestionResult.suggestedSplits, query, selectedTaskIds, maxQuestionsAllowed]);
+    }, [activeTab, suggestedSplits, multiQuestionResult.suggestedSplits, query, selectedTaskIds]);
     const estimateBreakdown = useMemo(() => {
         if (!estimate?.breakdown) return undefined;
         const raw = estimate.breakdown as Record<string, unknown>;
@@ -1071,6 +1104,9 @@ export default function DashboardPage() {
     const creditBlockReason = readyWallet && estimatedSolveCost != null && !hasEnoughCredits
         ? `Insufficient credits. Need ${estimatedSolveCost.toFixed(2)} credits.`
         : null;
+    const taskBlockReason = exceedsMaxTasks
+        ? `Maximum ${MAX_TASKS_PER_QUESTION} tasks per question. Detected ${explicitTaskCountRaw}.`
+        : null;
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -1080,8 +1116,12 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
-        if (stored === "SHORT_STEPS" || stored === "FINAL") {
-            setSelectedSolveTier(stored);
+        if (stored === "RESEARCH") {
+            setSelectedSolveTier("STANDARD");
+            return;
+        }
+        if (stored === "SHORT_STEPS" || stored === "FINAL" || stored === "STANDARD") {
+            setSelectedSolveTier(stored as SolveTier);
         }
     }, []);
 
@@ -1089,9 +1129,9 @@ export default function DashboardPage() {
         if (!walletReady) return;
         const stored = typeof window !== "undefined" ? localStorage.getItem("uask.solveTier") : null;
         const defaultTier: SolveTier =
-            stored === "SHORT_STEPS" || stored === "FINAL"
-                ? stored
-                : "SHORT_STEPS";
+            stored === "SHORT_STEPS" || stored === "FINAL" || stored === "STANDARD"
+                ? (stored as SolveTier)
+                : "STANDARD";
         setSelectedSolveTier(defaultTier);
         if (typeof window !== "undefined" && !stored) {
             localStorage.setItem("uask.solveTier", defaultTier);
@@ -1150,19 +1190,33 @@ export default function DashboardPage() {
 
     useEffect(() => {
         if (!readyWallet) return;
-        const selectedTierBlockedByCredits = !canAffordTier(selectedSolveTier);
+        const selectedTierBlockedByCredits = !canAffordTier(effectiveSolveTier);
         if (!selectedTierBlockedByCredits) return;
 
-        const fallbackOrder: SolveTier[] = ["FINAL", "SHORT_STEPS"];
+        const fallbackOrder: SolveTier[] = ["STANDARD", "FINAL", "SHORT_STEPS"];
         const fallback = fallbackOrder.find((tier) => {
             return canAffordTier(tier);
-        }) || "SHORT_STEPS";
+        }) || "STANDARD";
         setSelectedSolveTier(fallback);
         if (typeof window !== "undefined") {
             localStorage.setItem("uask.solveTier", fallback);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [readyWallet?.computed_balance, tierEstimateByTier, selectedSolveTier]);
+    }, [readyWallet?.computed_balance, tierEstimateByTier, effectiveSolveTier]);
+
+    useEffect(() => {
+        if (!mustForceDetailedTier) return;
+        if (selectedSolveTier === "STANDARD") return;
+        setSelectedSolveTier("STANDARD");
+        if (typeof window !== "undefined") {
+            localStorage.setItem("uask.solveTier", "STANDARD");
+        }
+        pushToast({
+            type: "info",
+            title: "Tier Auto-Upgraded",
+            message: "Questions with more than 3 tasks require Standard tier.",
+        });
+    }, [mustForceDetailedTier, selectedSolveTier, pushToast]);
 
     useEffect(() => {
         if (!tokenPolicyReady) return;
@@ -1170,7 +1224,7 @@ export default function DashboardPage() {
             try {
                 const inputType = activeTab === "snap" ? "snap" : activeTab === "voice" ? "voice" : "text";
                 const response = await fetchCreditsEstimate({
-                    tier: selectedSolveTier,
+                    tier: effectiveSolveTier,
                     input_type: inputType,
                     asset_type: activeTab === "snap" ? "image" : "none",
                     question_count: estimatedQuestionCount,
@@ -1194,7 +1248,7 @@ export default function DashboardPage() {
             }
         };
         void runEstimate();
-    }, [tokenPolicyReady, selectedSolveTier, activeTab, estimatedQuestionCount, graphMode, tierFeatureGates.allow_plot, isPlotLockedByTier, query, currentTaskBundle, taskUserAction, multiQuestionResult.confidence]);
+    }, [tokenPolicyReady, effectiveSolveTier, activeTab, estimatedQuestionCount, graphMode, tierFeatureGates.allow_plot, isPlotLockedByTier, query, currentTaskBundle, taskUserAction, multiQuestionResult.confidence]);
 
     useEffect(() => {
         if (isPlotLockedByTier && graphMode !== "off") {
@@ -1205,8 +1259,8 @@ export default function DashboardPage() {
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
-        const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
-        void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
+        const requestedMode = (effectiveSolveTier === "SHORT_STEPS" || effectiveSolveTier === "FINAL") ? "minimal" : "detailed";
+        void fetchSolveRuntimeMeta(userId, effectiveSolveTier, requestedMode)
             .then((runtimeMeta) => {
                 const gates = {
                     allow_verify: runtimeMeta.features?.allow_verify ?? true,
@@ -1221,7 +1275,7 @@ export default function DashboardPage() {
                 // Keep last known gates on fetch failure.
             });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedSolveTier, graphMode, isPlotLockedByTier]);
+    }, [effectiveSolveTier, graphMode, isPlotLockedByTier]);
 
     useEffect(() => {
         const userId = localStorage.getItem("user_id");
@@ -1595,7 +1649,7 @@ export default function DashboardPage() {
     };
 
     const buildTaskBundleFromText = useCallback((inputText: string, splits: string[]) => {
-        const maxTasks = Math.max(1, maxQuestionsAllowed ?? 15);
+        const maxTasks = MAX_TASKS_PER_QUESTION;
         const cleanedSplits = (splits || [])
             .map((s) => String(s || "").trim())
             .filter((s) => s.length > 0);
@@ -1613,7 +1667,7 @@ export default function DashboardPage() {
             tasks_truncated: effective.length > capped.length,
             tasks_truncated_from: effective.length > capped.length ? effective.length : null,
         };
-    }, [maxQuestionsAllowed]);
+    }, []);
 
     useEffect(() => {
         if (!query) {
@@ -1655,6 +1709,15 @@ export default function DashboardPage() {
             pushToast({
                 title: "Insufficient credits",
                 message: creditBlockReason || "Please top up your wallet before solving.",
+                type: "error",
+            });
+            return;
+        }
+        if (taskBlockReason) {
+            setInputError(taskBlockReason);
+            pushToast({
+                title: "Too many tasks",
+                message: taskBlockReason,
                 type: "error",
             });
             return;
@@ -1737,10 +1800,10 @@ export default function DashboardPage() {
 
         try {
             const streamCandidates = ["/api/v1/solve_v3_stream"];
-            const requestedMode = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed";
+            const requestedMode = (effectiveSolveTier === "SHORT_STEPS" || effectiveSolveTier === "FINAL") ? "minimal" : "detailed";
             const idempotencyKey = createIdempotencyKey();
 
-            void fetchSolveRuntimeMeta(userId, selectedSolveTier, requestedMode)
+            void fetchSolveRuntimeMeta(userId, effectiveSolveTier, requestedMode)
                 .then((runtimeMeta) => {
                     setStreamingMeta((prev) => ({ ...(prev || {}), ...runtimeMeta }));
                 })
@@ -1793,7 +1856,7 @@ export default function DashboardPage() {
                             solve_mode: String(solve_mode || (taskUserAction === "combined_solution" ? "BUNDLE_COMBINED" : "PER_TASK_STEPS")),
                             detection_confidence: String(detection_confidence || multiQuestionResult.confidence || "low"),
                             requested_mode: requestedMode,
-                            tier: mapTierToApi(selectedSolveTier),
+                            tier: mapTierToApi(effectiveSolveTier),
                             source_type,
                             source_id,
                             question_text,
@@ -2077,14 +2140,12 @@ export default function DashboardPage() {
                         {/* Tier-Aware Controls Section */}
                         <div className={`${tierSectionColor} dark:bg-slate-900 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-800 p-5 md:p-6 relative overflow-hidden transition-colors duration-1000`}>
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-cyan-50/70 via-white/0 to-blue-50/60 dark:from-cyan-900/10 dark:via-transparent dark:to-blue-900/10" />
-                            {maxQuestionsAllowed && (
-                                <div className="absolute right-4 top-4 z-10">
-                                    <p className="inline-flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
-                                        <span className="material-symbols-outlined text-[14px]">rule</span>
-                                        Max Tasks per Question: <span className="font-black">{maxQuestionsAllowed}</span>
-                                    </p>
-                                </div>
-                            )}
+                            <div className="absolute right-4 top-4 z-10">
+                                <p className="inline-flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+                                    <span className="material-symbols-outlined text-[14px]">rule</span>
+                                    Max Tasks per Question: <span className="font-black">{MAX_TASKS_PER_QUESTION}</span>
+                                </p>
+                            </div>
                             <div className="relative grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-stretch">
                                 <div className="md:col-span-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/85 dark:bg-slate-950/60 p-4">
                                     <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Goal</p>
@@ -2100,8 +2161,8 @@ export default function DashboardPage() {
                                         <span className="inline-flex items-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-200">
                                             Tier
                                         </span>
-                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${selectedSolveTier === "FINAL" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"}`}>
-                                            {selectedSolveTier === "FINAL" ? "Final Answer" : "Steps & Plot"}
+                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${effectiveSolveTier === "FINAL" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"}`}>
+                                            {effectiveSolveTier === "FINAL" ? "Final Answer" : effectiveSolveTier === "STANDARD" ? "Detailed Steps" : "Steps & Plot"}
                                         </span>
                                     </div>
 
@@ -2122,20 +2183,38 @@ export default function DashboardPage() {
                                                 value: "FINAL",
                                                 label: "Final Answer",
                                                 icon: "bolt",
-                                                disabled: !canAffordTier("FINAL"),
-                                                tooltip: !canAffordTier("FINAL") ? `Need ${Number(tierEstimateByTier.FINAL || 0).toFixed(2)} credits.` : undefined,
+                                                disabled: !canAffordTier("FINAL") || explicitTaskCountCapped > SHORT_FINAL_MAX_TASKS,
+                                                tooltip: explicitTaskCountCapped > SHORT_FINAL_MAX_TASKS
+                                                    ? `More than ${SHORT_FINAL_MAX_TASKS} tasks requires Standard tier.`
+                                                    : (!canAffordTier("FINAL") ? `Need ${Number(tierEstimateByTier.FINAL || 0).toFixed(2)} credits.` : undefined),
                                             },
                                             {
                                                 value: "SHORT_STEPS",
                                                 label: "Steps & Plot",
                                                 icon: "bolt",
-                                                disabled: !canAffordTier("SHORT_STEPS"),
-                                                tooltip: !canAffordTier("SHORT_STEPS") ? `Need ${Number(tierEstimateByTier.SHORT_STEPS || 0).toFixed(2)} credits.` : undefined,
+                                                disabled: !canAffordTier("SHORT_STEPS") || explicitTaskCountCapped > SHORT_FINAL_MAX_TASKS,
+                                                tooltip: explicitTaskCountCapped > SHORT_FINAL_MAX_TASKS
+                                                    ? `More than ${SHORT_FINAL_MAX_TASKS} tasks requires Standard tier.`
+                                                    : (!canAffordTier("SHORT_STEPS") ? `Need ${Number(tierEstimateByTier.SHORT_STEPS || 0).toFixed(2)} credits.` : undefined),
+                                            },
+                                            {
+                                                value: "STANDARD",
+                                                label: "Detailed",
+                                                icon: "tune",
+                                                disabled: !canAffordTier("STANDARD"),
+                                                tooltip: !canAffordTier("STANDARD") ? `Need ${Number(tierEstimateByTier.STANDARD || 0).toFixed(2)} credits.` : undefined,
                                             },
                                         ]}
                                         value={selectedSolveTier}
                                         onChange={(v) => {
-                                            if (v === "SHORT_STEPS" || v === "FINAL") {
+                                            if (v === "SHORT_STEPS" || v === "FINAL" || v === "STANDARD") {
+                                                if (explicitTaskCountCapped > SHORT_FINAL_MAX_TASKS && (v === "SHORT_STEPS" || v === "FINAL")) {
+                                                    setSelectedSolveTier("STANDARD");
+                                                    if (typeof window !== "undefined") {
+                                                        localStorage.setItem("uask.solveTier", "STANDARD");
+                                                    }
+                                                    return;
+                                                }
                                                 setSelectedSolveTier(v as SolveTier);
                                                 if (typeof window !== "undefined") {
                                                     localStorage.setItem("uask.solveTier", v);
@@ -2145,6 +2224,11 @@ export default function DashboardPage() {
                                         size="sm"
                                         className="solve-segmented mt-3"
                                     />
+                                    {explicitTaskCountRaw > 0 && (
+                                        <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                                            Detected tasks: <span className="font-semibold">{explicitTaskCountRaw}</span> (max {MAX_TASKS_PER_QUESTION})
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -2328,7 +2412,7 @@ export default function DashboardPage() {
                                                     }
                                                     handleSolve(text);
                                                 }}
-                                                requestedMode={selectedSolveTier === "RESEARCH" ? "detailed" : "minimal"}
+                                                requestedMode={(selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL") ? "minimal" : "detailed"}
                                             />
                                         )}
                                     </div>
@@ -2591,8 +2675,8 @@ export default function DashboardPage() {
                                                         <button
                                                             onClick={() => handleSolve()}
                                                             data-testid="solve-submit-button"
-                                                            disabled={isSolving || isInputTooShort(query) || !!tokenBlockReason || isBlockingInputError(inputError) || !hasEnoughCredits}
-                                                            title={tokenBlockReason || creditBlockReason || undefined}
+                                                            disabled={isSolving || isInputTooShort(query) || !!tokenBlockReason || !!taskBlockReason || isBlockingInputError(inputError) || !hasEnoughCredits}
+                                                            title={taskBlockReason || tokenBlockReason || creditBlockReason || undefined}
                                                             className="relative flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg shadow-primary/25 text-sm overflow-hidden"
                                                         >
                                                             {isSolving && (

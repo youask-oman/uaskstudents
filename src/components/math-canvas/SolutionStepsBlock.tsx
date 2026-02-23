@@ -3,6 +3,8 @@
 import React from "react";
 import type { Editor } from "@tiptap/core";
 import MathRenderer from "@/components/math/MathJaxRenderer";
+import CodeBlock from "@/components/code/CodeBlock";
+import PlotCard from "@/components/plot/PlotCard";
 import TypingPlaybackMessage from "./TypingPlaybackMessage";
 import ChatLikeSolvePlayer from "@/components/solve/ChatLikeSolvePlayer";
 import RichTextElementEditor from "./RichTextElementEditor";
@@ -20,6 +22,8 @@ interface SolutionStepsBlockProps {
   playbackFallbackContent?: string;
   playbackSegments?: PlaybackSegment[];
   playbackSource?: string;
+  plotPayload?: Record<string, unknown>;
+  pythonCode?: string;
   result?: string;
   finalAnswer?: FinalAnswer;
   verificationChecks?: VerificationCheck[];
@@ -183,6 +187,8 @@ export default function SolutionStepsBlock({
   playbackFallbackContent,
   playbackSegments,
   playbackSource,
+  plotPayload,
+  pythonCode,
   result,
   finalAnswer,
   verificationChecks,
@@ -317,6 +323,12 @@ export default function SolutionStepsBlock({
   const displayAnswerText = finalAnswer?.answer_text || "";
   const displayAnswerLatex = finalAnswer?.answer_latex || result || "";
   const displayValues = finalAnswer?.values || [];
+  const plotAttemptId =
+    plotPayload && typeof plotPayload.attempt_id === "string"
+      ? String(plotPayload.attempt_id)
+      : undefined;
+  const hasPlotPayload = Boolean(plotPayload && (plotPayload.recipe || plotPayload.should_visualize !== undefined));
+  const hasPythonCode = Boolean((pythonCode || "").trim());
   const hasShortSections = shortPaper && Array.isArray(shortSections) && shortSections.length > 0;
   const hasShortSource = shortPaper && Array.isArray(shortSource?.sections) && shortSource.sections.length > 0;
   const hasPlaybackSource =
@@ -462,6 +474,16 @@ export default function SolutionStepsBlock({
             <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No final answer provided.</div>
           )}
         </SectionRow>
+        {hasPlotPayload ? (
+          <SectionRow label="PLOT" id={`${sectionId}-plot`} hideLabel={false}>
+            <PlotCard plot={plotPayload || null} attemptId={plotAttemptId} playbackVisible={true} />
+          </SectionRow>
+        ) : null}
+        {hasPythonCode ? (
+          <SectionRow label="PYTHON" id={`${sectionId}-python`} hideLabel={false}>
+            <CodeBlock code={String(pythonCode || "")} language="python" />
+          </SectionRow>
+        ) : null}
       </div>
     );
   }
@@ -549,6 +571,16 @@ export default function SolutionStepsBlock({
             <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No final answer provided.</div>
           )}
         </SectionRow>
+        {hasPlotPayload ? (
+          <SectionRow label="PLOT" id={`${sectionId}-plot`} hideLabel={false}>
+            <PlotCard plot={plotPayload || null} attemptId={plotAttemptId} playbackVisible={true} />
+          </SectionRow>
+        ) : null}
+        {hasPythonCode ? (
+          <SectionRow label="PYTHON" id={`${sectionId}-python`} hideLabel={false}>
+            <CodeBlock code={String(pythonCode || "")} language="python" />
+          </SectionRow>
+        ) : null}
       </div>
     );
   }
@@ -1016,6 +1048,18 @@ export default function SolutionStepsBlock({
           </div>
         )}
       </SectionRow>
+
+      {hasPlotPayload ? (
+        <SectionRow label="PLOT" id={`${sectionId}-plot`} hideLabel={hideStepLabels}>
+          <PlotCard plot={plotPayload || null} attemptId={plotAttemptId} playbackVisible={true} />
+        </SectionRow>
+      ) : null}
+
+      {hasPythonCode ? (
+        <SectionRow label="PYTHON" id={`${sectionId}-python`} hideLabel={hideStepLabels}>
+          <CodeBlock code={String(pythonCode || "")} language="python" />
+        </SectionRow>
+      ) : null}
 
       {/* Verification */}
       {Array.isArray(verificationChecks) && verificationChecks.length > 0 && (

@@ -1799,17 +1799,22 @@ def _post_assertions(
             problem = item.get("problem") if isinstance(item.get("problem"), dict) else {}
             expected_text = qin["question_text"]
             got_text = str(problem.get("original_text") or "")
+            # Always persist canonical original_text from input question so UI/header rendering
+            # remains stable even when model summarizes or truncates the question text.
             if _normalize_question_text(got_text) != _normalize_question_text(expected_text):
-                # Do not fail the entire request for benign model reformatting.
-                # Keep downstream UI stable by forcing canonical original_text from input.
                 logger.warning(
                     "batch_original_text_mismatch_normalized item=%s expected=%r got=%r",
                     idx,
                     expected_text,
                     got_text,
                 )
+            if "original_text" in problem_props:
                 problem["original_text"] = expected_text
-                item["problem"] = problem
+            if "normalized_text" in problem_props:
+                normalized_text = str(problem.get("normalized_text") or "").strip()
+                if not normalized_text:
+                    problem["normalized_text"] = expected_text
+            item["problem"] = problem
             detected_tasks = problem.get("detected_tasks") if isinstance(problem.get("detected_tasks"), list) else []
         elif "classification" in solve_item_props:
             classification_obj = item.get("classification") if isinstance(item.get("classification"), dict) else {}
@@ -2260,17 +2265,28 @@ async def execute_batch_solve(
             "DOMAIN_MODE": runtime_domain,
             "PREFERRED_RESPONSE_LANGUAGE": runtime_lang,
             "MAX_QUESTIONS": max_questions_allowed,
+            "QUESTION": str((normalized_questions[0] or {}).get("question_text") or "").strip() if normalized_questions else "",
+            "QUESTIONS_JSON": questions_json_text_compact,
         },
     )
     if not managed_prompt_cache_key and managed_prompt_id:
+        question_fingerprint = hashlib.sha256(questions_json_text_compact.encode("utf-8")).hexdigest()[:24]
         raw_fallback_cache_key = (
             f"solve:{managed_prompt_id}:{managed_prompt_version or 'latest'}:"
-            f"{external_tier}:{runtime_mode}:{runtime_graph}:{runtime_domain}:{runtime_lang}"
+            f"{external_tier}:{runtime_mode}:{runtime_graph}:{runtime_domain}:{runtime_lang}:{question_fingerprint}:{runtime_request_id}"
         )
         if len(raw_fallback_cache_key) <= 64:
             managed_prompt_cache_key = raw_fallback_cache_key
         else:
             managed_prompt_cache_key = "pbk:" + hashlib.sha256(raw_fallback_cache_key.encode("utf-8")).hexdigest()[:48]
+    if managed_prompt_id and managed_prompt_cache_key:
+        # Enforce request-scoped cache key to prevent stale payload replay across requests.
+        if runtime_request_id not in managed_prompt_cache_key:
+            request_scoped_key = f"{managed_prompt_cache_key}:{runtime_request_id}"
+            if len(request_scoped_key) <= 64:
+                managed_prompt_cache_key = request_scoped_key
+            else:
+                managed_prompt_cache_key = "pbk:" + hashlib.sha256(request_scoped_key.encode("utf-8")).hexdigest()[:48]
     managed_prompt_variables = (
         _build_managed_prompt_variables(
             managed_prompt_variable_mapping,
@@ -2364,6 +2380,9 @@ async def execute_batch_solve(
     max_steps_value = int(_bget("max_steps") or binding_features_prompt.get("max_steps") or _tier_default_max_steps(external_tier))
     step_style_value = str(binding_features_prompt.get("step_style") or _tier_default_step_style(external_tier)).strip()
     include_task_results_value = _to_bool_text(binding_features_prompt.get("include_task_results"), True)
+    # Enforce task results for SHORT_STEPS so multi-task prompts stay traceable end-to-end.
+    if external_tier == "SHORT_STEPS":
+        include_task_results_value = "true"
     prefer_exact_value = _to_bool_text(binding_features_prompt.get("prefer_exact"), False)
     user_prompt_ctx = _resolve_user_prompt_context(
         session=session,
@@ -2653,6 +2672,8 @@ async def execute_batch_solve(
     # Preserve order and remove accidental duplicates.
     seen: set[str] = set()
     provider_candidates = [p for p in provider_candidates if not (p in seen or seen.add(p))]
+    # Hard-stop on first provider attempt: no retry/re-attempt fallback chain.
+    provider_candidates = provider_candidates[:1]
     provider_name = provider_candidates[0]
     client = llm_manager.get_client(provider_name)
     binding_features = _bget("features") if isinstance(_bget("features"), dict) else {}
@@ -2671,7 +2692,8 @@ async def execute_batch_solve(
     bound_max_output_tokens = int(_bget("max_output_tokens") or 0)
     if bound_max_output_tokens < 1:
         # Keep runtime resilient for legacy bindings missing this field.
-        bound_max_output_tokens = 5000
+        # STANDARD defaults to 20000, others to 5000.
+        bound_max_output_tokens = 20000 if external_tier == "STANDARD" else 5000
     max_tokens = int(max_output_tokens) if max_output_tokens is not None else bound_max_output_tokens
     bound_temperature = float(_bget("temperature") or 0.0)
     bound_top_p = float(_bget("top_p") or 1.0)
@@ -2818,10 +2840,8 @@ async def execute_batch_solve(
             managed_prompt_input=(managed_prompt_input if (provider_name == "openai" and managed_prompt_active) else None),
             prompt_cache_key=(managed_prompt_cache_key if (provider_name == "openai" and managed_prompt_active and managed_prompt_cache_key) else None),
             prompt_cache_retention=(managed_prompt_cache_retention if (provider_name == "openai" and managed_prompt_active and managed_prompt_cache_retention) else None),
+            require_managed_prompt_variables=bool(provider_name == "openai" and managed_prompt_active and external_tier == "STANDARD"),
         )
-
-    def _provider_fallback_allowed() -> bool:
-        return external_tier in {"SHORT_STEPS", "FINAL"} and _allow_openai_fallback_for_ollama_first_tiers()
 
     async def _parse_validate_response(initial_response: Any) -> Tuple[Dict[str, Any], Any, bool]:
         nonlocal provider_raw_text, provider_raw_payload
@@ -2836,23 +2856,7 @@ async def execute_batch_solve(
         response_local = initial_response
         _capture_provider_raw(response_local)
         validator = Draft202012Validator(schema_body)
-        output_tokens = int((response_local.usage or {}).get("output") or 0)
         repair_attempted_local = False
-        if output_tokens == 0 and not relaxed_short_final:
-            # One controlled retry for zero-completion responses (common transient failure mode).
-            try:
-                response_local = await _call_provider(request_id_suffix=":retry1")
-                _capture_provider_raw(response_local)
-            except LLMProviderError as exc:
-                raise BatchSolveError(
-                    "Provider retry failed after zero-completion response.",
-                    status_code=502,
-                    code=f"{provider_name}_retry_failed",
-                    details={
-                        "message": str(exc),
-                        "provider_details": getattr(exc, "details", None),
-                    },
-                ) from exc
 
         raw_local = (response_local.content or "").strip()
         if not raw_local:
@@ -2880,27 +2884,7 @@ async def execute_batch_solve(
                     runtime_max_tasks_per_question=runtime_max_tasks_per_question,
                 )
 
-            def _has_substantive_final_answers(candidate_payload: Dict[str, Any]) -> bool:
-                items = candidate_payload.get("items") or []
-                if not isinstance(items, list) or not items:
-                    return False
-                for item in items:
-                    fa = (item or {}).get("final_answer") or {}
-                    ans_text = str(fa.get("answer_text") or "").strip()
-                    if not _is_substantive_answer_text(ans_text):
-                        return False
-                return True
-
             extracted_payload = _extract_payload_from_text(raw_local)
-            if not _has_substantive_final_answers(extracted_payload) and not relaxed_short_final:
-                try:
-                    response_local = await _call_provider(request_id_suffix=":textretry1")
-                    _capture_provider_raw(response_local)
-                    raw_local = (response_local.content or "").strip()
-                    if raw_local:
-                        extracted_payload = _extract_payload_from_text(raw_local)
-                except Exception:
-                    pass
 
             extracted_errors = [] if relaxed_short_final else sorted(
                 validator.iter_errors(extracted_payload), key=lambda e: e.path
@@ -2926,7 +2910,6 @@ async def execute_batch_solve(
             )
             return extracted_payload, response_local, False
 
-        allow_json_repair_local = False
         payload_local: Optional[Dict[str, Any]] = None
         parse_error_local: Optional[Exception] = None
         try:
@@ -2940,37 +2923,6 @@ async def execute_batch_solve(
                     parse_error_local = None
                 except Exception as inner_exc:
                     parse_error_local = inner_exc
-
-        if payload_local is None and allow_json_repair_local:
-            repair_attempted_local = True
-            repair_context = f"parse_error={parse_error_local}; raw={_preview_text(raw_local, limit=2400)}"
-            try:
-                response_local = await _call_provider(
-                    request_id_suffix=":jsonfix1",
-                    force_json_only=True,
-                    repair_context=repair_context,
-                )
-                _capture_provider_raw(response_local)
-            except LLMProviderError as exc:
-                raise BatchSolveError(
-                    "Provider JSON repair retry failed.",
-                    status_code=502,
-                    code=f"{provider_name}_json_repair_failed",
-                    details={
-                        "message": str(exc),
-                        "provider_details": getattr(exc, "details", None),
-                    },
-                ) from exc
-            raw_local = (response_local.content or "").strip()
-            try:
-                payload_local = json.loads(raw_local)
-            except Exception:
-                candidate = _extract_json_candidate(raw_local)
-                if candidate:
-                    try:
-                        payload_local = json.loads(candidate)
-                    except Exception as inner_exc:
-                        parse_error_local = inner_exc
 
         if payload_local is None:
             if provider_name == "ollama" and _text_extractor_enabled():
@@ -2995,9 +2947,9 @@ async def execute_batch_solve(
                         questions=normalized_questions,
                         tier=external_tier,
                     )
-                    return extracted_payload, response_local, True
+                    return extracted_payload, response_local, False
                 if relaxed_short_final:
-                    return extracted_payload, response_local, True
+                    return extracted_payload, response_local, False
             raise BatchSolveError(
                 "Provider returned invalid JSON payload.",
                 status_code=502,
@@ -3012,56 +2964,6 @@ async def execute_batch_solve(
         errors_local = [] if relaxed_short_final else sorted(
             validator.iter_errors(payload_local), key=lambda e: e.path
         )
-        if errors_local and allow_json_repair_local:
-            repair_attempted_local = True
-            error_summary = _json_error_summary(errors_local)
-            repair_context = f"schema_errors={error_summary}; raw={_preview_text(raw_local, limit=2400)}"
-            try:
-                response_local = await _call_provider(
-                    request_id_suffix=":jsonfix2",
-                    force_json_only=True,
-                    repair_context=repair_context,
-                )
-                _capture_provider_raw(response_local)
-            except LLMProviderError as exc:
-                raise BatchSolveError(
-                    "Provider schema-repair retry failed.",
-                    status_code=502,
-                    code=f"{provider_name}_schema_repair_failed",
-                    details={
-                        "message": str(exc),
-                        "provider_details": getattr(exc, "details", None),
-                    },
-                ) from exc
-            raw_local = (response_local.content or "").strip()
-            try:
-                payload_local = json.loads(raw_local)
-            except Exception:
-                candidate = _extract_json_candidate(raw_local)
-                if not candidate:
-                    raise BatchSolveError(
-                        "Provider returned invalid JSON payload after repair retry.",
-                        status_code=502,
-                        code=f"invalid_{provider_name}_json",
-                        details={
-                            "provider_status": response_local.status,
-                            "raw_preview": _preview_text(raw_local),
-                        },
-                    )
-                try:
-                    payload_local = json.loads(candidate)
-                except Exception as inner_exc:
-                    raise BatchSolveError(
-                        "Provider returned invalid JSON payload after repair retry.",
-                        status_code=502,
-                        code=f"invalid_{provider_name}_json",
-                        details={
-                            "error": str(inner_exc),
-                            "provider_status": response_local.status,
-                            "raw_preview": _preview_text(raw_local),
-                        },
-                    ) from inner_exc
-            errors_local = sorted(validator.iter_errors(payload_local), key=lambda e: e.path)
         if errors_local:
             if provider_name == "ollama" and _text_extractor_enabled():
                 extracted_payload = _extract_ollama_text_payload(
@@ -3127,7 +3029,7 @@ async def execute_batch_solve(
                         questions=normalized_questions,
                         tier=external_tier,
                     )
-                    return extracted_payload, response_local, True
+                    return extracted_payload, response_local, False
             raise
         return payload_local, response_local, repair_attempted_local
 
@@ -3177,21 +3079,7 @@ async def execute_batch_solve(
                 )
             else:
                 last_provider_error = exc
-            has_more = idx < len(provider_candidates) - 1
-            if not (_provider_fallback_allowed() and has_more):
-                raise last_provider_error
-            logger.warning(
-                "Batch solve provider fallback",
-                extra={
-                    "request_id": runtime_request_id,
-                    "attempt_id": runtime_attempt_id,
-                    "tier": external_tier,
-                    "from_provider": provider_name,
-                    "to_provider": provider_candidates[idx + 1] if has_more else None,
-                    "reason_code": getattr(last_provider_error, "code", None),
-                },
-            )
-            continue
+            raise last_provider_error
     if response is None or payload is None:
         if last_provider_error is not None:
             raise last_provider_error

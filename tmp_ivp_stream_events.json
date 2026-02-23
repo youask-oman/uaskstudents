@@ -1,0 +1,40 @@
+[
+  {
+    "event": "meta",
+    "data": {
+      "request_id": "ivp-standard-06a2a638-3e37-4b70-96f5-5160c44ad50e",
+      "attempt_id": "52fcf400-d1ab-4305-90fb-a0033f6e9f0b",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "tier_requested": "standard",
+      "effective_tier": "standard",
+      "tier_enforced": false,
+      "tier_enforced_reason": null,
+      "detected_task_count": 15,
+      "type": "meta"
+    },
+    "raw": "{\"request_id\": \"ivp-standard-06a2a638-3e37-4b70-96f5-5160c44ad50e\", \"attempt_id\": \"52fcf400-d1ab-4305-90fb-a0033f6e9f0b\", \"provider\": \"openai\", \"model\": \"gpt-5-mini\", \"tier_requested\": \"standard\", \"effective_tier\": \"standard\", \"tier_enforced\": false, \"tier_enforced_reason\": null, \"detected_task_count\": 15, \"type\": \"meta\"}"
+  },
+  {
+    "event": "done",
+    "data": {
+      "ok": false,
+      "error": {
+        "code": "invalid_openai_json",
+        "message": "Provider returned invalid JSON payload.",
+        "request_id": "ivp-standard-06a2a638-3e37-4b70-96f5-5160c44ad50e",
+        "attempt_id": "52fcf400-d1ab-4305-90fb-a0033f6e9f0b",
+        "details": {
+          "error": "Expecting ',' delimiter: line 448 column 10 (char 13646)",
+          "provider_status": {
+            "status": "incomplete",
+            "finish_reason": "unknown",
+            "incomplete_reason": "max_output_tokens"
+          },
+          "raw_preview": "{\n  \"attempt_id\": \"eea47c34-ee21-4858-8406-530a1fa0c885\",\n  \"context\": {\n    \"country\": null,\n    \"course\": null,\n    \"curriculum\": null,\n    \"grade_level\": null,\n    \"notation_profile\": null,\n    \"region\": null\n  },\n  \"items\": [\n    {\n      \"clarification\": {\n        \"needs_clarification\": false,\n        \"note\": null,\n        \"questions\": []\n      },\n      \"classification\": {\n        \"detected_tasks\": [\n          \"differential_equations\",\n          \"set_theory\",\n          \"graph\",\n          \"plot\",\n          \"equation\"\n        ],\n        \"domain\": \"differential_equations\"\n      },\n      \"domain_mode\": \"reals\",\n      \"final_answer\": {\n        \"answer_latex\": \"\\\\displaystyle y(x)=\\\\frac{1}{1+4e^{-x}}\",\n        \"answer_text\": \"y(x) = 1 / (1 + 4 e^{-x})\",\n        \"values\": [\n          {\n            \"key\": \"general_solution\",\n            \"latex\": \"\\\\displaystyle y(x)=\\\\frac{Ce^{x}}{1+Ce^{x}}\",\n            \"number\": null,\n            \"text\": \"y(x)=C e^{x}/(1+ C e^{x})\",\n            \"unit\": null\n          },\n          {\n            \"key\": \"particular_C\",\n            \"latex\": \"C=\\\\tfrac{1}{4}\",\n            \"number\": 0.25,\n            \"text\": \"C = 1/4\",\n            \"unit\": null\n          }...<truncated>"
+        }
+      }
+    },
+    "raw": "{\"ok\": false, \"error\": {\"code\": \"invalid_openai_json\", \"message\": \"Provider returned invalid JSON payload.\", \"request_id\": \"ivp-standard-06a2a638-3e37-4b70-96f5-5160c44ad50e\", \"attempt_id\": \"52fcf400-d1ab-4305-90fb-a0033f6e9f0b\", \"details\": {\"error\": \"Expecting ',' delimiter: line 448 column 10 (char 13646)\", \"provider_status\": {\"status\": \"incomplete\", \"finish_reason\": \"unknown\", \"incomplete_reason\": \"max_output_tokens\"}, \"raw_preview\": \"{\\n  \\\"attempt_id\\\": \\\"eea47c34-ee21-4858-8406-530a1fa0c885\\\",\\n  \\\"context\\\": {\\n    \\\"country\\\": null,\\n    \\\"course\\\": null,\\n    \\\"curriculum\\\": null,\\n    \\\"grade_level\\\": null,\\n    \\\"notation_profile\\\": null,\\n    \\\"region\\\": null\\n  },\\n  \\\"items\\\": [\\n    {\\n      \\\"clarification\\\": {\\n        \\\"needs_clarification\\\": false,\\n        \\\"note\\\": null,\\n        \\\"questions\\\": []\\n      },\\n      \\\"classification\\\": {\\n        \\\"detected_tasks\\\": [\\n          \\\"differential_equations\\\",\\n          \\\"set_theory\\\",\\n          \\\"graph\\\",\\n          \\\"plot\\\",\\n          \\\"equation\\\"\\n        ],\\n        \\\"domain\\\": \\\"differential_equations\\\"\\n      },\\n      \\\"domain_mode\\\": \\\"reals\\\",\\n      \\\"final_answer\\\": {\\n        \\\"answer_latex\\\": \\\"\\\\\\\\displaystyle y(x)=\\\\\\\\frac{1}{1+4e^{-x}}\\\",\\n        \\\"answer_text\\\": \\\"y(x) = 1 / (1 + 4 e^{-x})\\\",\\n        \\\"values\\\": [\\n          {\\n            \\\"key\\\": \\\"general_solution\\\",\\n            \\\"latex\\\": \\\"\\\\\\\\displaystyle y(x)=\\\\\\\\frac{Ce^{x}}{1+Ce^{x}}\\\",\\n            \\\"number\\\": null,\\n            \\\"text\\\": \\\"y(x)=C e^{x}/(1+ C e^{x})\\\",\\n            \\\"unit\\\": null\\n          },\\n          {\\n            \\\"key\\\": \\\"particular_C\\\",\\n            \\\"latex\\\": \\\"C=\\\\\\\\tfrac{1}{4}\\\",\\n            \\\"number\\\": 0.25,\\n            \\\"text\\\": \\\"C = 1/4\\\",\\n            \\\"unit\\\": null\\n          }...<truncated>\"}}}"
+  }
+]

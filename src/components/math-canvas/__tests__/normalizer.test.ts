@@ -318,6 +318,91 @@ To verify the identity, we can consider a specific value of \\(x\\). Let's choos
     expect(chartItems).toHaveLength(1);
   });
 
+  test("parses v2 item blocks, task_results, and final_answer values", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: "",
+      structured_data: {
+        schema_name: "youask_math_openai_v2",
+        schema_version: "v2",
+        items: [
+          {
+            question_id: "q1",
+            question_text: "Solve x+1=3",
+            question_summary: "Linear equation",
+            steps: [
+              {
+                index: 1,
+                title: "Solve",
+                blocks: [
+                  { kind: "text", content: "Subtract 1 from both sides." },
+                  { kind: "math", content: "x+1=3 \\Rightarrow x=2" },
+                ],
+              },
+            ],
+            results: {
+              task_results: [
+                {
+                  task_index: 1,
+                  task_label: "Final result",
+                  result_text: "x = 2",
+                  result_latex: "x=2",
+                },
+              ],
+            },
+            final_answer: {
+              answer_text: "x = 2",
+              answer_latex: "x=2",
+              values: [
+                { key: "x", text: "2", latex: "2", number: 2, unit: null },
+              ],
+            },
+            refusal: { is_refusal: false, refusal_code: null, refusal_message: null },
+            clarification: { needs_clarification: false, questions: [], note: null },
+            classification: { domain: "algebra", detected_tasks: ["solve"] },
+            plot: {
+              should_visualize: false,
+              python_code: null,
+              notes: null,
+              recipe: {
+                kind: "none",
+                title: null,
+                x_label: null,
+                y_label: null,
+                x_domain: { min: null, max: null },
+                y_domain: { min: null, max: null },
+                grid: null,
+                axes_lines: null,
+                legend: null,
+                series: [],
+                points: [],
+                shapes: [],
+                layers: [],
+              },
+            },
+            quality: { confidence: 0.9, assumptions: [], warnings: [] },
+            domain_mode: "reals",
+            task_count: 1,
+            tasks: [{ task_index: 1, task_label: "Solve" }],
+          },
+        ],
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 10);
+    const solutionItem = normalized.items.find((item) => item.type === "math_solution");
+    expect(solutionItem).toBeDefined();
+    if (!solutionItem || solutionItem.type !== "math_solution") return;
+    expect(solutionItem.payload.originalProblem).toBe("Linear equation");
+    expect(solutionItem.payload.steps.length).toBeGreaterThanOrEqual(2);
+    expect(solutionItem.payload.steps[0].explanation).toContain("Subtract 1");
+    expect(solutionItem.payload.steps[0].mathLatex).toContain("x=2");
+    expect(solutionItem.payload.steps[1].title).toBe("Final result");
+    expect(solutionItem.payload.finalAnswer?.values?.[0]?.label).toBe("x");
+    expect(solutionItem.payload.finalAnswer?.values?.[0]?.value_latex).toBe("2");
+    expect(solutionItem.payload.finalAnswer?.values?.[0]?.value).toBe(2);
+  });
+
   test("captures recipe expression for equation-style rendering", () => {
     const assistant: SessionMessage = {
       role: "assistant",

@@ -6652,6 +6652,26 @@ async def solve_v3_stream_endpoint(
             "selected_task_ids": selected_ids or [t["task_id"] for t in incoming_tasks],
         }
     unicode_probe = unicode_integrity_probe(raw_problem_text)
+    detected_task_count_raw = int(task_parse.get("detected_task_count_raw") or 0)
+    detected_task_count_capped = int(task_parse.get("task_count_capped") or 0)
+    if detected_task_count_raw <= 0:
+        fallback_src = str(raw_problem_text or "")
+        header_match = re.search(r"(?i)\b(?:tasks|instructions|steps)\s*:", fallback_src)
+        tail = fallback_src[header_match.end() :] if header_match else fallback_src
+        numbered_fallback = len(re.findall(r"(?:^|\\n|\n)\s*(?:\d+[.)]|[-*\u2022])\s+", tail))
+        if numbered_fallback <= 0:
+            numbered_fallback = len(re.findall(r"\b\d+[.)]\s+", tail))
+        if numbered_fallback > 0:
+            detected_task_count_raw = numbered_fallback
+            detected_task_count_capped = min(15, numbered_fallback)
+    requested_tier_internal = _normalize_tier_for_prompt_binding(body.tier)
+    effective_tier_internal = requested_tier_internal
+    tier_enforced_reason: Optional[str] = None
+    if requested_tier_internal in {"SHORT_STEPS", "FINAL"} and detected_task_count_capped > 3:
+        effective_tier_internal = "STANDARD"
+        tier_enforced_reason = "task_count_exceeds_short_final_limit"
+    requested_tier_external = _externalize_tier(requested_tier_internal)
+    effective_tier_external = _externalize_tier(effective_tier_internal)
 
     runtime_questions_json = [
         {
@@ -6672,8 +6692,8 @@ async def solve_v3_stream_endpoint(
         "solve_v3_stream_route_guard request_id=%s detected_has_tasks_header=%s detected_task_count_raw=%s task_count_capped=%s final_question_count=%s final_route=%s unicode_integrity_check=%s first_offending_codepoint=%s",
         request_id,
         bool(task_parse.get("has_tasks_header")),
-        int(task_parse.get("detected_task_count_raw") or 0),
-        int(task_parse.get("task_count_capped") or 0),
+        detected_task_count_raw,
+        detected_task_count_capped,
         1,
         "solve_v3_stream",
         bool(unicode_probe.get("unicode_integrity_check")),
@@ -6692,11 +6712,27 @@ async def solve_v3_stream_endpoint(
             "attempt_id": attempt_id,
             "provider": configured_stream_provider,
             "model": configured_stream_model,
-            "tier_requested": str(body.tier or "short_steps").lower(),
-            "effective_tier": str(body.tier or "short_steps").lower(),
+            "tier_requested": requested_tier_external,
+            "effective_tier": effective_tier_external,
+            "tier_enforced": bool(tier_enforced_reason),
+            "tier_enforced_reason": tier_enforced_reason,
+            "detected_task_count": detected_task_count_capped,
             "type": "meta",
         }
         yield f"event: meta\ndata: {json.dumps(meta_data)}\n\n"
+        if detected_task_count_raw > 15:
+            err = {
+                "code": "too_many_tasks",
+                "message": "Maximum 15 tasks per question.",
+                "request_id": request_id,
+                "attempt_id": attempt_id,
+                "details": {
+                    "detected_task_count_raw": detected_task_count_raw,
+                    "max_tasks_allowed": 15,
+                },
+            }
+            yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
+            return
         if _input_looks_incomplete(raw_problem_text):
             err = {
                 "code": "incomplete_input",
@@ -6740,7 +6776,7 @@ async def solve_v3_stream_endpoint(
                     reserve_result = credit_billing_service.reserve_for_batch_solve(
                         session=session,
                         user_id=user_id,
-                        tier=body.tier or "SHORT_STEPS",
+                        tier=effective_tier_internal,
                         mode=default_mode,
                         modality="text",
                         verify_requested=False,
@@ -6764,7 +6800,7 @@ async def solve_v3_stream_endpoint(
 
             payload, telemetry = await execute_batch_solve(
                 session=session,
-                tier=body.tier or "SHORT_STEPS",
+                tier=effective_tier_internal,
                 request_id=request_id,
                 attempt_id=attempt_id,
                 mode=default_mode,
@@ -6774,7 +6810,7 @@ async def solve_v3_stream_endpoint(
                 questions_json=runtime_questions_json,
                 allow_auto_split=(len(runtime_questions_json) > 1),
                 max_tasks_per_question=15,
-                max_output_tokens=5000,
+                max_output_tokens=(20000 if str(effective_tier_internal or "").upper() == "STANDARD" else None),
                 user_id=user_id,
                 trusted_context=trusted_ctx,
             )
@@ -6841,7 +6877,7 @@ async def solve_v3_stream_endpoint(
                         session=session,
                         request_id=request_id,
                         actual_credits=Decimal(str(workload_billing.get("charged_total_credits") or workload_billing.get("estimated_total_credits") or 1)),
-                        tier=str(body.tier or "SHORT_STEPS").upper(),
+                        tier=effective_tier_internal,
                         provider_cost_usd=Decimal("0"),
                         attempt_id=attempt_id,
                         is_billable=True,
@@ -6881,7 +6917,7 @@ async def solve_v3_stream_endpoint(
                 is_saved=True,
                 learning_mode="solve",
                 requested_mode=(body.requested_mode or "minimal"),
-                solve_tier=str(body.tier or "short_steps").lower(),
+                solve_tier=effective_tier_external,
             )
             session.add(session_row)
             session.commit()

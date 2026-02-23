@@ -1,0 +1,40 @@
+[
+  {
+    "event": "meta",
+    "data": {
+      "request_id": "ivp-standard-18a614b6-16da-4957-a8d0-19fb1a0a2a3a",
+      "attempt_id": "2b0678d3-a538-4218-9675-0b1ad1617ea3",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "tier_requested": "standard",
+      "effective_tier": "standard",
+      "tier_enforced": false,
+      "tier_enforced_reason": null,
+      "detected_task_count": 15,
+      "type": "meta"
+    },
+    "raw": "{\"request_id\": \"ivp-standard-18a614b6-16da-4957-a8d0-19fb1a0a2a3a\", \"attempt_id\": \"2b0678d3-a538-4218-9675-0b1ad1617ea3\", \"provider\": \"openai\", \"model\": \"gpt-5-mini\", \"tier_requested\": \"standard\", \"effective_tier\": \"standard\", \"tier_enforced\": false, \"tier_enforced_reason\": null, \"detected_task_count\": 15, \"type\": \"meta\"}"
+  },
+  {
+    "event": "done",
+    "data": {
+      "ok": false,
+      "error": {
+        "code": "invalid_openai_json",
+        "message": "Provider returned invalid JSON payload.",
+        "request_id": "ivp-standard-18a614b6-16da-4957-a8d0-19fb1a0a2a3a",
+        "attempt_id": "2b0678d3-a538-4218-9675-0b1ad1617ea3",
+        "details": {
+          "error": "Expecting ',' delimiter: line 438 column 10 (char 12952)",
+          "provider_status": {
+            "status": "incomplete",
+            "finish_reason": "unknown",
+            "incomplete_reason": "max_output_tokens"
+          },
+          "raw_preview": "{\n  \"attempt_id\": \"eea47c34-ee21-4858-8406-530a1fa0c885\",\n  \"context\": {\n    \"country\": null,\n    \"course\": null,\n    \"curriculum\": null,\n    \"grade_level\": null,\n    \"notation_profile\": null,\n    \"region\": null\n  },\n  \"items\": [\n    {\n      \"clarification\": {\n        \"needs_clarification\": false,\n        \"note\": null,\n        \"questions\": []\n      },\n      \"classification\": {\n        \"detected_tasks\": [\n          \"solve\",\n          \"set_theory\",\n          \"differential_equations\",\n          \"set_theory\",\n          \"graph\",\n          \"plot\",\n          \"stability_analysis\",\n          \"calculus\",\n          \"geometry_analytic\"\n        ],\n        \"domain\": \"differential_equations\"\n      },\n      \"domain_mode\": \"reals\",\n      \"final_answer\": {\n        \"answer_latex\": null,\n        \"answer_text\": \"Solution: y(x)=1/(1+4 e^{-x}). Equilibria: y=0 (unstable), y=1 (stable). Inflection at x=ln 4. y=0.5 at x=ln 4 (~1.3863). y=0.8 at x=ln 16 (~2.7726).\",\n        \"values\": [\n          {\n            \"key\": \"general_solution\",\n            \"latex\": \"y(x)=\\\\dfrac{Ae^{x}}{1+Ae^{x}}=\\\\dfrac{1}{1+\\\\dfrac{1}{A}e^{-x}}\",\n            \"number\": null,\n            \"text\": \"y(x)=Ae^{x}/(1+Ae^{x})\"\n           ,...<truncated>"
+        }
+      }
+    },
+    "raw": "{\"ok\": false, \"error\": {\"code\": \"invalid_openai_json\", \"message\": \"Provider returned invalid JSON payload.\", \"request_id\": \"ivp-standard-18a614b6-16da-4957-a8d0-19fb1a0a2a3a\", \"attempt_id\": \"2b0678d3-a538-4218-9675-0b1ad1617ea3\", \"details\": {\"error\": \"Expecting ',' delimiter: line 438 column 10 (char 12952)\", \"provider_status\": {\"status\": \"incomplete\", \"finish_reason\": \"unknown\", \"incomplete_reason\": \"max_output_tokens\"}, \"raw_preview\": \"{\\n  \\\"attempt_id\\\": \\\"eea47c34-ee21-4858-8406-530a1fa0c885\\\",\\n  \\\"context\\\": {\\n    \\\"country\\\": null,\\n    \\\"course\\\": null,\\n    \\\"curriculum\\\": null,\\n    \\\"grade_level\\\": null,\\n    \\\"notation_profile\\\": null,\\n    \\\"region\\\": null\\n  },\\n  \\\"items\\\": [\\n    {\\n      \\\"clarification\\\": {\\n        \\\"needs_clarification\\\": false,\\n        \\\"note\\\": null,\\n        \\\"questions\\\": []\\n      },\\n      \\\"classification\\\": {\\n        \\\"detected_tasks\\\": [\\n          \\\"solve\\\",\\n          \\\"set_theory\\\",\\n          \\\"differential_equations\\\",\\n          \\\"set_theory\\\",\\n          \\\"graph\\\",\\n          \\\"plot\\\",\\n          \\\"stability_analysis\\\",\\n          \\\"calculus\\\",\\n          \\\"geometry_analytic\\\"\\n        ],\\n        \\\"domain\\\": \\\"differential_equations\\\"\\n      },\\n      \\\"domain_mode\\\": \\\"reals\\\",\\n      \\\"final_answer\\\": {\\n        \\\"answer_latex\\\": null,\\n        \\\"answer_text\\\": \\\"Solution: y(x)=1/(1+4 e^{-x}). Equilibria: y=0 (unstable), y=1 (stable). Inflection at x=ln 4. y=0.5 at x=ln 4 (~1.3863). y=0.8 at x=ln 16 (~2.7726).\\\",\\n        \\\"values\\\": [\\n          {\\n            \\\"key\\\": \\\"general_solution\\\",\\n            \\\"latex\\\": \\\"y(x)=\\\\\\\\dfrac{Ae^{x}}{1+Ae^{x}}=\\\\\\\\dfrac{1}{1+\\\\\\\\dfrac{1}{A}e^{-x}}\\\",\\n            \\\"number\\\": null,\\n            \\\"text\\\": \\\"y(x)=Ae^{x}/(1+Ae^{x})\\\"\\n           ,...<truncated>\"}}}"
+  }
+]

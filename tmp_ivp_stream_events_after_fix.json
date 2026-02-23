@@ -1,0 +1,40 @@
+[
+  {
+    "event": "meta",
+    "data": {
+      "request_id": "ivp-standard-7b4e5121-43ea-4265-9255-e029631b8a78",
+      "attempt_id": "258396b9-544c-4e08-85fc-c1c2f3956ed5",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "tier_requested": "standard",
+      "effective_tier": "standard",
+      "tier_enforced": false,
+      "tier_enforced_reason": null,
+      "detected_task_count": 15,
+      "type": "meta"
+    },
+    "raw": "{\"request_id\": \"ivp-standard-7b4e5121-43ea-4265-9255-e029631b8a78\", \"attempt_id\": \"258396b9-544c-4e08-85fc-c1c2f3956ed5\", \"provider\": \"openai\", \"model\": \"gpt-5-mini\", \"tier_requested\": \"standard\", \"effective_tier\": \"standard\", \"tier_enforced\": false, \"tier_enforced_reason\": null, \"detected_task_count\": 15, \"type\": \"meta\"}"
+  },
+  {
+    "event": "done",
+    "data": {
+      "ok": false,
+      "error": {
+        "code": "openai_request_failed",
+        "message": "Provider call failed during batch solve.",
+        "request_id": "ivp-standard-7b4e5121-43ea-4265-9255-e029631b8a78",
+        "attempt_id": "258396b9-544c-4e08-85fc-c1c2f3956ed5",
+        "details": {
+          "message": "OpenAI request failed: Request timed out.",
+          "provider_details": {
+            "category": "request_failed",
+            "exception_class": "APITimeoutError",
+            "message": "Request timed out."
+          },
+          "provider": "openai"
+        }
+      }
+    },
+    "raw": "{\"ok\": false, \"error\": {\"code\": \"openai_request_failed\", \"message\": \"Provider call failed during batch solve.\", \"request_id\": \"ivp-standard-7b4e5121-43ea-4265-9255-e029631b8a78\", \"attempt_id\": \"258396b9-544c-4e08-85fc-c1c2f3956ed5\", \"details\": {\"message\": \"OpenAI request failed: Request timed out.\", \"provider_details\": {\"category\": \"request_failed\", \"exception_class\": \"APITimeoutError\", \"message\": \"Request timed out.\"}, \"provider\": \"openai\"}}}"
+  }
+]

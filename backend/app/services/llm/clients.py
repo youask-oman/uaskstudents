@@ -260,7 +260,11 @@ class OpenAIClient:
             from openai import AsyncOpenAI
 
             effective_api_key = self.api_key or ("sk-local" if self.allow_missing_api_key else None)
-            kwargs: Dict[str, Any] = {"api_key": effective_api_key, "timeout": self.timeout_seconds}
+            kwargs: Dict[str, Any] = {
+                "api_key": effective_api_key,
+                "timeout": self.timeout_seconds,
+                "max_retries": 0,
+            }
             if self.base_url:
                 kwargs["base_url"] = self.base_url
             self._client = AsyncOpenAI(**kwargs)
@@ -313,6 +317,7 @@ class OpenAIClient:
         managed_prompt_input: Optional[str] = None,
         prompt_cache_key: Optional[str] = None,
         prompt_cache_retention: Optional[str] = None,
+        require_managed_prompt_variables: bool = False,
     ) -> LLMResponse:
         del stream
         if not self.api_key and not self.allow_missing_api_key and not _openai_dry_run_enabled():
@@ -452,9 +457,19 @@ class OpenAIClient:
                     try:
                         return await _responses_create_with_retry(base_params)
                     except Exception as exc:
+                        err = str(exc or "").lower()
+                        # Compatibility retry: some models reject prompt_cache_retention.
+                        if "prompt_cache_retention" in err and (
+                            "not supported" in err
+                            or "invalid_parameter" in err
+                            or "unknown parameter" in err
+                        ):
+                            retry_params = copy.deepcopy(base_params)
+                            retry_params.pop("prompt_cache_retention", None)
+                            return await _responses_create_with_retry(retry_params)
+
                         if not managed_prompt_active:
                             raise
-                        err = str(exc or "").lower()
                         # One compatibility retry with the alternate prompt key.
                         if (
                             "prompt_id" in err
@@ -582,6 +597,16 @@ class OpenAIClient:
                                     "unexpected keyword argument 'variables'" in top_error
                                     or 'unexpected keyword argument "variables"' in top_error
                                 ):
+                                    if require_managed_prompt_variables:
+                                        raise LLMProviderError(
+                                            "Managed prompt variables are required; input-only fallback is disabled.",
+                                            provider="openai",
+                                            status_code=400,
+                                            details={
+                                                "reason": "managed_prompt_variables_required",
+                                                "top_level_error": str(top_exc),
+                                            },
+                                        )
                                     input_fallback_params = copy.deepcopy(params)
                                     if "input" not in input_fallback_params:
                                         prompt_input_text = str(
@@ -746,6 +771,7 @@ class OpenAIClient:
         managed_prompt_input: Optional[str] = None,
         prompt_cache_key: Optional[str] = None,
         prompt_cache_retention: Optional[str] = None,
+        require_managed_prompt_variables: bool = False,
     ) -> AsyncIterator[LLMStreamResponse]:
         response = await self.generate(
             messages=messages,
@@ -768,6 +794,7 @@ class OpenAIClient:
             managed_prompt_input=managed_prompt_input,
             prompt_cache_key=prompt_cache_key,
             prompt_cache_retention=prompt_cache_retention,
+            require_managed_prompt_variables=require_managed_prompt_variables,
         )
         yield LLMStreamResponse(
             content=response.content,
