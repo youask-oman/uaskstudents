@@ -81,6 +81,7 @@ export function useRenderPlayback(events: RenderEvent[]) {
   const pausedElapsedRef = useRef<number>(0);
   const playingRef = useRef<boolean>(false);
   const cursorRef = useRef<number>(0);
+  const flushUntilNowRef = useRef<() => void>(() => undefined);
 
   const normalized = useMemo(
     () => [...events].sort((a, b) => Number(a.at_ms || 0) - Number(b.at_ms || 0)),
@@ -198,8 +199,11 @@ export function useRenderPlayback(events: RenderEvent[]) {
     const nextAt = Number(normalized[i].at_ms || 0);
     const wait = Math.max(0, nextAt - elapsed);
     clearTimer();
-    timerRef.current = window.setTimeout(flushUntilNow, wait > 0 ? Math.min(wait, 120) : 0);
+    timerRef.current = window.setTimeout(() => flushUntilNowRef.current(), wait > 0 ? Math.min(wait, 120) : 0);
   }, [applyEvent, clearTimer, normalized, setCursorSafe, setPlayingSafe]);
+  useEffect(() => {
+    flushUntilNowRef.current = flushUntilNow;
+  }, [flushUntilNow]);
 
   const play = useCallback(() => {
     if (normalized.length === 0) return;
@@ -249,10 +253,21 @@ export function useRenderPlayback(events: RenderEvent[]) {
   }, [play, stop]);
 
   useEffect(() => {
-    stop();
-    if (normalized.length > 0) play();
+    clearTimer();
+    queueMicrotask(() => {
+      setState(initialState());
+      setCursorSafe(0);
+      setPlayingSafe(false);
+      startedAtRef.current = 0;
+      pausedElapsedRef.current = 0;
+      if (normalized.length > 0) {
+        setPlayingSafe(true);
+        startedAtRef.current = getNow();
+        flushUntilNowRef.current();
+      }
+    });
     return () => clearTimer();
-  }, [clearTimer, normalized, play, stop]);
+  }, [clearTimer, normalized, setCursorSafe, setPlayingSafe]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -262,5 +277,5 @@ export function useRenderPlayback(events: RenderEvent[]) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [flushUntilNow]);
 
-  return { state, playing, play, pause, resume, stop, skipToEnd, replay };
+  return { state, playing, cursor, play, pause, resume, stop, skipToEnd, replay };
 }

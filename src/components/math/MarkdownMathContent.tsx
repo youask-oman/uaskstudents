@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import remarkLatexDelimiters from "@/lib/remark/remarkLatexDelimiters";
@@ -13,7 +14,17 @@ interface MarkdownMathContentProps {
   /** If true, skips custom layout transformations like forced new lines for bold text/labels. */
   simple?: boolean;
 }
-;
+
+type LatexLikeProps = {
+  tex?: unknown;
+  value?: unknown;
+  children?: React.ReactNode;
+};
+
+type CodeLikeProps = {
+  className?: string;
+  children?: React.ReactNode;
+};
 
 function childrenToRawText(children: React.ReactNode): string {
   if (typeof children === "string") return children;
@@ -56,7 +67,52 @@ export default function MarkdownMathContent({ content, className, simple }: Mark
     processed = processed.replace(/\n{3,}/g, "\n\n").trim();
 
     return processed;
-  }, [content]);
+  }, [content, simple]);
+
+  const components: Components = {
+    math: (props) => {
+      const p = props as LatexLikeProps;
+      const tex = String(p.tex || p.value || childrenToRawText(p.children) || "");
+      if (!tex) return null;
+      return <MathSvg tex={tex} display={true} />;
+    },
+    inlineMath: (props) => {
+      const p = props as LatexLikeProps;
+      const tex = String(p.tex || p.value || childrenToRawText(p.children) || "");
+      if (!tex) return null;
+      return <MathSvg tex={tex} display={false} />;
+    },
+    "latex-math-block": (props) => {
+      const p = props as LatexLikeProps;
+      return <MathSvg tex={String(p.tex || "")} display={true} />;
+    },
+    "latex-math-inline": (props) => {
+      const p = props as LatexLikeProps;
+      return <MathSvg tex={String(p.tex || "")} display={false} />;
+    },
+    code: (props) => {
+      const p = props as CodeLikeProps;
+      const classText = String(p.className || "");
+      const raw = childrenToRawText(p.children);
+      const explicitMath = isExplicitMathClass(classText);
+      if (explicitMath) {
+        const display = classText.includes("math-display") || !classText.includes("math-inline");
+        return <MathSvg tex={raw} display={display} />;
+      }
+      return (
+        <code
+          className={p.className}
+          style={{ whiteSpace: "pre-wrap", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+        >
+          {p.children}
+        </code>
+      );
+    },
+    pre: (props) => {
+      const p = props as CodeLikeProps;
+      return <pre style={{ whiteSpace: "pre-wrap", overflowX: "auto" }}>{p.children}</pre>;
+    },
+  };
 
   return (
     <span
@@ -72,38 +128,7 @@ export default function MarkdownMathContent({ content, className, simple }: Mark
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkLatexDelimiters, remarkMath]}
-        components={{
-          math: (props: any) => {
-            const tex = String(props.tex || props.value || childrenToRawText(props.children) || "");
-            if (!tex) return null;
-            return <MathSvg tex={tex} display={true} />;
-          },
-          inlineMath: (props: any) => {
-            const tex = String(props.tex || props.value || childrenToRawText(props.children) || "");
-            if (!tex) return null;
-            return <MathSvg tex={tex} display={false} />;
-          },
-          "latex-math-block": (props: any) => <MathSvg tex={String(props.tex || "")} display={true} />,
-          "latex-math-inline": (props: any) => <MathSvg tex={String(props.tex || "")} display={false} />,
-          code: ({ className: codeClassName, children }: any) => {
-            const classText = String(codeClassName || "");
-            const raw = childrenToRawText(children);
-            const explicitMath = isExplicitMathClass(classText);
-            if (explicitMath) {
-              const display = classText.includes("math-display") || !classText.includes("math-inline");
-              return <MathSvg tex={raw} display={display} />;
-            }
-            return (
-              <code
-                className={codeClassName}
-                style={{ whiteSpace: "pre-wrap", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-              >
-                {children}
-              </code>
-            );
-          },
-          pre: ({ children }: any) => <pre style={{ whiteSpace: "pre-wrap", overflowX: "auto" }}>{children}</pre>,
-        } as any}
+        components={components}
       >
         {processedContent}
       </ReactMarkdown>

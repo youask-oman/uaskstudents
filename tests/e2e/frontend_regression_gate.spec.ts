@@ -137,7 +137,7 @@ test.describe("Frontend Regression Gate", () => {
   test("B) RBAC matrix on admin endpoints and privileged UI controls", async ({ page, request }, testInfo) => {
     const obs = setupObservability(page, testInfo);
     try {
-      const superadmin = await apiLogin(request, users.superadmin);
+      await apiLogin(request, users.superadmin);
       const admin = await apiLogin(request, users.admin);
       const support = await apiLogin(request, users.support);
 

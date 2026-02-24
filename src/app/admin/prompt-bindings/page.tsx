@@ -165,14 +165,14 @@ function stableHash(value: string): number {
     return hash;
 }
 
-function toneForBinding(binding: Pick<Binding, "id" | "tier" | "mode"> | null | undefined) {
+function toneForBinding(binding: Pick<Binding, "id" | "tier" | "mode" | "provider"> | null | undefined) {
     if (!binding) return bindingTones[0];
     const normalizedTier = String(binding.tier || "").trim().toUpperCase();
     if (normalizedTier === "STANDARD") return bindingTones[0];
     if (normalizedTier === "RESEARCH") return bindingTones[4];
     if (normalizedTier === "FINAL") return bindingTones[6];
     if (normalizedTier === "SHORT_STEPS") return bindingTones[5];
-    const key = `${binding.id}|${binding.mode}|${(binding as any).provider || ""}`;
+    const key = `${binding.id}|${binding.mode}|${binding.provider || ""}`;
     return bindingTones[stableHash(key) % bindingTones.length];
 }
 

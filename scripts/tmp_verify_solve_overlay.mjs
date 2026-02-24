@@ -51,7 +51,6 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.screenshot({ path: path.join(outDir, 'overlay_initial.png'), fullPage: true });
 
     const timerTextBefore = await overlay.locator('p.text-4xl').first().innerText().catch(() => '');
-    const timerSecBefore = parseTimer(timerTextBefore ?? '');
     log.push(`timer_before=${timerTextBefore}`);
 
     let progressed = false;

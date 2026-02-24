@@ -291,6 +291,33 @@ def _read_system_bool_config(
     return _parse_bool_flag(os.environ.get(key), default)
 
 
+def _read_system_optional_bool_config(
+    session: Session,
+    key: str,
+) -> Optional[bool]:
+    def _parse_optional(raw: Any) -> Optional[bool]:
+        if raw is None:
+            return None
+        text = str(raw).strip().lower()
+        if not text:
+            return None
+        if text in {"1", "true", "yes", "on"}:
+            return True
+        if text in {"0", "false", "no", "off"}:
+            return False
+        return None
+
+    try:
+        row = session.get(SystemConfig, key)
+        if row and row.value is not None:
+            parsed = _parse_optional(row.value)
+            if parsed is not None:
+                return parsed
+    except Exception:
+        pass
+    return _parse_optional(os.environ.get(key))
+
+
 def _flatten_messages_for_ollama_prompt(messages: Optional[List[Dict[str, Any]]]) -> str:
     chunks: List[str] = []
     for msg in messages or []:
@@ -2503,10 +2530,15 @@ async def execute_batch_solve(
             code="missing_mapped_input",
             details={"required": ["QUESTION", "QUESTIONS_JSON_ARRAY"]},
         )
-    managed_prompt_enabled = _read_system_bool_config(
+    managed_prompt_global_override = _read_system_optional_bool_config(
         session,
         "OPENAI_PROMPT_ID_ENABLED",
-        default=_managed_prompt_feature_enabled(),
+    )
+    # DB binding is source of truth when global override is unset.
+    managed_prompt_enabled = (
+        managed_prompt_global_override
+        if managed_prompt_global_override is not None
+        else (managed_prompt_id != "")
     )
     managed_prompt_active = (
         managed_prompt_enabled

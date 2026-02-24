@@ -12,8 +12,10 @@ from sqlmodel import Session, select
 
 from app.database import engine
 from app.models import (
+    CreditTransfer,
     JsonSchemaEntry,
     LegalDocument,
+    Notification,
     Plan,
     PromptBinding,
     PromptTemplateEntry,
@@ -178,6 +180,20 @@ def _ordered_legal_documents(session: Session) -> List[Dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def _ordered_credit_transfers(session: Session) -> List[Dict[str, Any]]:
+    rows = session.exec(
+        select(CreditTransfer).order_by(CreditTransfer.id.asc())
+    ).all()
+    return [_row_to_dict(r) for r in rows]
+
+
+def _ordered_notifications(session: Session) -> List[Dict[str, Any]]:
+    rows = session.exec(
+        select(Notification).order_by(Notification.id.asc())
+    ).all()
+    return [_row_to_dict(r) for r in rows]
+
+
 def _validate_payloads(
     prompt_templates: List[Dict[str, Any]],
     json_schemas: List[Dict[str, Any]],
@@ -233,6 +249,8 @@ def export_all(out_dir: Path) -> Dict[str, Dict[str, Any]]:
         schools = _ordered_schools(session)
         topup_products = _ordered_topup_products(session)
         legal_documents = _ordered_legal_documents(session)
+        credit_transfers = _ordered_credit_transfers(session)
+        notifications = _ordered_notifications(session)
 
     validation_warnings = _validate_payloads(prompt_templates, json_schemas, prompt_bindings_all)
     prompt_bindings, dropped_bindings = _filter_seedable_prompt_bindings(
@@ -271,12 +289,20 @@ def export_all(out_dir: Path) -> Dict[str, Dict[str, Any]]:
 
     count, checksum = _write_json(out_dir / "internal_users.json", internal_users)
     summary["internal_users.json"] = {"row_count": count, "sha256": checksum}
+    ex_count, ex_checksum = _write_json(out_dir / "internal_users.example.json", internal_users)
+    summary["internal_users.example.json"] = {"row_count": ex_count, "sha256": ex_checksum}
 
     count, checksum = _write_json(out_dir / "topup_products.json", topup_products)
     summary["topup_products.json"] = {"row_count": count, "sha256": checksum}
 
     count, checksum = _write_json(out_dir / "legal_documents.json", legal_documents)
     summary["legal_documents.json"] = {"row_count": count, "sha256": checksum}
+
+    count, checksum = _write_json(out_dir / "credit_transfers.json", credit_transfers)
+    summary["credit_transfers.json"] = {"row_count": count, "sha256": checksum}
+
+    count, checksum = _write_json(out_dir / "notifications.json", notifications)
+    summary["notifications.json"] = {"row_count": count, "sha256": checksum}
 
     count, checksum = _write_json(out_dir / "schools.json", schools)
     summary["schools.json"] = {"row_count": count, "sha256": checksum}

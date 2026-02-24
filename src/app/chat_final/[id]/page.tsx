@@ -231,34 +231,6 @@ const heuristicallyWrapMath = (text: string): string => {
   return normalized;
 };
 
-const extractRecognitionLatex = (text: string): string => {
-  const normalized = (text || "")
-    .trim()
-    .replace(/\\\\\(/g, "\\(")
-    .replace(/\\\\\)/g, "\\)")
-    .replace(/\\\\\[/g, "\\[")
-    .replace(/\\\\\]/g, "\\]");
-  if (!normalized) return "";
-
-  const inlineDelimited = normalized.match(/\\\((.+?)\\\)/);
-  if (inlineDelimited?.[1]) return inlineDelimited[1].trim();
-  const blockDelimited = normalized.match(/\\\[(.+?)\\\]/);
-  if (blockDelimited?.[1]) return blockDelimited[1].trim();
-  const dollarDelimited = normalized.match(/\$(.+?)\$/);
-  if (dollarDelimited?.[1]) return dollarDelimited[1].trim();
-
-  const inverseMatch = normalized.match(/^(?:Find\s+the\s+inverse\s+of\s+|inverse\s+)(.+)$/i);
-  if (inverseMatch?.[1]) return inverseMatch[1].trim();
-
-  const solveMatch = normalized.match(/^(?:Solve\s+for\s+[a-zA-Z]\s*[,:]?\s*)(.+)$/i);
-  if (solveMatch?.[1]) return solveMatch[1].trim();
-
-  const eqMatch = normalized.match(/([A-Za-z][A-Za-z0-9_]*\([^)]*\)\s*=\s*[^,.;\n]+|[A-Za-z][A-Za-z0-9_]*\s*=\s*[^,.;\n]+)/);
-  if (eqMatch?.[1]) return eqMatch[1].trim();
-
-  return normalized;
-};
-
 const isLocalSympySolution = (solution: {
   steps?: StepRow[];
   finalAnswer?: { answer_text?: string | null };

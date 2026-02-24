@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MarkdownMathContent from "@/components/math/MarkdownMathContent";
 import { segmentsToMarkdown } from "@/lib/chat_final_playback";
 import type { PlaybackSegment } from "./types";
@@ -150,7 +150,7 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
     return boundaries.filter((value) => value > 0);
   }, [segmentText, fallbackSegments]);
 
-  const checkpoint = async (nextVisible: number, complete: boolean) => {
+  const checkpoint = useCallback(async (nextVisible: number, complete: boolean) => {
     const clamped = Math.max(0, Math.min(totalLen, Math.floor(nextVisible)));
     if (clamped <= lastAckLenRef.current && !complete) return;
     if (requestInFlightRef.current) return;
@@ -172,7 +172,7 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
     } finally {
       requestInFlightRef.current = false;
     }
-  };
+  }, [messageId, totalLen]);
 
   useEffect(() => {
     let canceled = false;
@@ -254,7 +254,7 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
       }
     }, tickMs);
     return () => window.clearInterval(timer);
-  }, [loading, shouldBypassPlayback, isComplete, totalLen, speedCps, tickMs, segmentBoundaries]);
+  }, [checkpoint, loading, shouldBypassPlayback, isComplete, totalLen, speedCps, tickMs, segmentBoundaries, visibleLen]);
 
   useEffect(() => {
     latestVisibleRef.current = visibleLen;
@@ -270,13 +270,13 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
       void checkpoint(visibleLen, isComplete || visibleLen >= totalLen);
     }, checkpointMs);
     return () => window.clearInterval(timer);
-  }, [loading, visibleLen, isComplete, totalLen, checkpointMs]);
+  }, [checkpoint, checkpointMs, isComplete, loading, totalLen, visibleLen]);
 
   useEffect(() => {
     return () => {
       void checkpoint(latestVisibleRef.current, latestCompleteRef.current);
     };
-  }, []);
+  }, [checkpoint]);
 
   const rendered = safeSliceByCodePoints(codePoints, clampToSafeMathBoundary(fullText, visibleLen));
   const showSkip = !loading && !shouldBypassPlayback && !isComplete && visibleLen < totalLen;

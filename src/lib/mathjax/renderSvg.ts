@@ -21,8 +21,8 @@ const cache = new LRUCache<string, RenderSvgResult>({
 
 let initialized = false;
 let adaptor: ReturnType<typeof liteAdaptor>;
-let texInput: TeX<any, any, any>;
-let svgOutput: SVG<any, any, any>;
+let texInput: TeX<unknown, unknown, unknown>;
+let svgOutput: SVG<unknown, unknown, unknown>;
 let htmlDocument: ReturnType<typeof mathjax.document>;
 
 function initMathJaxOnce(): void {
@@ -78,4 +78,3 @@ export function renderTexToSvg(tex: string, options: RenderOptions): RenderSvgRe
     return result;
   }
 }
-

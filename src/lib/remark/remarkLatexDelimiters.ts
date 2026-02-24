@@ -4,7 +4,7 @@ type MdastNode = {
   children?: MdastNode[];
   data?: {
     hName?: string;
-    hProperties?: Record<string, any>;
+    hProperties?: Record<string, unknown>;
   };
 };
 

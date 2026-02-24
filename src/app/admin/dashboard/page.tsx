@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SystemConfigPanel from "@/components/admin/SystemConfigPanel";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
@@ -241,12 +241,12 @@ export default function AdminDashboardPage() {
         router.push("/login");
     };
 
-    const getAuthHeaders = (): HeadersInit => {
+    const getAuthHeaders = useCallback((): HeadersInit => {
         const token = localStorage.getItem("token");
         return token ? { Authorization: `Bearer ${token}` } : {};
-    };
+    }, []);
 
-    const loadOllamaRows = async () => {
+    const loadOllamaRows = useCallback(async () => {
         setOllamaLoading(true);
         setOllamaError(null);
         try {
@@ -268,7 +268,7 @@ export default function AdminDashboardPage() {
         } finally {
             setOllamaLoading(false);
         }
-    };
+    }, [getAuthHeaders]);
 
     const loadOllamaDetail = async (attemptId: number) => {
         setOllamaDetailLoading(true);
@@ -353,7 +353,7 @@ export default function AdminDashboardPage() {
         if (activeTab !== "ollama_output") return;
         if (ollamaRows.length > 0 || ollamaLoading) return;
         void loadOllamaRows();
-    }, [activeTab, ollamaRows.length, ollamaLoading]);
+    }, [activeTab, loadOllamaRows, ollamaRows.length, ollamaLoading]);
 
     const routingSeries = Array.isArray(routing?.series) ? routing.series : [];
     const maxVolume = routingSeries.length > 0

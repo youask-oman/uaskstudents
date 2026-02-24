@@ -2,8 +2,14 @@
 
 import remarkLatexDelimiters from "@/lib/remark/remarkLatexDelimiters";
 
-function applyToText(input: string): any[] {
-  const tree: any = {
+type TestNode = {
+  type?: string;
+  value?: unknown;
+  children?: TestNode[];
+};
+
+function applyToText(input: string): TestNode[] {
+  const tree: TestNode = {
     type: "root",
     children: [
       {

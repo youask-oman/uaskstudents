@@ -1,12 +1,5 @@
 import type { StandardRenderEvent } from "@/lib/chat_playback/types";
 
-type BackendRenderEvent = {
-  id?: unknown;
-  at_ms?: unknown;
-  type?: unknown;
-  payload?: unknown;
-};
-
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 

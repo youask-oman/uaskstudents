@@ -37,8 +37,7 @@ import { fetchCreditsEstimate, CreditsEstimateResponse, SolveTier, WalletProgram
 import { TokenPolicy, fetchTokenPolicy } from "@/lib/tokenPolicy";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useToast } from "@/components/ui/ToastProvider";
-import { fetchApi } from "@/lib/api";
-import { SolveBatchResponse, SolveBatchResponseSchema } from "@/lib/contracts";
+import { SolveBatchResponse } from "@/lib/contracts";
 
 interface ChatSession {
     id: number;
@@ -603,21 +602,31 @@ const mapBackendEventToOverlayStage = (raw: string | undefined | null): SolveOve
     return null;
 };
 
+const normalizeSessionId = (raw: unknown): string | number | null => {
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+    if (typeof raw === "string") {
+        const text = raw.trim();
+        if (!text) return null;
+        const lowered = text.toLowerCase();
+        if (lowered === "null" || lowered === "none" || lowered === "undefined" || text === "0") return null;
+        return text;
+    }
+    return null;
+};
+
+const resolveSessionRouteByTier = (tier: SolveTier, sessionId: string | number): string =>
+    (tier === "FINAL" || tier === "SHORT_STEPS")
+        ? `/chat_final/${sessionId}`
+        : `/chat/${sessionId}`;
+
 export default function DashboardPage() {
     const { pushToast } = useToast();
+    const router = useRouter();
     const useSnapSolveUploadPanelV2 = process.env.NEXT_PUBLIC_SNAP_SOLVE_UPLOAD_PANEL_V2 !== "false";
     const mapTierToApi = (tier: SolveTier) => {
         if (tier === "SHORT_STEPS") return "short_steps";
         if (tier === "FINAL") return "final";
         return tier.toLowerCase();
-    };
-    const normalizeTierLabel = (tier?: string) => {
-        const raw = (tier || "").trim().toLowerCase();
-        if (raw === "three_step" || raw === "free" || raw === "short_steps") return "SHORT_STEPS";
-        if (raw === "short" || raw === "final") return "FINAL";
-        if (raw === "standard" || raw === "student_standard") return "STANDARD";
-        if (raw === "research" || raw === "enterprise") return "RESEARCH";
-        return tier || "-";
     };
     const [activeTab, setActiveTab] = useState<'text' | 'snap' | 'voice'>('text');
     const [history, setHistory] = useState<ChatSession[]>([]);
@@ -625,8 +634,8 @@ export default function DashboardPage() {
     const [isSolving, setIsSolving] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState<ActiveUser[]>([]);
     const [isPublic, setIsPublic] = useState(false);
-    const [lastSolveError, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string; details?: unknown } | null>(null);
-    const [batchSolveResult, setBatchSolveResult] = useState<SolveBatchResponse | null>(null);
+    const [, setLastSolveError] = useState<{ code?: string; message?: string; request_id?: string; details?: unknown } | null>(null);
+    const [batchSolveResult] = useState<SolveBatchResponse | null>(null);
 
     const [activeMode, setActiveMode] = useState<ModeId | null>(null);
     const [isSeeAllOpen, setIsSeeAllOpen] = useState(false);
@@ -648,9 +657,9 @@ export default function DashboardPage() {
     const [showSplitModal, setShowSplitModal] = useState(false);
     const [suggestedSplits, setSuggestedSplits] = useState<string[]>([]);
     const [multiQuestionConfirmed, setMultiQuestionConfirmed] = useState(false);
-    const [confirmedBatchQuestions, setConfirmedBatchQuestions] = useState<string[]>([]);
+    const [, setConfirmedBatchQuestions] = useState<string[]>([]);
     const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
-    const [taskBundleTasks, setTaskBundleTasks] = useState<TaskBundleTask[]>([]);
+    const [, setTaskBundleTasks] = useState<TaskBundleTask[]>([]);
     const [taskUserAction, setTaskUserAction] = useState<"confirm_selected" | "solve_one" | "combined_solution">("confirm_selected");
     const [mathValidityConfirmed, setMathValidityConfirmed] = useState(false);
     const [taskConfirmSnapshot, setTaskConfirmSnapshot] = useState<string | null>(null);
@@ -691,7 +700,7 @@ export default function DashboardPage() {
     const [currentStage, setCurrentStage] = useState("");
     const [currentStageKey, setCurrentStageKey] = useState<SolveOverlayStageKey>("preparing_engine");
     const [streamingActive, setStreamingActive] = useState(false);
-    const [streamingTelemetry, setStreamingTelemetry] = useState<StreamingTelemetry | null>(null);
+    const [, setStreamingTelemetry] = useState<StreamingTelemetry | null>(null);
     const [streamingMeta, setStreamingMeta] = useState<StreamingRuntimeMeta | null>(null);
     const [solveStartTime, setSolveStartTime] = useState<number | null>(null);
 
@@ -702,6 +711,7 @@ export default function DashboardPage() {
     const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
     const [clarificationHistory, setClarificationHistory] = useState<string[]>([]);
     const [preferredLanguage, setPreferredLanguage] = useState<string>("en");
+    const effectiveSolveTierRef = useRef<SolveTier>("SHORT_STEPS");
     const uiDirection = preferredLanguage === "ar" ? "rtl" : "ltr";
     const t = (key: string, vars?: Record<string, string | number>) => translateSolveText(preferredLanguage, key, vars);
 
@@ -854,14 +864,15 @@ export default function DashboardPage() {
                         const data = await res.json();
                         if (data.status === "success") {
                             markPipelineCompleted();
-                            if (data.session_id) {
+                            const sessionId = normalizeSessionId(data.session_id);
+                            if (sessionId) {
                                 localStorage.removeItem("uask.activeAttemptId");
                                 localStorage.removeItem("uask.activeQuery");
                                 clearPersistedSolveOverlayState();
                                 setStreamingActive(false);
                                 setIsSolving(false);
                                 setSolveStartTime(null);
-                                router.push(resolveSessionRoute(data.session_id));
+                                router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, sessionId));
                             }
                             if (pollInterval) clearInterval(pollInterval);
                         } else if (data.status === "failure") {
@@ -891,7 +902,7 @@ export default function DashboardPage() {
             eventSource?.close();
             if (pollInterval) clearInterval(pollInterval);
         };
-    }, [activeAttemptId, applyPipelineStage, currentStageKey, isSolving, markPipelineCompleted]);
+    }, [activeAttemptId, applyPipelineStage, currentStageKey, isSolving, markPipelineCompleted, router]);
 
     const buildRuntimeMetaFromPayload = (payload: unknown, fallbackRequestedMode: string): StreamingRuntimeMeta => {
         const toObject = (value: unknown): Record<string, unknown> =>
@@ -985,11 +996,10 @@ export default function DashboardPage() {
     const mustForceDetailedTier = (selectedSolveTier === "SHORT_STEPS" || selectedSolveTier === "FINAL")
         && explicitTaskCountCapped > SHORT_FINAL_MAX_TASKS;
     const effectiveSolveTier: SolveTier = mustForceDetailedTier ? "STANDARD" : selectedSolveTier;
+    useEffect(() => {
+        effectiveSolveTierRef.current = effectiveSolveTier;
+    }, [effectiveSolveTier]);
     const isPlotLockedByTier = effectiveSolveTier === "FINAL";
-    const resolveSessionRoute = useCallback((sessionId: string | number) =>
-        (effectiveSolveTier === "FINAL" || effectiveSolveTier === "SHORT_STEPS")
-            ? `/chat_final/${sessionId}`
-            : `/chat/${sessionId}`, [effectiveSolveTier]);
     const resolveHistorySessionRoute = (session: ChatSession) => {
         const telemetry = session?.telemetry;
         const rawTier =
@@ -1065,7 +1075,6 @@ export default function DashboardPage() {
                 ? "Request too large for AI context. Please shorten."
                 : null;
 
-    const router = useRouter();
     const walletReady = walletLoaded && !walletError && !!walletSummary;
     const readyWallet = walletReady ? walletSummary : null;
     const estimatedQuestionCount = 1;
@@ -1073,10 +1082,6 @@ export default function DashboardPage() {
         if (!estimate) return null;
         return Number(estimate.estimated_total_credits ?? estimate.total_credits ?? estimate.per_question_credits ?? 0);
     }, [estimate]);
-    const maxQuestionsAllowed = useMemo(() => {
-        const raw = Number(estimate?.max_questions_allowed ?? 0);
-        return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : null;
-    }, [estimate?.max_questions_allowed]);
     const currentTaskBundle = useMemo(() => {
         const maxTasks = MAX_TASKS_PER_QUESTION;
         const splitsForTasks = activeTab === "text"
@@ -1418,12 +1423,13 @@ export default function DashboardPage() {
                         requestId: typeof data?.request_id === "string" ? data.request_id : persisted?.requestId,
                         startTimeMs: restoredStartTime,
                     });
-                    if (data.status === "success" && data.session_id) {
+                    const restoredSessionId = normalizeSessionId(data.session_id);
+                    if (data.status === "success" && restoredSessionId) {
                         // Already solved
                         localStorage.removeItem("uask.activeAttemptId");
                         localStorage.removeItem("uask.activeQuery");
                         clearPersistedSolveOverlayState();
-                        router.push(resolveSessionRoute(data.session_id));
+                        router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, restoredSessionId));
                     } else if (data.status === "ambiguous") {
                         setIsClarifying(true);
                         setClarificationMessage(data.error_message || "Clarification needed.");
@@ -1470,7 +1476,7 @@ export default function DashboardPage() {
         restoreAttempt();
         const interval = setInterval(fetchOnline, 30000);
         return () => clearInterval(interval);
-    }, [applyPipelineStage, hydrateOverlayPersistence, pushToast, resetPipeline, resolveSessionRoute, router]);
+    }, [applyPipelineStage, hydrateOverlayPersistence, pushToast, resetPipeline, router]);
 
     const handleSuggestionClick = (suggestion: Suggestion) => {
         setMathModeEnabled(true);
@@ -1728,6 +1734,7 @@ export default function DashboardPage() {
         const combined = buildConfirmedInputText(questionsToSolve, sharedContext);
         await handleSolve(combined);
     };
+    void handleSolveTextBatch;
 
     const handleSolve = async (textOverride?: string, featureOverrides?: Record<string, unknown>) => {
         if (isSolving) return;
@@ -1964,8 +1971,9 @@ export default function DashboardPage() {
                                         markPipelineCompleted();
                                         shouldTerminateStream = true;
                                         await reader.cancel().catch(() => undefined);
-                                        if (statusData.session_id) {
-                                            setTimeout(() => router.push(resolveSessionRoute(statusData.session_id)), 200);
+                                        const sessionId = normalizeSessionId(statusData.session_id);
+                                        if (sessionId) {
+                                            setTimeout(() => router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, sessionId)), 200);
                                         }
                                         break;
                                     }
@@ -2063,9 +2071,22 @@ export default function DashboardPage() {
                                 clearPersistedSolveOverlayState();
                                 setStreamingActive(false);
                                 markPipelineCompleted();
-                                const sessionId = typeof data.session_id === "number" ? data.session_id : null;
+                                const sessionId = normalizeSessionId(data.session_id);
                                 if (sessionId) {
-                                    setTimeout(() => router.push(resolveSessionRoute(sessionId)), 500);
+                                    setTimeout(() => router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, sessionId)), 500);
+                                } else {
+                                    const fallbackAttemptId = observedAttemptId || activeAttemptId;
+                                    if (fallbackAttemptId) {
+                                        fetch(`/api/v1/attempt/${fallbackAttemptId}`)
+                                            .then((r) => (r.ok ? r.json() : null))
+                                            .then((statusData) => {
+                                                const recoveredSessionId = normalizeSessionId(statusData?.session_id);
+                                                if (recoveredSessionId) {
+                                                    router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, recoveredSessionId));
+                                                }
+                                            })
+                                            .catch(() => undefined);
+                                    }
                                 }
                             } else {
                                 const errorObj = (data.error ?? {}) as Record<string, unknown>;
@@ -2129,9 +2150,9 @@ export default function DashboardPage() {
                             clearPersistedSolveOverlayState();
                             setStreamingActive(false);
                             markPipelineCompleted();
-                            const sessionId = typeof statusData.session_id === "number" ? statusData.session_id : null;
+                            const sessionId = normalizeSessionId(statusData.session_id);
                             if (sessionId) {
-                                setTimeout(() => router.push(resolveSessionRoute(sessionId)), 200);
+                                setTimeout(() => router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, sessionId)), 200);
                             }
                             shouldTerminateStream = true;
                         } else if (statusData.status === "failure") {
@@ -2192,12 +2213,13 @@ export default function DashboardPage() {
             }
 
             const data = await res.json();
-            if (data.status === "success" && data.session_id) {
+            const clarifiedSessionId = normalizeSessionId(data.session_id);
+            if (data.status === "success" && clarifiedSessionId) {
                 setSolveProgress(100);
                 localStorage.removeItem("uask.activeAttemptId");
                 localStorage.removeItem("uask.activeQuery");
                 clearPersistedSolveOverlayState();
-                setTimeout(() => router.push(resolveSessionRoute(data.session_id)), 500);
+                setTimeout(() => router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, clarifiedSessionId)), 500);
             } else if (data.status === "ambiguous") {
                 setClarificationHistory(prev => [...prev, clarificationResponse]);
                 setClarificationMessage(data.clarifier_question || "Still ambiguous. Please provide more detail.");

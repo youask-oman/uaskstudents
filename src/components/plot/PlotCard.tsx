@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import PlotFromRecipe from "@/components/plot/PlotFromRecipe";
 
 type PlotPayload = Record<string, unknown>;
@@ -117,9 +118,12 @@ export default function PlotCard({
   const svgDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <img
+      <Image
         src={svgDataUrl}
         alt="Rendered plot"
+        width={widthPx}
+        height={heightPx}
+        unoptimized
         style={{ width: "100%", maxWidth: widthPx, border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff" }}
       />
       {meta ? (
