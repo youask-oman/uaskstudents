@@ -96,6 +96,7 @@ import app.tasks.subscription_tasks # noqa: E402,F401
 import app.tasks.ocr_tasks  # noqa: E402,F401
 import app.tasks.credit_transfer_tasks  # noqa: E402,F401
 import app.tasks.graph_tasks  # noqa: E402,F401
+import app.tasks.solve_attempt_tasks  # noqa: E402,F401
 
 celery_app.conf.beat_schedule = {
     "daily_subscription_grant": {
@@ -113,6 +114,10 @@ celery_app.conf.beat_schedule = {
     "credit_transfer_expiry_job": {
         "task": "credit_transfer_expiry_job",
         "schedule": 3600.0, # Hourly
+    },
+    "reap_stuck_attempts": {
+        "task": "reap_stuck_attempts",
+        "schedule": 300.0, # Every 5 minutes
     },
 }
 

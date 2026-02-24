@@ -99,9 +99,9 @@ function buildApiCandidates(): string[] {
                 API_FALLBACK_URL,
                 "http://127.0.0.1:9000",
                 "http://localhost:9000",
+                "",
                 "http://127.0.0.1:9016",
                 "http://localhost:9016",
-                "",
             ]
                 .map((x) => (x || "").trim())
         )
@@ -116,11 +116,13 @@ function joinApiUrl(base: string, path: string): string {
 export async function fetchApi(path: string, init?: RequestInit): Promise<Response> {
     const candidates = buildApiCandidates();
     let lastErr: unknown = null;
+    let lastResponse: Response | null = null;
 
     for (const base of candidates) {
         try {
             const res = await fetch(joinApiUrl(base, path), init);
             if (res.status === 404 || res.status >= 500) {
+                lastResponse = res;
                 continue;
             }
             return res;
@@ -129,6 +131,7 @@ export async function fetchApi(path: string, init?: RequestInit): Promise<Respon
         }
     }
 
+    if (lastResponse) return lastResponse;
     if (lastErr) throw lastErr;
     throw new Error("Network error");
 }

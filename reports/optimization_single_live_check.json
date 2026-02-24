@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "api_base": "http://localhost:9000",
+  "email": "admin@uask.ai",
+  "user_id": 14,
+  "questions_run": 1,
+  "elapsed_sec": 31.76,
+  "results": [
+    {
+      "question_number": 1,
+      "attempt_id": "f485210e-0700-4b1e-bb23-9b2f4d16ddc0",
+      "request_id": "opt-live-q1-744c9b5e-60dd-465d-b1e8-0af9077f4d89",
+      "status": "success",
+      "session_id": 80,
+      "message_id": 152,
+      "events_seen": 9,
+      "last_seq": 6,
+      "done_payload": {
+        "ok": true,
+        "session_id": 80,
+        "message_id": 152
+      },
+      "billing": {
+        "ledger_id": 73,
+        "ledger_status": "CHARGED",
+        "credits_charged": 3.0,
+        "credits_before": 1598.0,
+        "credits_after": 1595.0,
+        "config_version_id": null,
+        "hold_id": 123,
+        "hold_status": "released"
+      },
+      "credits_before": {
+        "user_id": 14,
+        "available_credits": 1601.0,
+        "reserved_credits": 173.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 2.0,
+          "active_lots": 2.0
+        },
+        "spendable_balance": 1601.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "credits_after": {
+        "user_id": 14,
+        "available_credits": 1598.0,
+        "reserved_credits": 173.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 2.0,
+          "active_lots": 2.0
+        },
+        "spendable_balance": 1598.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "available_credits_delta": 3.0,
+      "db_row": {
+        "attempt_id": "f485210e-0700-4b1e-bb23-9b2f4d16ddc0",
+        "status": "success",
+        "session_id": "80",
+        "message_id": "152",
+        "created_at": "2026-02-24 02:54:24.64953",
+        "updated_at": "2026-02-24 02:54:56.069219"
+      },
+      "retry_count": 0
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+Q1) Quick live check
+Solve x^2-5x+6=0. Tasks: 1) roots 2) verify by substitution.

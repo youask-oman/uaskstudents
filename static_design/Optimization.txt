@@ -1,0 +1,278 @@
+Q1) Polynomial + full curve analysis (solve, then plot)
+Let f(x) = x^4 - 4x^3 - x^2 + 12x - 3.
+Tasks:
+1) Find f'(x).
+2) Find all critical points (real).
+3) Classify each critical point using f''(x) or sign chart.
+4) Find f''(x).
+5) Find all inflection point(s).
+6) Determine intervals of concavity.
+7) Determine intervals of increase/decrease.
+8) Find y-intercept.
+9) Find all real x-intercepts (approx to 3 decimals).
+10) Compute the end behavior as x → ±∞.
+11) Find the absolute max/min on [-2, 5].
+12) Plot f(x) on x ∈ [-2, 5] with:
+    - critical points marked/labeled
+    - inflection points marked/labeled
+    - x-intercepts labeled (approx)
+    - axes, grid, legend, title
+
+
+Q2) Rational function + asymptotes + full sign/shape (solve, then plot)
+Let f(x) = (2x^2 + x - 3) / (x^2 - 4).
+Tasks:
+1) State the domain.
+2) Factor numerator and denominator.
+3) Identify any holes (removable discontinuities) and their coordinates.
+4) Find vertical asymptote(s).
+5) Find horizontal asymptote(s) (or slant if applicable).
+6) Find x-intercepts and y-intercept.
+7) Determine the sign of f(x) on each domain interval.
+8) Compute f'(x).
+9) Find critical point(s) in the domain.
+10) Determine increasing/decreasing intervals.
+11) Compute f''(x) and determine concavity intervals.
+12) Find any inflection point(s) that lie in the domain.
+13) Plot f(x) on x ∈ [-8, 8] showing:
+    - asymptotes (dashed)
+    - holes (open circle + label)
+    - intercepts and critical points
+    - grid, axes, legend, title
+
+
+Q3) Trig equation + verification + graph intersections (solve, then plot)
+Solve on 0 ≤ x < 2π:
+sin(2x) = cos(x)
+Tasks:
+1) Rewrite sin(2x) using the double-angle identity.
+2) Factor the resulting equation.
+3) Solve for all solutions in [0, 2π) in exact form.
+4) Verify each solution by substitution into the original equation.
+5) Count the number of solutions and justify briefly.
+6) Plot y1 = sin(2x) and y2 = cos(x) on [0, 2π].
+7) Mark intersection points and label x-values.
+8) Plot y = sin(2x) - cos(x) and mark its zeros.
+9) Include grid, legend, title, axis labels.
+10) State the solution set clearly.
+11) Provide numeric approximations of solutions (3 decimals).
+12) Confirm approximations match the plotted intersections.
+
+
+Q4) Parametric curve + calculus + annotated plot
+Let x(t) = t^2 - 4t,  y(t) = t^3 - 6t^2, for t ∈ [0, 6].
+Tasks:
+1) Compute dx/dt and dy/dt.
+2) Find dy/dx in terms of t.
+3) Find where the tangent is horizontal (dy/dt=0, dx/dt≠0).
+4) Find where the tangent is vertical (dx/dt=0, dy/dt≠0).
+5) Compute the coordinates of all such points.
+6) Find any cusp(s) or points where both dx/dt and dy/dt are 0.
+7) Determine the direction of motion as t increases (use sample points).
+8) Find intercepts with axes (if any) within t ∈ [0,6].
+9) Compute the slope at t=1 and t=5.
+10) Plot the parametric curve for t ∈ [0,6].
+11) Mark and label horizontal/vertical tangent points.
+12) Add arrows or markers indicating direction along the curve.
+13) Include title, axes labels, grid, equal aspect if needed.
+14) Provide a brief geometric description of the curve’s behavior.
+15) Verify one tangent result numerically (small Δt check).
+
+
+Q5) Implicit differentiation + tangents + plot
+Curve: x^2 + xy + y^2 = 7.
+Tasks:
+1) Differentiate implicitly to find dy/dx.
+2) Solve for dy/dx explicitly in terms of x and y.
+3) Find dy/dx at the point (2, 1).
+4) Write the equation of the tangent line at (2, 1).
+5) Write the equation of the normal line at (2, 1).
+6) Determine where the tangent is horizontal (dy/dx=0) on the curve.
+7) Determine where the tangent is vertical (dy/dx undefined) on the curve.
+8) Solve for the corresponding points (real only).
+9) Plot the implicit curve on a suitable window (e.g., x,y ∈ [-4,4]).
+10) Mark (2,1) and draw the tangent line.
+11) Mark horizontal tangent points and label them.
+12) Mark vertical tangent points and label them.
+13) Include grid, axes, legend, title.
+
+
+Q6) Optimization (calculus) + plot objective + solution point
+A company’s cost (in thousands) is C(x)=x^2 - 12x + 60 and revenue is R(x)=20x - x^2, where x is thousands of units.
+Tasks:
+1) Write profit P(x)=R(x)-C(x).
+2) Simplify P(x).
+3) State the realistic domain for x (assume x ≥ 0 and revenue nonnegative).
+4) Find P'(x).
+5) Find critical point(s) in the realistic domain.
+6) Use P''(x) or sign test to confirm maximum.
+7) Compute the maximizing x.
+8) Compute max profit.
+9) Compute the break-even points (P(x)=0) in the realistic domain.
+10) Plot P(x) on the realistic domain window.
+11) Mark the maximum point and label (x, P(x)).
+12) Mark break-even points and label them.
+13) Plot R(x) and C(x) on the same axes.
+14) Mark intersections of R and C.
+15) Include title, axes labels, grid, legend.
+
+
+Q7) Definite integral + average value + plot with shading
+Let f(x)=x^3 - 3x on [-2, 2].
+Tasks:
+1) Find all real roots of f(x).
+2) Determine where f(x) is positive/negative on [-2,2].
+3) Compute the definite integral ∫_{-2}^{2} f(x) dx exactly.
+4) Interpret the integral as signed area.
+5) Compute the total area between curve and x-axis on [-2,2].
+6) Compute the average value of f on [-2,2].
+7) Find c in [-2,2] such that f(c)=average value (numerically if needed).
+8) Plot f(x) on [-2,2].
+9) Shade regions above and below the x-axis differently (conceptually).
+10) Draw a horizontal line at the average value.
+11) Mark roots and label them.
+12) Include title, axes labels, grid, legend.
+
+
+Q8) Series test + remainder bound + partial sums plot
+Consider Σ_{n=2}^{∞} 1/(n ln(n)).
+Tasks:
+1) State which convergence test you will use and why.
+2) Apply the Integral Test setup.
+3) Evaluate/compare the integral ∫ 1/(x ln x) dx.
+4) Conclude convergence/divergence.
+5) If divergent, state clearly “diverges” and stop convergence claims.
+6) Compute partial sums S_N for N=5, 10, 50, 200 (numeric).
+7) Plot S_N vs N for N=2..200.
+8) Describe the growth behavior seen in the plot.
+9) Estimate how large N must be for S_N to exceed 3 (rough numeric).
+10) Verify the estimate by computation (numeric check).
+11) Include title, axes labels, grid.
+12) Provide a concise final conclusion.
+
+
+Q9) Complex numbers + roots + plot in complex plane
+Solve z^3 = -8.
+Tasks:
+1) Write -8 in polar form (magnitude and argument).
+2) Find the three cube roots in polar form.
+3) Convert each root to a+bi form.
+4) Verify one root by cubing it.
+5) Compute the modulus of each root.
+6) Compute the principal argument of each root.
+7) Explain the rotational symmetry of the roots.
+8) Plot the roots on the complex plane.
+9) Draw the circle on which they lie.
+10) Label each point with a+bi.
+11) Label each point with its argument (angle).
+12) Include axes, grid, equal aspect, title, legend.
+
+
+Q10) Probability (normal) + inverse + shaded plots
+Let X ~ N(μ=100, σ=15).
+Tasks:
+1) Compute P(X ≤ 85).
+2) Compute P(85 ≤ X ≤ 130).
+3) Compute P(X ≥ 120).
+4) Find x such that P(X ≤ x)=0.25.
+5) Find x such that P(X ≥ x)=0.10.
+6) Compute the interquartile range (Q3-Q1).
+7) State the 68-95-99.7 rule intervals.
+8) Plot the normal pdf on x ∈ [40, 160].
+9) Shade the region for P(85 ≤ X ≤ 130).
+10) Draw vertical lines at 85 and 130.
+11) Draw vertical lines at Q1 and Q3.
+12) Include title, axes labels, grid, legend.
+
+
+Q11) Polar curve + area + plot
+Consider r = 2 + 2cos(θ), 0 ≤ θ ≤ 2π.
+Tasks:
+1) Identify the curve type (name/shape).
+2) Find where r=0 (if any) and the corresponding θ.
+3) Determine symmetry (about x-axis, y-axis, or origin).
+4) Find the maximum r and where it occurs.
+5) Set up the area integral for the full curve.
+6) Compute the enclosed area exactly.
+7) Provide a decimal approximation.
+8) Plot the polar curve.
+9) Mark key points (θ=0, π/2, π, 3π/2).
+10) Include title and grid.
+11) Convert one key point to Cartesian coordinates.
+12) Verify it matches the plotted location.
+13) Briefly describe the curve’s orientation and “bulge”.
+
+
+Q12) Piecewise + continuity + differentiability + plot
+Define:
+f(x) = { kx^2 + 1,  x < 1
+       { 2x + m,    x ≥ 1
+Tasks:
+1) Write the left-hand limit at x=1.
+2) Write the right-hand value f(1).
+3) Set continuity condition at x=1 and get an equation in k and m.
+4) Write f'(x) for x<1.
+5) Write f'(x) for x>1.
+6) Set differentiability condition at x=1 and get a second equation.
+7) Solve for k and m.
+8) State the final piecewise function.
+9) Find any x-intercepts (if any).
+10) Plot f(x) on x ∈ [-2, 4].
+11) Mark x=1 and label f(1).
+12) Show the join is smooth (tangent match) on the plot.
+13) Include title, axes labels, grid, legend.
+
+
+Q13) Logarithmic differentiation + tangent + plot
+Let f(x) = x^x for x > 0.
+Tasks:
+1) Take ln of both sides: ln y = x ln x.
+2) Differentiate implicitly to find y'/y.
+3) Solve for y'.
+4) Simplify y' as much as possible.
+5) Compute f(e).
+6) Compute f'(e).
+7) Write the tangent line at x=e.
+8) Determine where f'(x)=0 (if any) for x>0.
+9) Determine where f is increasing/decreasing (briefly).
+10) Plot y=x^x on x ∈ [0.2, 3].
+11) Mark the point (e, e^e) (numeric ok).
+12) Draw the tangent line at x=e on the same plot.
+13) Include title, axes labels, grid, legend.
+
+
+Q14) Matrix eigenvalues + phase portrait style plot
+Let A = [[2, 1], [-3, -2]].
+Tasks:
+1) Compute the characteristic polynomial det(A-λI).
+2) Find eigenvalues (exact).
+3) Find eigenvectors for each eigenvalue.
+4) Classify the equilibrium at the origin for x' = Ax (node/saddle/spiral/etc.).
+5) Write the general solution vector x(t).
+6) Use initial condition x(0) = (1,0) to find constants.
+7) Compute x(1) numerically.
+8) Determine stable/unstable behavior as t→∞.
+9) Plot several trajectories in the phase plane (x1 vs x2).
+10) Plot the eigenvector directions as lines through the origin.
+11) Mark direction arrows showing flow.
+12) Include equal aspect, grid, title, legend.
+
+
+Q15) Discrete dynamical system + fixed points + cobweb + plots
+Consider x_{n+1} = r x_n (1 - x_n) with r=3.2 and x_0=0.2.
+Tasks:
+1) Compute x_1, x_2, x_3 numerically.
+2) Find fixed points by solving x = r x (1-x).
+3) Determine stability of each fixed point using |f'(x*)|.
+4) Compute f'(x).
+5) Evaluate |f'(x*)| at each fixed point.
+6) Conclude stable/unstable fixed points.
+7) Iterate to n=50 and report x_50 (numeric).
+8) Plot x_n vs n for n=0..50.
+9) Plot y=f(x)=r x(1-x) and y=x on x ∈ [0,1].
+10) Mark fixed points on the intersection plot.
+11) Draw a cobweb diagram for n=0..25.
+12) Comment briefly on whether the orbit approaches a fixed point or a cycle.
+13) Repeat with x_0=0.2001 and compare behavior (sensitivity check).
+14) Plot both sequences on the same x_n vs n chart.
+15) Include titles, axes labels, grid, legends.

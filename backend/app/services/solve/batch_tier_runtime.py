@@ -46,8 +46,6 @@ SOLVER_RUNTIME_CONFIG_DEFAULTS: Dict[str, Dict[str, str]] = {
 }
 
 PLACEHOLDER_TOKEN_RE = re.compile(r"\{[A-Z_]+\}")
-FREE_BATCH_PROMPT_ID = "pmpt_699bd302d0f4819692162fd6066621fc011cbc57e13867cf"
-FREE_BATCH_PROMPT_VERSION = "2"
 FREE_BATCH_SCHEMA_NAME = "solve_batch_free_v2"
 FREE_BATCH_SCHEMA_VERSION = "v2"
 FREE_BATCH_MAX_QUESTIONS = 5
@@ -377,10 +375,12 @@ def _allow_openai_fallback_for_ollama_first_tiers() -> bool:
 
 def _managed_prompt_feature_enabled() -> bool:
     raw = (os.environ.get("OPENAI_PROMPT_ID_ENABLED") or "").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
     if raw in {"0", "false", "no", "off"}:
         return False
-    # Default enabled so non-empty binding fields activate managed prompt.
-    return True
+    # Default OFF: managed prompt must be explicitly enabled.
+    return False
 
 
 def _build_managed_prompt_batch_input(questions: List[Dict[str, Any]]) -> str:
@@ -519,6 +519,8 @@ def _build_managed_prompt_variables(
                 value = first_question
             elif key == "questions_joined":
                 value = joined_questions
+            elif key in {"questions_json", "questions_json_str", "questions_json_array"}:
+                value = questions_json_str
             elif key == "request_id":
                 value = runtime_request_id
             elif key == "attempt_id":
@@ -526,6 +528,65 @@ def _build_managed_prompt_variables(
             elif key == "tier":
                 value = external_tier
         out[key] = value
+
+    # Canonical safety keys: always provide these runtime fields even if mapping omits them.
+    canonical_defaults: Dict[str, Any] = {
+        "REQUEST_ID": runtime_request_id,
+        "ATTEMPT_ID": runtime_attempt_id,
+        "TIER": external_tier,
+        "MODE": runtime_mode,
+        "GRAPH_MODE": runtime_graph,
+        "DOMAIN_MODE": runtime_domain,
+        "PREFERRED_RESPONSE_LANGUAGE": runtime_lang,
+        "MAX_QUESTIONS": str(int(max_questions_allowed or 0)),
+        "QUESTION": first_question,
+        "QUESTION_TEXT": first_question,
+        "QUESTIONS_JOINED": joined_questions,
+        "QUESTIONS_JSON": questions_json_str,
+        "QUESTIONS_JSON_ARRAY": questions_json_str,
+        "request_id": runtime_request_id,
+        "attempt_id": runtime_attempt_id,
+        "tier": external_tier,
+        "mode": runtime_mode,
+        "graph_mode": runtime_graph,
+        "domain_mode": runtime_domain,
+        "preferred_response_language": runtime_lang,
+        "max_questions": int(max_questions_allowed or 0),
+        "question": first_question,
+        "question_text": first_question,
+        "questions_joined": joined_questions,
+        "questions_json_str": questions_json_str,
+        "questions_json": questions_json_str,
+        "questions_json_array": questions_json_str,
+    }
+    for k, v in canonical_defaults.items():
+        existing = out.get(k)
+        if existing is None:
+            out[k] = v
+            continue
+        if isinstance(existing, str) and not existing.strip():
+            out[k] = v
+
+    # Do not send empty question payload vars to OpenAI managed prompt runtime.
+    # If a value is missing/empty, omit the key entirely instead of sending blanks.
+    removable_when_empty = {
+        "QUESTION",
+        "question",
+        "QUESTION_TEXT",
+        "question_text",
+        "QUESTIONS_JSON_ARRAY",
+        "questions_json_array",
+    }
+    for key in list(out.keys()):
+        if key not in removable_when_empty:
+            continue
+        raw_val = out.get(key)
+        txt = str(raw_val or "").strip()
+        if not txt:
+            out.pop(key, None)
+            continue
+        if key in {"QUESTIONS_JSON_ARRAY", "questions_json_array"} and txt == "[]":
+            out.pop(key, None)
     return out
 
 
@@ -616,6 +677,8 @@ def _enforce_authoritative_dev_prompt_lines(prompt_text: str, replacements: Dict
         "grade_level": ("grade_level:", False),
         "course": ("course:", False),
         "notation_profile": ("notation_profile:", False),
+        "question": ("question:", False),
+        "questions_json_array": ("questions_json_array:", False),
     }
 
     for key, (prefix, upper_key) in mapping.items():
@@ -636,6 +699,94 @@ def _preview_text(value: Any, limit: int = 1200) -> str:
     if len(text) <= limit:
         return text
     return text[:limit] + "...<truncated>"
+
+
+def _as_questions_json_array(value: Any) -> List[Dict[str, Any]]:
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            return []
+        if isinstance(parsed, list):
+            return [item for item in parsed if isinstance(item, dict)]
+    return []
+
+
+def _preflight_mapped_inputs(payload: Dict[str, Any]) -> None:
+    """
+    Validate mapped prompt inputs before any provider call:
+    - If QUESTIONS_JSON_ARRAY exists and non-empty, each item must include
+      non-empty question_id and question_text.
+    - Otherwise QUESTION must be a non-empty string.
+    """
+    qarr = payload.get("QUESTIONS_JSON_ARRAY")
+    qarr_items = _as_questions_json_array(qarr)
+    if qarr_items:
+        for idx, item in enumerate(qarr_items):
+            qid = str(item.get("question_id") or "").strip()
+            qtext = str(item.get("question_text") or "").strip()
+            if not qid:
+                raise BatchSolveError(
+                    f"Missing question_id at index {idx}",
+                    status_code=400,
+                    code="missing_mapped_input",
+                )
+            if not qtext:
+                raise BatchSolveError(
+                    f"Missing question_text at index {idx}",
+                    status_code=400,
+                    code="missing_mapped_input",
+                )
+        return
+
+    question = payload.get("QUESTION")
+    if isinstance(question, str) and question.strip():
+        return
+
+    raise BatchSolveError(
+        "Missing mapped input: send QUESTIONS_JSON_ARRAY or QUESTION",
+        status_code=400,
+        code="missing_mapped_input",
+    )
+
+
+def _is_managed_prompt_unavailable_error(exc: Exception) -> bool:
+    """
+    Detect OpenAI managed prompt missing/disabled errors so runtime can
+    fall back to DB prompt binding content for the same request.
+    """
+    text = str(exc or "").lower()
+    status_code = 0
+    if isinstance(exc, LLMProviderError):
+        try:
+            status_code = int(exc.status_code or 0)
+        except Exception:
+            status_code = 0
+        details = exc.details if isinstance(exc.details, dict) else {}
+        if status_code <= 0:
+            try:
+                status_code = int(details.get("status_code") or 0)
+            except Exception:
+                status_code = 0
+        detail_msg = str(details.get("message") or "").lower()
+        if detail_msg:
+            text = f"{text}\n{detail_msg}"
+
+    prompt_unavailable = (
+        ("prompt with id" in text and "not found" in text)
+        or ("managed prompt" in text and "not found" in text)
+        or ("prompt" in text and "disabled" in text)
+    )
+    prompt_variable_hard_fail = (
+        "managed prompt variables are required" in text
+        or "managed_prompt_variables_required" in text
+    )
+    return bool((prompt_unavailable and (status_code in {0, 400, 404})) or prompt_variable_hard_fail)
 
 
 def _capture_openai_raw_and_stop(
@@ -2192,6 +2343,7 @@ async def execute_batch_solve(
     runtime_max_tasks_per_question = int(max_tasks_per_question or 6)
     questions_json_text = json.dumps(normalized_questions, ensure_ascii=False)
     questions_json_text_compact = _questions_json_compact(normalized_questions)
+    first_question_text = str((normalized_questions[0] or {}).get("question_text") or "").strip() if normalized_questions else ""
     binding_features_prompt = _bget("features") if isinstance(_bget("features"), dict) else {}
 
     def _binding_field(name: str, default: Any = None) -> Any:
@@ -2245,10 +2397,7 @@ async def execute_batch_solve(
     ).strip()
     if external_tier == "SHORT_STEPS":
         # FREE batch solve v2 wiring:
-        # prefer admin-configured managed prompt fields when present,
-        # otherwise fall back to safe defaults.
-        managed_prompt_id = str(binding_openai_prompt_id or FREE_BATCH_PROMPT_ID).strip()
-        managed_prompt_version = str(binding_openai_prompt_version or FREE_BATCH_PROMPT_VERSION).strip()
+        # use managed prompt only when configured in DB binding.
         managed_prompt_use_latest = bool(binding_openai_prompt_use_latest)
         schema_wrapper = _load_free_batch_schema_wrapper()
         schema_body = _extract_schema_body(schema_wrapper)
@@ -2335,14 +2484,73 @@ async def execute_batch_solve(
                 runtime_attempt_id,
             )
             managed_prompt_variables = {}
+
+    def _is_effectively_empty_json_array(raw_text: str) -> bool:
+        txt = str(raw_text or "").strip()
+        if not txt:
+            return True
+        try:
+            parsed = json.loads(txt)
+            return isinstance(parsed, list) and len(parsed) == 0
+        except Exception:
+            return False
+
+    # Hard preflight: never call provider without question payload inputs.
+    if not first_question_text and _is_effectively_empty_json_array(questions_json_text_compact):
+        raise BatchSolveError(
+            "Missing prompt input: QUESTION/QUESTIONS_JSON_ARRAY are empty. Skipping provider call.",
+            status_code=400,
+            code="missing_mapped_input",
+            details={"required": ["QUESTION", "QUESTIONS_JSON_ARRAY"]},
+        )
+    managed_prompt_enabled = _read_system_bool_config(
+        session,
+        "OPENAI_PROMPT_ID_ENABLED",
+        default=_managed_prompt_feature_enabled(),
+    )
     managed_prompt_active = (
-        _managed_prompt_feature_enabled()
+        managed_prompt_enabled
         and managed_prompt_id != ""
         and (managed_prompt_use_latest or managed_prompt_version != "")
     )
-    if external_tier == "SHORT_STEPS":
-        # FREE batch solve must use managed prompt id + variables.
-        managed_prompt_active = True
+    managed_prompt_runtime_active = managed_prompt_active
+    if managed_prompt_runtime_active and external_tier == "STANDARD":
+        mp_vars = managed_prompt_variables if isinstance(managed_prompt_variables, dict) else {}
+        q_var = str(mp_vars.get("QUESTION") or mp_vars.get("question") or "").strip()
+        qarr_var = str(
+            mp_vars.get("QUESTIONS_JSON_ARRAY")
+            or mp_vars.get("questions_json_array")
+            or mp_vars.get("QUESTIONS_JSON")
+            or mp_vars.get("questions_json")
+            or ""
+        ).strip()
+        if not q_var and _is_effectively_empty_json_array(qarr_var):
+            logger.warning(
+                "managed_prompt_missing_required_inputs_fallback_to_binding_identity request_id=%s attempt_id=%s prompt_id=%s",
+                runtime_request_id,
+                runtime_attempt_id,
+                managed_prompt_id,
+            )
+            managed_prompt_runtime_active = False
+
+    # Production preflight guard: fail fast before provider call if mapped inputs are missing.
+    preflight_payload: Dict[str, Any]
+    if managed_prompt_runtime_active:
+        mp_vars = managed_prompt_variables if isinstance(managed_prompt_variables, dict) else {}
+        preflight_payload = {
+            "QUESTION": mp_vars.get("QUESTION", mp_vars.get("question")),
+            "QUESTIONS_JSON_ARRAY": mp_vars.get(
+                "QUESTIONS_JSON_ARRAY",
+                mp_vars.get("questions_json_array", mp_vars.get("QUESTIONS_JSON", mp_vars.get("questions_json"))),
+            ),
+        }
+    else:
+        preflight_payload = {
+            "QUESTION": first_question_text,
+            "QUESTIONS_JSON_ARRAY": normalized_questions,
+        }
+    _preflight_mapped_inputs(preflight_payload)
+
     if external_tier == "SHORT_STEPS" and managed_prompt_active:
         required_vars = {
             "REQUEST_ID",
@@ -2588,7 +2796,9 @@ async def execute_batch_solve(
             "STEP_STYLE": step_style_value,
             "INCLUDE_TASK_RESULTS": include_task_results_value,
             "PREFER_EXACT": prefer_exact_value,
+            "QUESTION": str((normalized_questions[0] or {}).get("question_text") or "").strip() if normalized_questions else "",
             "QUESTIONS_JSON": questions_json_text_compact,
+            "QUESTIONS_JSON_ARRAY": questions_json_text_compact,
             "ALLOW_AUTO_SPLIT": "true" if runtime_allow_auto_split else "false",
             "allow_auto_split": "true" if runtime_allow_auto_split else "false",
             "MAX_TASKS_PER_QUESTION": str(runtime_max_tasks_per_question),
@@ -2613,6 +2823,8 @@ async def execute_batch_solve(
             "STEP_STYLE": step_style_value,
             "INCLUDE_TASK_RESULTS": include_task_results_value,
             "PREFER_EXACT": prefer_exact_value,
+            "QUESTION": str((normalized_questions[0] or {}).get("question_text") or "").strip() if normalized_questions else "",
+            "QUESTIONS_JSON_ARRAY": questions_json_text_compact,
             "COUNTRY": user_prompt_ctx.get("COUNTRY", "unknown"),
             "REGION": user_prompt_ctx.get("REGION", "unknown"),
             "CURRICULUM": user_prompt_ctx.get("CURRICULUM", "unknown"),
@@ -2634,20 +2846,30 @@ async def execute_batch_solve(
             },
         )
 
+    user_runtime_payload: Dict[str, Any] = {
+        "request_id": runtime_request_id,
+        "attempt_id": runtime_attempt_id,
+        "tier": external_tier,
+        "questions_count": len(normalized_questions),
+    }
+    first_question_text_for_user = (
+        str((normalized_questions[0] or {}).get("question_text") or "").strip()
+        if normalized_questions
+        else ""
+    )
+    if first_question_text_for_user:
+        user_runtime_payload["QUESTION"] = first_question_text_for_user
+    if normalized_questions:
+        # Authoritative fallback payload for identity-bound prompts.
+        # Only include when present; do not send empty arrays.
+        user_runtime_payload["QUESTIONS_JSON_ARRAY"] = normalized_questions
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "developer", "content": developer_prompt},
         {
             "role": "user",
-            "content": json.dumps(
-                {
-                    "request_id": runtime_request_id,
-                    "attempt_id": runtime_attempt_id,
-                    "tier": external_tier,
-                    "questions_count": len(normalized_questions),
-                },
-                ensure_ascii=False,
-            ),
+            "content": json.dumps(user_runtime_payload, ensure_ascii=False),
         },
     ]
 
@@ -2833,17 +3055,21 @@ async def execute_batch_solve(
             model=model_name if provider_name == "openai" else ollama_model_name,
             verbosity="low",
             reasoning_effort=(str(binding_features.get("reasoning_effort") or "").strip() or "minimal"),
-            managed_prompt_id=(managed_prompt_id if (provider_name == "openai" and managed_prompt_active) else None),
-            managed_prompt_version=(managed_prompt_version if (provider_name == "openai" and managed_prompt_active) else None),
-            managed_prompt_use_latest=(managed_prompt_use_latest if (provider_name == "openai" and managed_prompt_active) else False),
-            managed_prompt_variables=(managed_prompt_variables if (provider_name == "openai" and managed_prompt_active and managed_prompt_variables) else None),
-            managed_prompt_input=(managed_prompt_input if (provider_name == "openai" and managed_prompt_active) else None),
-            prompt_cache_key=(managed_prompt_cache_key if (provider_name == "openai" and managed_prompt_active and managed_prompt_cache_key) else None),
-            prompt_cache_retention=(managed_prompt_cache_retention if (provider_name == "openai" and managed_prompt_active and managed_prompt_cache_retention) else None),
-            require_managed_prompt_variables=bool(provider_name == "openai" and managed_prompt_active and external_tier == "STANDARD"),
+            managed_prompt_id=(managed_prompt_id if (provider_name == "openai" and managed_prompt_runtime_active) else None),
+            managed_prompt_version=(managed_prompt_version if (provider_name == "openai" and managed_prompt_runtime_active) else None),
+            managed_prompt_use_latest=(managed_prompt_use_latest if (provider_name == "openai" and managed_prompt_runtime_active) else False),
+            managed_prompt_variables=(managed_prompt_variables if (provider_name == "openai" and managed_prompt_runtime_active and managed_prompt_variables) else None),
+            managed_prompt_input=(managed_prompt_input if (provider_name == "openai" and managed_prompt_runtime_active) else None),
+            prompt_cache_key=(managed_prompt_cache_key if (provider_name == "openai" and managed_prompt_runtime_active and managed_prompt_cache_key) else None),
+            prompt_cache_retention=(managed_prompt_cache_retention if (provider_name == "openai" and managed_prompt_runtime_active and managed_prompt_cache_retention) else None),
+            require_managed_prompt_variables=bool(provider_name == "openai" and managed_prompt_runtime_active and external_tier == "STANDARD"),
         )
 
-    async def _parse_validate_response(initial_response: Any) -> Tuple[Dict[str, Any], Any, bool]:
+    async def _parse_validate_response(
+        initial_response: Any,
+        *,
+        allow_repair_retry: bool = True,
+    ) -> Tuple[Dict[str, Any], Any, bool]:
         nonlocal provider_raw_text, provider_raw_payload
         relaxed_short_final = provider_name == "ollama" and external_tier in {"SHORT_STEPS", "FINAL"}
 
@@ -3008,7 +3234,7 @@ async def execute_batch_solve(
                 questions=normalized_questions,
                 tier=external_tier,
             )
-        except BatchSolveError:
+        except BatchSolveError as post_exc:
             if provider_name == "ollama" and _text_extractor_enabled():
                 extracted_payload = _extract_ollama_text_payload(
                     raw_text=raw_local,
@@ -3030,6 +3256,30 @@ async def execute_batch_solve(
                         tier=external_tier,
                     )
                     return extracted_payload, response_local, False
+            if allow_repair_retry and provider_name in {"openai", "ollama"}:
+                repair_attempted_local = True
+                repair_context = (
+                    f"post_assert_error: {str(post_exc)}\n"
+                    f"expected_items_count: {len(normalized_questions)}\n"
+                    f"raw_response:\n{raw_local[:12000]}"
+                )
+                logger.warning(
+                    "batch_post_assert_repair_retry request_id=%s attempt_id=%s provider=%s error=%s",
+                    runtime_request_id,
+                    runtime_attempt_id,
+                    provider_name,
+                    str(post_exc),
+                )
+                repaired_response = await _call_provider(
+                    request_id_suffix="-repair",
+                    force_json_only=True,
+                    repair_context=repair_context,
+                )
+                repaired_payload, repaired_response_obj, _ = await _parse_validate_response(
+                    repaired_response,
+                    allow_repair_retry=False,
+                )
+                return repaired_payload, repaired_response_obj, True
             raise
         return payload_local, response_local, repair_attempted_local
 
@@ -3055,6 +3305,35 @@ async def execute_batch_solve(
             last_provider_error = None
             break
         except (LLMProviderError, BatchSolveError) as exc:
+            # Managed prompt can be disabled/deleted on OpenAI side while DB binding still references it.
+            # In that case, retry once using the binding's DB prompt text path (no managed prompt id).
+            if (
+                isinstance(exc, LLMProviderError)
+                and provider_name == "openai"
+                and managed_prompt_runtime_active
+                and _is_managed_prompt_unavailable_error(exc)
+            ):
+                logger.warning(
+                    "managed_prompt_unavailable_fallback_to_binding_identity request_id=%s attempt_id=%s tier=%s prompt_id=%s",
+                    runtime_request_id,
+                    runtime_attempt_id,
+                    external_tier,
+                    managed_prompt_id,
+                )
+                managed_prompt_runtime_active = False
+                try:
+                    response = await _call_provider(request_id_suffix="-binding-fallback")
+                    if bool((trusted_context or {}).get("capture_openai_raw_only")):
+                        _capture_openai_raw_and_stop(
+                            runtime_request_id=runtime_request_id,
+                            provider_response=response,
+                        )
+                    payload, response, repair_attempted = await _parse_validate_response(response)
+                    last_provider_error = None
+                    break
+                except (LLMProviderError, BatchSolveError) as retry_exc:
+                    exc = retry_exc
+
             if isinstance(exc, LLMProviderError):
                 logger.exception(
                     "Batch solve provider request failed",

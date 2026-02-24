@@ -551,9 +551,14 @@ class OpenAIClient:
                             )
 
                 if _openai_dry_run_enabled():
+                    dry_run_params = copy.deepcopy(params)
+                    if managed_prompt_active and isinstance(managed_prompt_variables, dict) and managed_prompt_variables:
+                        dry_prompt = dict((dry_run_params.get("prompt") or {}))
+                        dry_prompt["variables"] = managed_prompt_variables
+                        dry_run_params["prompt"] = dry_prompt
                     dump_path = _dump_openai_dry_run_payload(
                         request_id=request_id,
-                        params=params,
+                        params=dry_run_params,
                         model_name=model_name,
                     )
                     raise LLMProviderError(

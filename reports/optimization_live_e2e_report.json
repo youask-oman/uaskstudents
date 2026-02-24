@@ -1,0 +1,294 @@
+{
+  "ok": true,
+  "api_base": "http://localhost:9000",
+  "email": "admin@uask.ai",
+  "user_id": 14,
+  "questions_run": 4,
+  "elapsed_sec": 256.414,
+  "results": [
+    {
+      "question_number": 6,
+      "attempt_id": "abfcf56f-897a-4a6e-84b5-25f07a25e54e",
+      "request_id": "opt-live-q6-019fd40f-1930-4e76-97ee-1df3fe0f3808",
+      "status": "success",
+      "session_id": 76,
+      "message_id": 144,
+      "events_seen": 11,
+      "last_seq": 6,
+      "done_payload": {
+        "ok": true,
+        "session_id": 76,
+        "message_id": 144
+      },
+      "billing": {
+        "ledger_id": 69,
+        "ledger_status": "CHARGED",
+        "credits_charged": 2.0,
+        "credits_before": 1607.0,
+        "credits_after": 1605.0,
+        "config_version_id": null,
+        "hold_id": 119,
+        "hold_status": "released"
+      },
+      "credits_before": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "credits_after": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "available_credits_delta": 0.0,
+      "db_row": {
+        "attempt_id": "abfcf56f-897a-4a6e-84b5-25f07a25e54e",
+        "status": "success",
+        "session_id": "76",
+        "message_id": "144",
+        "created_at": "2026-02-24 02:46:16.346997",
+        "updated_at": "2026-02-24 02:47:30.760821"
+      },
+      "retry_count": 0
+    },
+    {
+      "question_number": 7,
+      "attempt_id": "163ac5e0-d1a8-4f34-a706-96c2243c7c7d",
+      "request_id": "opt-live-q7-9e438cfa-47d0-4fce-95d2-9340f5068669",
+      "status": "success",
+      "session_id": 77,
+      "message_id": 146,
+      "events_seen": 8,
+      "last_seq": 6,
+      "done_payload": {
+        "ok": true,
+        "session_id": 77,
+        "message_id": 146
+      },
+      "billing": {
+        "ledger_id": 70,
+        "ledger_status": "CHARGED",
+        "credits_charged": 2.0,
+        "credits_before": 1605.0,
+        "credits_after": 1603.0,
+        "config_version_id": null,
+        "hold_id": 120,
+        "hold_status": "released"
+      },
+      "credits_before": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "credits_after": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "available_credits_delta": 0.0,
+      "db_row": {
+        "attempt_id": "163ac5e0-d1a8-4f34-a706-96c2243c7c7d",
+        "status": "success",
+        "session_id": "77",
+        "message_id": "146",
+        "created_at": "2026-02-24 02:47:31.119119",
+        "updated_at": "2026-02-24 02:47:56.449341"
+      },
+      "retry_count": 0
+    },
+    {
+      "question_number": 12,
+      "attempt_id": "a3e4b0aa-bde4-4c2c-8959-e66146f3767f",
+      "request_id": "opt-live-q12-39c6c063-fa49-48a2-b2a4-b4b46bc66f6c",
+      "status": "success",
+      "session_id": 78,
+      "message_id": 148,
+      "events_seen": 11,
+      "last_seq": 6,
+      "done_payload": {
+        "ok": true,
+        "session_id": 78,
+        "message_id": 148
+      },
+      "billing": {
+        "ledger_id": 71,
+        "ledger_status": "CHARGED",
+        "credits_charged": 2.0,
+        "credits_before": 1603.0,
+        "credits_after": 1601.0,
+        "config_version_id": null,
+        "hold_id": 121,
+        "hold_status": "released"
+      },
+      "credits_before": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "credits_after": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "available_credits_delta": 0.0,
+      "db_row": {
+        "attempt_id": "a3e4b0aa-bde4-4c2c-8959-e66146f3767f",
+        "status": "success",
+        "session_id": "78",
+        "message_id": "148",
+        "created_at": "2026-02-24 02:47:56.753333",
+        "updated_at": "2026-02-24 02:49:00.792584"
+      },
+      "retry_count": 0
+    },
+    {
+      "question_number": 15,
+      "attempt_id": "0ee2278a-2636-4372-9ba1-6b6fdf798ada",
+      "request_id": "opt-live-q15-5eb0bbce-6449-490d-b02e-71e27e07c814",
+      "status": "success",
+      "session_id": 79,
+      "message_id": 150,
+      "events_seen": 12,
+      "last_seq": 6,
+      "done_payload": {
+        "ok": true,
+        "session_id": 79,
+        "message_id": 150
+      },
+      "billing": {
+        "ledger_id": 72,
+        "ledger_status": "CHARGED",
+        "credits_charged": 2.0,
+        "credits_before": 1601.0,
+        "credits_after": 1599.0,
+        "config_version_id": null,
+        "hold_id": 122,
+        "hold_status": "released"
+      },
+      "credits_before": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "credits_after": {
+        "user_id": 14,
+        "available_credits": 1000.0,
+        "reserved_credits": 0.0,
+        "expiring_soon_credits": 0.0,
+        "lots_summary": {
+          "total_lots": 1.0,
+          "active_lots": 1.0
+        },
+        "spendable_balance": 1000.0,
+        "pending_outgoing_total": 0.0,
+        "can_transfer": true,
+        "min_transfer": 1.0,
+        "max_transfer": 1000.0,
+        "daily_remaining": 5000.0,
+        "reason_if_disabled": null,
+        "credit_transfer_enabled": true
+      },
+      "available_credits_delta": 0.0,
+      "db_row": {
+        "attempt_id": "0ee2278a-2636-4372-9ba1-6b6fdf798ada",
+        "status": "success",
+        "session_id": "79",
+        "message_id": "150",
+        "created_at": "2026-02-24 02:49:01.122012",
+        "updated_at": "2026-02-24 02:50:32.433735"
+      },
+      "retry_count": 0
+    }
+  ]
+}

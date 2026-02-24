@@ -50,6 +50,7 @@ from app.models import (
     LegalDocument, LegalAcceptance,
     SolutionShare,
     SolveDebugBlob,
+    AttemptEvent,
 )
 from app.utils.token_utils import count_tokens, count_messages_tokens
 from app.services.plot_sampling import process_visuals
@@ -112,6 +113,7 @@ from app.services.prompt_binding_policy import (
     ALLOWED_PROMPT_IDS,
     ALLOWED_SCHEMA_IDS,
 )
+from app.services.billing_feature_flags import is_billing_v2_enabled
 
 
 
@@ -130,6 +132,7 @@ from app.bg_routers.plot_router import router as plot_router
 from app.bg_routers.math_render_router import router as math_render_router
 from app.bg_routers.notifications_router import router as notifications_router
 from app.legacy_api import router as legacy_router
+from app.services.attempt_event_service import append_attempt_event, fetch_attempt_events_after
 
 limiter = Limiter(key_func=get_remote_address)
 api_router = APIRouter()
@@ -6538,6 +6541,313 @@ async def solve_v3_stream_info():
         "status": "online", 
         "message": "This endpoint is active but requires a POST request with a JSON body. Please use the 'Solve' button in the application."
     }
+
+
+def _normalize_runtime_tier_internal(raw_tier: Optional[str]) -> str:
+    token = str(raw_tier or "").strip().lower()
+    if token in {"short_steps", "free", "three_step", "short"}:
+        return "SHORT_STEPS"
+    if token in {"final", "final_only"}:
+        return "FINAL"
+    if token in {"standard", "detailed"}:
+        return "STANDARD"
+    if token in {"research"}:
+        return "RESEARCH"
+    return "SHORT_STEPS"
+
+
+def _format_sse_event(*, event_type: str, seq: int, payload: Dict[str, Any]) -> str:
+    return f"id: {int(seq)}\nevent: {event_type}\ndata: {json.dumps(payload)}\n\n"
+
+
+def _attempt_terminal(status: Optional[str]) -> bool:
+    return str(status or "").strip().lower() in {"success", "failure", "ambiguous", "canceled", "timed_out"}
+
+
+async def _stream_persisted_attempt_events(
+    *,
+    attempt_id: str,
+    request: Request,
+    session: Session,
+    initial_meta: Optional[Dict[str, Any]] = None,
+):
+    attempt = session.exec(
+        select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)
+    ).first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+
+    async def _gen():
+        last_sent = 0
+        last_event_id_header = request.headers.get("Last-Event-ID")
+        if last_event_id_header and str(last_event_id_header).strip().isdigit():
+            last_sent = int(str(last_event_id_header).strip())
+
+        if initial_meta:
+            # Meta event is not persisted yet on old attempts; send once for bootstrapping.
+            yield f"event: meta\ndata: {json.dumps(initial_meta)}\n\n"
+
+        replay_rows = fetch_attempt_events_after(attempt_id=attempt_id, after_seq=last_sent, session=session)
+        for row in replay_rows:
+            last_sent = max(last_sent, int(row.seq))
+            payload = row.payload if isinstance(row.payload, dict) else {}
+            yield _format_sse_event(event_type=str(row.type or "phase"), seq=int(row.seq), payload=payload)
+
+        redis_client = get_redis()
+        pubsub = redis_client.pubsub()
+        channel = f"solve:attempt:{attempt_id}:events"
+        pubsub.subscribe(channel)
+        heartbeat_interval_s = 15.0
+        last_heartbeat = time.time()
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                message = pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message:
+                    raw = message.get("data")
+                    if isinstance(raw, bytes):
+                        raw = raw.decode("utf-8", errors="replace")
+                    try:
+                        data = json.loads(raw) if isinstance(raw, str) else {}
+                    except Exception:
+                        data = {}
+                    seq = int(data.get("seq") or 0)
+                    if seq > last_sent:
+                        last_sent = seq
+                        event_type = str(data.get("type") or "phase")
+                        payload = data.get("payload") if isinstance(data.get("payload"), dict) else {}
+                        yield _format_sse_event(event_type=event_type, seq=seq, payload=payload)
+                        if event_type == "done":
+                            break
+
+                if time.time() - last_heartbeat >= heartbeat_interval_s:
+                    hb_payload = {"ts": datetime.utcnow().isoformat()}
+                    yield f"id: {last_sent}\nevent: heartbeat\ndata: {json.dumps(hb_payload)}\n\n"
+                    last_heartbeat = time.time()
+
+                # Safety: if terminal and no more events, stop tail.
+                current = session.exec(
+                    select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)
+                ).first()
+                if current and _attempt_terminal(current.status):
+                    # Emit synthetic done if producer ended without explicit terminal event.
+                    existing_done = session.exec(
+                        select(AttemptEvent)
+                        .where(AttemptEvent.attempt_id == attempt_id)
+                        .where(AttemptEvent.type == "done")
+                        .order_by(AttemptEvent.seq.desc())
+                    ).first()
+                    if existing_done is None:
+                        done_payload = {
+                            "ok": str(current.status).lower() == "success",
+                            "session_id": current.session_id,
+                            "message_id": current.message_id,
+                            "error": None
+                            if str(current.status).lower() == "success"
+                            else {
+                                "code": current.failure_code or "attempt_failed",
+                                "message": current.error_message or "Attempt failed",
+                                "request_id": current.request_id,
+                            },
+                        }
+                        msg = append_attempt_event(
+                            attempt_id=attempt_id,
+                            request_id=current.request_id,
+                            event_type="done",
+                            payload=done_payload,
+                            session=session,
+                        )
+                        last_sent = int(msg.get("seq") or last_sent)
+                        yield _format_sse_event(event_type="done", seq=last_sent, payload=done_payload)
+                    break
+
+                await asyncio.sleep(0.1)
+        finally:
+            try:
+                pubsub.unsubscribe(channel)
+                pubsub.close()
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        _gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Content-Type": "text/event-stream",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@api_router.post("/solve_v3_stream_detached")
+async def solve_v3_stream_detached(
+    request: Request,
+    body: SolveRequest,
+    user_id: int = Query(...),
+    session: Session = Depends(get_session),
+):
+    """
+    Durable solve bootstrap:
+    - Persist attempt first
+    - Queue detached Celery task
+    - Stream replayable events from DB/Redis
+    """
+    request_id = (body.idempotency_key or "").strip() or str(uuid.uuid4())
+    attempt_id = str(uuid.uuid4())
+    tier_internal = _normalize_runtime_tier_internal(body.tier)
+    preferred_lang = (
+        ((body.trusted_context or {}).get("preferred_response_language") if isinstance(body.trusted_context, dict) else None)
+        or "English"
+    )
+    question_text = (
+        body.question_text
+        or body.confirmed_text
+        or body.confirmed_markdown
+        or body.text_query
+        or body.original_input_text
+        or ""
+    )
+    if not str(question_text).strip():
+        raise HTTPException(status_code=400, detail="No input provided")
+
+    now = datetime.utcnow()
+    existing = session.exec(
+        select(SolverOutputAttempt).where(SolverOutputAttempt.request_id == request_id).order_by(SolverOutputAttempt.created_at.desc())
+    ).first()
+    if existing:
+        meta = {
+            "request_id": existing.request_id,
+            "attempt_id": existing.attempt_id,
+            "provider": existing.provider,
+            "model": existing.model,
+            "tier_requested": str(body.tier or "").lower(),
+            "effective_tier": str(body.tier or "").lower(),
+            "type": "meta",
+        }
+        return await _stream_persisted_attempt_events(
+            attempt_id=existing.attempt_id,
+            request=request,
+            session=session,
+            initial_meta=meta,
+        )
+
+    attempt = SolverOutputAttempt(
+        request_id=request_id,
+        attempt_id=attempt_id,
+        user_id=user_id,
+        status="pending",
+        input_text_raw=str(question_text),
+        input_text_normalized=str(question_text),
+        started_at=None,
+        finished_at=None,
+        ttl_deadline_at=now + timedelta(minutes=25),
+        prompt_meta={
+            "request_payload": body.model_dump(),
+            "tier_internal": tier_internal,
+            "graph_mode": str(body.graph_mode or "auto"),
+            "domain_mode": str((body.trusted_context or {}).get("domain_mode") if isinstance(body.trusted_context, dict) else "reals"),
+            "preferred_response_language": preferred_lang,
+        },
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(attempt)
+    session.commit()
+    session.refresh(attempt)
+
+    # Reserve credits up-front (durable hold tied to attempt/request).
+    try:
+        if is_billing_v2_enabled(user_id):
+            from app.services.workload_credit_estimator import estimate_task_bundle_credits
+            from app.services.solve.single_task_parser import parse_single_question_tasks
+            from app.services.billing_ledger_service_v2 import billing_ledger_service_v2
+            from decimal import Decimal
+
+            parsed = parse_single_question_tasks(str(question_text), max_tasks=15)
+            billing_preview = estimate_task_bundle_credits(
+                context_text=str(question_text),
+                tasks=list(parsed.get("tasks") or []),
+                selected_task_ids=list(parsed.get("selected_task_ids") or []),
+            )
+            estimated = Decimal(str(billing_preview.get("charged_total_credits") or billing_preview.get("estimated_total_credits") or 1))
+            billing_ledger_service_v2.create_hold(
+                session=session,
+                user_id=user_id,
+                request_id=request_id,
+                estimated_credits=estimated,
+                attempt_id=attempt_id,
+                idempotency_key=(body.idempotency_key or None),
+            )
+            session.commit()
+    except Exception as hold_exc:
+        logger.warning("detached_hold_create_failed request_id=%s attempt_id=%s error=%s", request_id, attempt_id, str(hold_exc))
+
+    append_attempt_event(
+        attempt_id=attempt_id,
+        request_id=request_id,
+        event_type="meta",
+        payload={
+            "request_id": request_id,
+            "attempt_id": attempt_id,
+            "provider": "openai",
+            "tier_requested": str(body.tier or "").lower(),
+            "effective_tier": str(body.tier or "").lower(),
+            "type": "meta",
+        },
+        session=session,
+    )
+    append_attempt_event(
+        attempt_id=attempt_id,
+        request_id=request_id,
+        event_type="stage",
+        payload={"name": "Preparing Engine"},
+        session=session,
+    )
+
+    try:
+        from app.tasks.solve_attempt_tasks import SOLVE_ATTEMPT_TASK_NAME
+
+        celery_app.send_task(SOLVE_ATTEMPT_TASK_NAME, args=[attempt_id], queue="celery")
+    except Exception as exc:
+        attempt.status = "failure"
+        attempt.failure_code = "enqueue_failed"
+        attempt.error_message = str(exc)
+        attempt.finished_at = datetime.utcnow()
+        attempt.updated_at = datetime.utcnow()
+        session.add(attempt)
+        session.commit()
+        append_attempt_event(
+            attempt_id=attempt_id,
+            request_id=request_id,
+            event_type="done",
+            payload={
+                "ok": False,
+                "error": {
+                    "code": "enqueue_failed",
+                    "message": str(exc),
+                    "request_id": request_id,
+                },
+            },
+            session=session,
+        )
+
+    return await _stream_persisted_attempt_events(
+        attempt_id=attempt_id,
+        request=request,
+        session=session,
+        initial_meta={
+            "request_id": request_id,
+            "attempt_id": attempt_id,
+            "provider": "openai",
+            "tier_requested": str(body.tier or "").lower(),
+            "effective_tier": str(body.tier or "").lower(),
+            "type": "meta",
+        },
+    )
 
 @api_router.post("/solve_v3_stream")
 
@@ -16392,10 +16702,17 @@ async def get_attempt_status(
         "attempt_id": attempt.attempt_id,
         "request_id": attempt.request_id,
         "status": attempt.status,
+        "started_at": attempt.started_at,
+        "finished_at": attempt.finished_at,
+        "cancel_requested_at": attempt.cancel_requested_at,
+        "ttl_deadline_at": attempt.ttl_deadline_at,
         "session_id": attempt.session_id,
         "message_id": attempt.message_id,
         "failure_code": attempt.failure_code,
         "error_message": attempt.error_message,
+        "result_json": attempt.result_json,
+        "error_json": attempt.error_json,
+        "provider_meta": attempt.provider_meta,
         "clarification_count": attempt.clarification_count,
         "created_at": attempt.created_at,
         "updated_at": attempt.updated_at,
@@ -16425,6 +16742,33 @@ async def get_attempt_status(
             "hold_status": hold.status if hold else None,
         },
     }
+
+
+@api_router.post("/attempt/{attempt_id}/cancel")
+async def cancel_attempt(
+    attempt_id: str,
+    session: Session = Depends(get_session),
+):
+    attempt = session.exec(
+        select(SolverOutputAttempt).where(SolverOutputAttempt.attempt_id == attempt_id)
+    ).first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    if _attempt_terminal(attempt.status):
+        return {"attempt_id": attempt_id, "status": attempt.status, "cancel_requested": False, "already_terminal": True}
+
+    attempt.cancel_requested_at = datetime.utcnow()
+    attempt.updated_at = datetime.utcnow()
+    session.add(attempt)
+    session.commit()
+    append_attempt_event(
+        attempt_id=attempt_id,
+        request_id=attempt.request_id,
+        event_type="cancel_requested",
+        payload={"attempt_id": attempt_id, "request_id": attempt.request_id, "phase": "cancel_requested", "status": "active"},
+        session=session,
+    )
+    return {"attempt_id": attempt_id, "status": attempt.status, "cancel_requested": True}
 
 
 @api_router.get("/attempt/{attempt_id}/graph.svg")
@@ -16479,51 +16823,12 @@ async def stream_attempt_events(
     request: Request,
     session: Session = Depends(get_session)
 ):
-    """
-    SSE endpoint to stream progress events for a specific solve attempt.
-    """
-    attempt = session.exec(
-        select(SolverOutputAttempt)
-        .where(SolverOutputAttempt.attempt_id == attempt_id)
-    ).first()
-
-    if not attempt:
-        raise HTTPException(status_code=404, detail="Attempt not found")
-
-    async def event_generator():
-        redis_client = get_redis()
-        pubsub = redis_client.pubsub()
-        channel = f"solve:attempt:{attempt_id}:events"
-        pubsub.subscribe(channel)
-
-        try:
-            # Send initial state if already completed/failed/processing
-            if attempt.status in ["success", "failure", "ambiguous"]:
-                yield f"data: {json.dumps({'attempt_id': attempt_id, 'request_id': attempt.request_id, 'phase': 'completed_success' if attempt.status == 'success' else 'completed_failure' if attempt.status == 'failure' else 'clarification_needed', 'status': attempt.status})}\n\n"
-                return
-            
-            if attempt.status in ["pending", "processing"]:
-                yield f"data: {json.dumps({'attempt_id': attempt_id, 'request_id': attempt.request_id, 'phase': 'attempt_created', 'status': 'active'})}\n\n"
-
-            while True:
-                if await request.is_disconnected():
-                    break
-                
-                # We use a small sleep to avoid tight loop, but pubsub.get_message is better
-                # redis-py's pubsub.get_message(ignore_subscribe_messages=True)
-                message = pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message:
-                    yield f"data: {message['data']}\n\n"
-                
-                # Optional: check if attempt status changed in DB as a safety fallback
-                # but Redis events should be the primary driver.
-                
-                await asyncio.sleep(0.1)
-        finally:
-            pubsub.unsubscribe(channel)
-            pubsub.close()
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return await _stream_persisted_attempt_events(
+        attempt_id=attempt_id,
+        request=request,
+        session=session,
+        initial_meta=None,
+    )
 
 
 @api_router.get("/dev/solve_debug")

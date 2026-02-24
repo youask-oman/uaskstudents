@@ -1077,10 +1077,32 @@ class SolverOutputAttempt(SQLModel, table=True):
     status: str = Field(default="pending", index=True) # pending, success, failure, ambiguous
     failure_code: Optional[str] = Field(default=None, index=True) # SCHEMA_INVALID, etc.
     error_message: Optional[str] = Field(default=None, sa_column=Column(Text))
+    started_at: Optional[datetime] = Field(default=None, index=True)
+    finished_at: Optional[datetime] = Field(default=None, index=True)
+    cancel_requested_at: Optional[datetime] = Field(default=None, index=True)
+    ttl_deadline_at: Optional[datetime] = Field(default=None, index=True)
+    result_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    error_json: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    provider_meta: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
     
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AttemptEvent(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("attempt_id", "seq", name="uq_attempt_event_attempt_seq"),
+        Index("ix_attempt_event_attempt_seq", "attempt_id", "seq"),
+        Index("ix_attempt_event_created_at", "created_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    attempt_id: str = Field(index=True)
+    seq: int = Field(index=True)
+    type: str = Field(index=True)
+    payload: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
 class SolveDebugBlob(SQLModel, table=True):

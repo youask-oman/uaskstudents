@@ -1829,7 +1829,7 @@ export default function DashboardPage() {
                 : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         try {
-            const streamCandidates = ["/api/v1/solve_v3_stream"];
+            const streamCandidates = ["/api/v1/solve_v3_stream_detached", "/api/v1/solve_v3_stream"];
             const requestedMode = (effectiveSolveTier === "SHORT_STEPS" || effectiveSolveTier === "FINAL") ? "minimal" : "detailed";
             const idempotencyKey = createIdempotencyKey();
 
@@ -1992,9 +1992,16 @@ export default function DashboardPage() {
                 }
 
                 const { done, value } = readChunk;
-                if (done) break;
+                if (value) {
+                    accumulatedBuffer += decoder.decode(value, { stream: !done });
+                }
+                if (done) {
+                    // Flush any trailing SSE payload that arrived with stream EOF.
+                    if (accumulatedBuffer && !accumulatedBuffer.endsWith("\n")) {
+                        accumulatedBuffer += "\n";
+                    }
+                }
 
-                accumulatedBuffer += decoder.decode(value, { stream: true });
                 const lines = accumulatedBuffer.split('\n');
                 accumulatedBuffer = lines.pop() || "";
 
@@ -2103,6 +2110,37 @@ export default function DashboardPage() {
                 }
 
                 if (shouldTerminateStream) break;
+                if (done) break;
+            }
+
+            // If stream closed without an explicit `done` event, recover from attempt status.
+            if (!shouldTerminateStream) {
+                const fallbackAttemptId =
+                    observedAttemptId ||
+                    activeAttemptId ||
+                    (typeof window !== "undefined" ? localStorage.getItem("uask.activeAttemptId") : null);
+                if (fallbackAttemptId) {
+                    const statusRes = await fetch(`/api/v1/attempt/${fallbackAttemptId}`);
+                    if (statusRes.ok) {
+                        const statusData = await statusRes.json();
+                        if (statusData.status === "success") {
+                            localStorage.removeItem("uask.activeAttemptId");
+                            localStorage.removeItem("uask.activeQuery");
+                            clearPersistedSolveOverlayState();
+                            setStreamingActive(false);
+                            markPipelineCompleted();
+                            const sessionId = typeof statusData.session_id === "number" ? statusData.session_id : null;
+                            if (sessionId) {
+                                setTimeout(() => router.push(resolveSessionRoute(sessionId)), 200);
+                            }
+                            shouldTerminateStream = true;
+                        } else if (statusData.status === "failure") {
+                            throw new Error(statusData.error_message || "Solve failed");
+                        } else if (statusData.status === "ambiguous") {
+                            throw new Error("Clarification is disabled. Please submit one clear question.");
+                        }
+                    }
+                }
             }
         } catch (err) {
             console.error("[SOLVER_STREAM] Error:", err);

@@ -9,13 +9,25 @@ import logging
 from decimal import Decimal
 
 from app.database import get_session
-from app.models import User, Subscription, CreditTransfer, CreditHoldV2, CreditLotV2, UsageLedgerV2, TopUpProduct, StripePriceMap
+from app.models import (
+    User,
+    Subscription,
+    CreditTransfer,
+    CreditHoldV2,
+    CreditLotV2,
+    UsageLedgerV2,
+    TopUpProduct,
+    StripePriceMap,
+    CreditHold,
+    CreditLot,
+)
 from app.services.prompt_binding_pricing import normalize_tier_key, resolve_binding_pricing
 from app.auth import SECRET_KEY, ALGORITHM
 from app.services.credit_transfer_config import load_credit_transfer_config
 from app.services.credit_transfer_service import credit_transfer_service, CreditTransferError
 from app.services.notification_service import notification_service
 from app.services.solve.single_task_parser import parse_single_question_tasks
+from app.jobs.nightly_reconciliation import compute_user_balance
 from app.admin_billing.deps import get_current_user as get_current_user_strict
 # from app.auth import get_current_user # Not available in auth.py, defining locally
 
@@ -511,35 +523,35 @@ async def credits_balance(
 ):
     cfg = load_credit_transfer_config(session)
     view = credit_transfer_service.get_balance_view(session, user, cfg)
-    available = session.exec(
-        select(func.coalesce(func.sum(CreditLotV2.credits_remaining), 0)).where(CreditLotV2.user_id == user.id)
-    ).one()
+
+    # Authoritative solve billing path uses legacy CreditLot/CreditHold + BillingLedger.
+    # UI balance must follow that same source to reflect solver deductions correctly.
+    authoritative_available = Decimal(str(compute_user_balance(session, user.id)))
     reserved = session.exec(
-        select(func.coalesce(func.sum(CreditHoldV2.amount_reserved - CreditHoldV2.amount_settled - CreditHoldV2.amount_released), 0))
-        .where(CreditHoldV2.user_id == user.id)
-        .where(CreditHoldV2.status == "active")
+        select(func.coalesce(func.sum(CreditHold.reserved_credits), 0))
+        .where(CreditHold.user_id == user.id)
+        .where(CreditHold.status == "held")
     ).one()
     now = datetime.utcnow()
     soon_cutoff = now + __import__("datetime").timedelta(days=30)
     expiring = session.exec(
-        select(func.coalesce(func.sum(CreditLotV2.credits_remaining), 0))
-        .where(CreditLotV2.user_id == user.id)
-        .where(CreditLotV2.expires_at != None)
-        .where(CreditLotV2.expires_at >= now)
-        .where(CreditLotV2.expires_at <= soon_cutoff)
+        select(func.coalesce(func.sum(CreditLot.credits_remaining), 0))
+        .where(CreditLot.user_id == user.id)
+        .where(CreditLot.status == "ACTIVE")
+        .where(CreditLot.credits_remaining > 0)
+        .where(CreditLot.expires_at != None)
+        .where(CreditLot.expires_at >= now)
+        .where(CreditLot.expires_at <= soon_cutoff)
     ).one()
-    lots_count = session.exec(select(func.count(CreditLotV2.lot_id)).where(CreditLotV2.user_id == user.id)).one()
+    lots_count = session.exec(select(func.count(CreditLot.id)).where(CreditLot.user_id == user.id)).one()
     active_lots = session.exec(
-        select(func.count(CreditLotV2.lot_id))
-        .where(CreditLotV2.user_id == user.id)
-        .where(CreditLotV2.credits_remaining > 0)
+        select(func.count(CreditLot.id))
+        .where(CreditLot.user_id == user.id)
+        .where(CreditLot.status == "ACTIVE")
+        .where(CreditLot.credits_remaining > 0)
     ).one()
 
-    # Unified end-user balance:
-    # `spendable_balance` is the operational source used by transfer/billing guards.
-    # `available_credits` is kept for backward compatibility, but we align it to the
-    # effective spendable value so all UI surfaces show the same number.
-    effective_available = Decimal(str(view.spendable_balance))
+    effective_available = authoritative_available
 
     return CreditsBalanceResponse(
         user_id=user.id,
@@ -547,7 +559,7 @@ async def credits_balance(
         reserved_credits=float(reserved),
         expiring_soon_credits=float(expiring),
         lots_summary={"total_lots": float(lots_count), "active_lots": float(active_lots)},
-        spendable_balance=float(view.spendable_balance),
+        spendable_balance=float(effective_available),
         pending_outgoing_total=float(view.pending_outgoing_total),
         can_transfer=view.can_transfer,
         min_transfer=float(view.min_transfer),
