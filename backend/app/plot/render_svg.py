@@ -330,6 +330,199 @@ def _apply_annotations(ax: Any, recipe: Dict[str, Any], x_domain: Tuple[float, f
             ax.axvline(x, color="#0f766e", linestyle="--", linewidth=1.2, label=label or None)
 
 
+def _iter_layers(recipe: Dict[str, Any]) -> List[Dict[str, Any]]:
+    layers = recipe.get("layers")
+    if not isinstance(layers, list):
+        return []
+    return [row for row in layers if isinstance(row, dict)]
+
+
+def _param_value(layer: Dict[str, Any], key: str) -> Any:
+    params = layer.get("params")
+    if not isinstance(params, list):
+        return None
+    for row in params:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("name") or "").strip() != key:
+            continue
+        if row.get("number") is not None:
+            return row.get("number")
+        if row.get("text") is not None:
+            return row.get("text")
+        if row.get("latex") is not None:
+            return row.get("latex")
+    return None
+
+
+def _resolve_dy_dx_sympy(recipe: Dict[str, Any], layers: List[Dict[str, Any]]) -> str:
+    direct = recipe.get("dy_dx_sympy")
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()
+    for layer in layers:
+        candidate = _param_value(layer, "dy_dx_sympy")
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    return ""
+
+
+def _safe_density(value: Any, default: int) -> int:
+    try:
+        n = int(value)
+    except Exception:
+        return default
+    return max(5, min(41, n))
+
+
+def _coerce_range(value: Any, fallback: Tuple[float, float]) -> Tuple[float, float]:
+    if isinstance(value, list) and len(value) == 2:
+        lo = _safe_float(value[0], fallback[0])
+        hi = _safe_float(value[1], fallback[1])
+        if lo > hi:
+            lo, hi = hi, lo
+        if lo == hi:
+            hi = lo + 1.0
+        return lo, hi
+    return fallback
+
+
+def _plot_slope_field(
+    ax: Any,
+    recipe: Dict[str, Any],
+    x_domain: Tuple[float, float],
+    y_domain: Tuple[float, float],
+    warnings: List[str],
+) -> None:
+    layers = _iter_layers(recipe)
+    slope_layer = next((layer for layer in layers if str(layer.get("type") or "").strip().lower() == "slope_field"), None)
+    if not slope_layer:
+        return
+
+    dy_expr = _resolve_dy_dx_sympy(recipe, layers)
+    if not dy_expr:
+        warnings.append("slope_field:dy_dx_sympy_missing")
+        return
+
+    x_range = _coerce_range(_param_value(slope_layer, "x_range"), x_domain)
+    y_range = _coerce_range(_param_value(slope_layer, "y_range"), y_domain)
+    density = _safe_density(_param_value(slope_layer, "density"), 15)
+    normalize = str(_param_value(slope_layer, "normalize") or "true").strip().lower() != "false"
+
+    _, fn = compile_expr_2d(latexish_to_sympy(dy_expr))
+    xs = np.linspace(x_range[0], x_range[1], density)
+    ys = np.linspace(y_range[0], y_range[1], density)
+    xx, yy = np.meshgrid(xs, ys)
+    with np.errstate(all="ignore"):
+        slopes_raw = fn(xx, yy)
+    slopes = _sanitize_complex(np.asarray(slopes_raw), warnings, tag="slope_field")
+    slopes = _finite(slopes)
+
+    u = np.ones_like(slopes)
+    v = slopes
+    if normalize:
+        mag = np.sqrt(u**2 + v**2)
+        mag[~np.isfinite(mag)] = np.nan
+        u = np.divide(u, mag, out=np.zeros_like(u), where=np.isfinite(mag) & (mag > 0))
+        v = np.divide(v, mag, out=np.zeros_like(v), where=np.isfinite(mag) & (mag > 0))
+    u[~np.isfinite(u)] = 0.0
+    v[~np.isfinite(v)] = 0.0
+
+    ax.quiver(xx, yy, u, v, color="#64748b", alpha=0.55, pivot="middle", scale=28)
+
+
+def _parse_float_list(value: Any) -> List[float]:
+    if isinstance(value, list):
+        out: List[float] = []
+        for row in value:
+            try:
+                out.append(float(row))
+            except Exception:
+                continue
+        return out
+    if isinstance(value, str):
+        out: List[float] = []
+        for part in value.split(","):
+            try:
+                out.append(float(part.strip()))
+            except Exception:
+                continue
+        return out
+    return []
+
+
+def _plot_phase_line_inset(
+    fig: Any,
+    ax: Any,
+    recipe: Dict[str, Any],
+    y_domain: Tuple[float, float],
+    warnings: List[str],
+) -> None:
+    layers = _iter_layers(recipe)
+    def is_phase_line_layer(layer: Dict[str, Any]) -> bool:
+        layer_type = str(layer.get("type") or "").strip().lower()
+        layer_id = str(layer.get("layer_id") or "").strip().lower()
+        label = str(layer.get("label") or "").strip().lower()
+        if layer_type == "phase_line":
+            return True
+        if layer_type == "annotation" and (layer_id == "phase_line" or "phase line" in label):
+            return True
+        return False
+
+    phase_layer = next((layer for layer in layers if is_phase_line_layer(layer)), None)
+    if not phase_layer:
+        return
+
+    dy_expr = _resolve_dy_dx_sympy(recipe, layers)
+    if not dy_expr:
+        warnings.append("phase_line:dy_dx_sympy_missing")
+        return
+
+    y_range = _coerce_range(_param_value(phase_layer, "y_range"), y_domain)
+    equilibria = _parse_float_list(_param_value(phase_layer, "equilibria"))
+    stability_raw = _param_value(phase_layer, "stability")
+    stability = [str(x).strip().lower() for x in (stability_raw if isinstance(stability_raw, list) else [])]
+
+    _, fn = compile_expr_2d(latexish_to_sympy(dy_expr))
+    y_samples = np.linspace(y_range[0], y_range[1], 9)
+    with np.errstate(all="ignore"):
+        slopes_raw = fn(np.zeros_like(y_samples), y_samples)
+    slopes = _sanitize_complex(np.asarray(slopes_raw), warnings, tag="phase_line")
+
+    pos = ax.get_position()
+    inset_w = min(0.14, pos.width * 0.24)
+    inset_h = min(0.62, pos.height * 0.9)
+    inset_x = min(0.98 - inset_w, pos.x1 - inset_w * 0.15)
+    inset_y = pos.y0 + (pos.height - inset_h) * 0.5
+    ax_inset = fig.add_axes([inset_x, inset_y, inset_w, inset_h])
+
+    ax_inset.axvline(0.0, color="#0f172a", linewidth=1.4)
+    for idx, y0 in enumerate(y_samples):
+        m = slopes[idx]
+        if not np.isfinite(m) or abs(float(m)) < 1e-10:
+            continue
+        direction = 0.12 if float(m) > 0 else -0.12
+        ax_inset.annotate(
+            "",
+            xy=(direction, y0),
+            xytext=(0.0, y0),
+            arrowprops={"arrowstyle": "->", "color": "#334155", "linewidth": 1.0},
+        )
+
+    for idx, eq in enumerate(equilibria):
+        ax_inset.plot([0.0], [eq], marker="o", markersize=4.5, color="#0f172a")
+        stab = stability[idx] if idx < len(stability) else ""
+        if stab:
+            ax_inset.text(0.18, eq, stab, fontsize=7.5, va="center", color="#334155")
+
+    ax_inset.set_ylim(y_range[0], y_range[1])
+    ax_inset.set_xlim(-0.35, 0.45)
+    ax_inset.set_title("phase line", fontsize=8)
+    ax_inset.set_xticks([])
+    ax_inset.tick_params(axis="y", labelsize=7)
+    for spine in ("top", "right", "bottom"):
+        ax_inset.spines[spine].set_visible(False)
+
+
 def _autoscale_y(ax: Any, recipe: Dict[str, Any], y_samples: List[np.ndarray], warnings: List[str]) -> Tuple[float, float]:
     y_domain = _extract_domain(recipe, "y_domain", (-1.0, 1.0), allow_missing=True)
     if y_domain is not None:
@@ -469,6 +662,14 @@ def render_recipe_svg(
 
         ax.set_xlim(x_domain[0], x_domain[1])
         ax.set_ylim(y_min, y_max)
+        try:
+            _plot_slope_field(ax, normalized_recipe, x_domain, (y_min, y_max), warnings)
+        except (PlotRenderError, SympySafeError, Exception) as exc:  # noqa: BLE001
+            warnings.append(f"slope_field:render_failed:{exc}")
+        try:
+            _plot_phase_line_inset(fig, ax, normalized_recipe, (y_min, y_max), warnings)
+        except (PlotRenderError, SympySafeError, Exception) as exc:  # noqa: BLE001
+            warnings.append(f"phase_line:render_failed:{exc}")
         ax.set_title(str(normalized_recipe.get("title") or ""), fontsize=max(10, int(12 * font_scale)))
         ax.set_xlabel(str(normalized_recipe.get("x_label") or "x"), fontsize=max(9, int(10 * font_scale)))
         ax.set_ylabel(str(normalized_recipe.get("y_label") or "y"), fontsize=max(9, int(10 * font_scale)))
@@ -496,4 +697,3 @@ def render_recipe_svg(
         return svg, warnings, render_ms
     finally:
         plt.close(fig)
-

@@ -152,19 +152,33 @@ const detectExplicitTaskCount = (text: string): number => {
         ? src
         : src.slice(header.index + header[0].length);
     const lines = body.split(/\r?\n/);
-    let count = 0;
-    for (const line of lines) {
-        if (/^\s*(\d+[.)]|[-*\u2022])\s+/.test(line)) count += 1;
+    const numbered = lines
+        .map((line) => {
+            const m = line.match(/^(\s*)(\d+)[.):-]\s+/);
+            if (!m) return null;
+            return {
+                indent: (m[1] || "").length,
+                idx: Number(m[2]),
+            };
+        })
+        .filter((x): x is { indent: number; idx: number } => Boolean(x));
+
+    // If numbered tasks exist, count only top-level numbered items.
+    // This avoids counting nested bullet points under a numbered task as extra tasks.
+    if (numbered.length > 0) {
+        const minIndent = Math.min(...numbered.map((n) => n.indent));
+        return numbered.filter((n) => n.indent === minIndent).length;
     }
-    if (count <= 0) {
-        const regexCount = (body.match(/(?:^|\\n|\n)\s*(?:\d+[.)]|[-*\u2022])\s+/g) || []).length;
-        if (regexCount > 0) count = regexCount;
-    }
-    if (count <= 0) {
-        const inlineCount = (body.match(/\b\d+[.)]\s+/g) || []).length;
-        if (inlineCount > 0) count = inlineCount;
-    }
-    return count;
+
+    // Fallback for bullet-only prompts.
+    const bulletCount = lines.filter((line) => /^\s*[-*\u2022]\s+/.test(line)).length;
+    if (bulletCount > 0) return bulletCount;
+
+    const regexCount = (body.match(/(?:^|\\n|\n)\s*\d+[.)]\s+/g) || []).length;
+    if (regexCount > 0) return regexCount;
+
+    const inlineCount = (body.match(/\b\d+[.)]\s+/g) || []).length;
+    return inlineCount > 0 ? inlineCount : 0;
 };
 
 const formatBatchFinalAnswer = (value: unknown): string => {
@@ -840,12 +854,28 @@ export default function DashboardPage() {
                         const data = await res.json();
                         if (data.status === "success") {
                             markPipelineCompleted();
+                            if (data.session_id) {
+                                localStorage.removeItem("uask.activeAttemptId");
+                                localStorage.removeItem("uask.activeQuery");
+                                clearPersistedSolveOverlayState();
+                                setStreamingActive(false);
+                                setIsSolving(false);
+                                setSolveStartTime(null);
+                                router.push(resolveSessionRoute(data.session_id));
+                            }
                             if (pollInterval) clearInterval(pollInterval);
                         } else if (data.status === "failure") {
                             applyPipelineStage(currentStageKey, true);
+                            localStorage.removeItem("uask.activeAttemptId");
+                            localStorage.removeItem("uask.activeQuery");
+                            clearPersistedSolveOverlayState();
+                            setStreamingActive(false);
+                            setIsSolving(false);
+                            setSolveStartTime(null);
                             if (pollInterval) clearInterval(pollInterval);
                         } else if (data.status === "ambiguous") {
                             applyPipelineStage("plotting_coordinates");
+                            setIsSolving(false);
                             if (pollInterval) clearInterval(pollInterval);
                         }
                     }
@@ -1206,7 +1236,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         if (!mustForceDetailedTier) return;
-        if (selectedSolveTier === "STANDARD") return;
+        if (String(selectedSolveTier) === "STANDARD") return;
         setSelectedSolveTier("STANDARD");
         if (typeof window !== "undefined") {
             localStorage.setItem("uask.solveTier", "STANDARD");
@@ -1892,9 +1922,76 @@ export default function DashboardPage() {
             const decoder = new TextDecoder();
             let accumulatedBuffer = "";
             let currentEvent = "";
+            let shouldTerminateStream = false;
+            const streamStartedAt = Date.now();
+            const streamIdleTimeoutMs = 30000;
+            const streamHardTimeoutMs = 8 * 60 * 1000;
+            const streamNoMetaHardTimeoutMs = 90 * 1000;
+            let observedAttemptId: string | null = null;
 
             while (true) {
-                const { done, value } = await reader.read();
+                let readChunk: ReadableStreamReadResult<Uint8Array>;
+                try {
+                    readChunk = await Promise.race<ReadableStreamReadResult<Uint8Array>>([
+                        reader.read(),
+                        new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) => {
+                            setTimeout(() => reject(new Error("__STREAM_IDLE_TIMEOUT__")), streamIdleTimeoutMs);
+                        }),
+                    ]);
+                } catch (readErr) {
+                    const message = readErr instanceof Error ? readErr.message : "";
+                    if (message === "__STREAM_IDLE_TIMEOUT__" && !shouldTerminateStream) {
+                        if (Date.now() - streamStartedAt > streamHardTimeoutMs) {
+                            throw new Error("Solve timed out while waiting for completion.");
+                        }
+                        const fallbackAttemptId =
+                            observedAttemptId ||
+                            activeAttemptId ||
+                            (typeof window !== "undefined" ? localStorage.getItem("uask.activeAttemptId") : null);
+                        if (fallbackAttemptId) {
+                            try {
+                                const statusRes = await fetch(`/api/v1/attempt/${fallbackAttemptId}`);
+                                if (statusRes.status === 404) {
+                                    throw new Error("Solve attempt not found. Please run Solve again.");
+                                }
+                                if (statusRes.ok) {
+                                    const statusData = await statusRes.json();
+                                    if (statusData.status === "success") {
+                                        localStorage.removeItem("uask.activeAttemptId");
+                                        localStorage.removeItem("uask.activeQuery");
+                                        clearPersistedSolveOverlayState();
+                                        setStreamingActive(false);
+                                        markPipelineCompleted();
+                                        shouldTerminateStream = true;
+                                        await reader.cancel().catch(() => undefined);
+                                        if (statusData.session_id) {
+                                            setTimeout(() => router.push(resolveSessionRoute(statusData.session_id)), 200);
+                                        }
+                                        break;
+                                    }
+                                    if (statusData.status === "failure") {
+                                        throw new Error(statusData.error_message || "Solve failed");
+                                    }
+                                    if (statusData.status === "ambiguous") {
+                                        throw new Error("Clarification is disabled. Please submit one clear question.");
+                                    }
+                                }
+                            } catch (statusErr) {
+                                const statusMessage = statusErr instanceof Error ? statusErr.message : "";
+                                if (statusMessage && statusMessage !== "Failed to fetch") {
+                                    throw statusErr;
+                                }
+                            }
+                        } else if (Date.now() - streamStartedAt > streamNoMetaHardTimeoutMs) {
+                            throw new Error("Solve stream disconnected before attempt metadata was received.");
+                        }
+                        // Keep waiting; transient SSE idle windows are expected.
+                        continue;
+                    }
+                    throw readErr;
+                }
+
+                const { done, value } = readChunk;
                 if (done) break;
 
                 accumulatedBuffer += decoder.decode(value, { stream: true });
@@ -1908,90 +2005,104 @@ export default function DashboardPage() {
                     if (trimmedLine.startsWith('event: ')) {
                         currentEvent = trimmedLine.slice(7).trim();
                     } else if (trimmedLine.startsWith('data: ')) {
+                        let data: Record<string, unknown>;
                         try {
-                            const data = JSON.parse(trimmedLine.slice(6));
-                            if (currentEvent === "meta") {
-                                setStreamingMeta(data);
-                                if (data.attempt_id) {
-                                    setActiveAttemptId(data.attempt_id);
-                                    localStorage.setItem("uask.activeAttemptId", data.attempt_id);
-                                    localStorage.setItem("uask.activeQuery", textToSolve);
-                                    hydrateOverlayPersistence({
-                                        attemptId: data.attempt_id,
-                                        startTimeMs: solveStartedAt,
-                                    });
-                                }
-                                const parsedMeta = buildRuntimeMetaFromPayload(data, requestedMode);
-                                setStreamingMeta((prev) => ({ ...(prev || {}), ...parsedMeta }));
-                                if (parsedMeta.request_id) {
-                                    hydrateOverlayPersistence({
-                                        requestId: parsedMeta.request_id,
-                                        startTimeMs: solveStartedAt,
-                                    });
-                                }
-                            } else if (currentEvent === "delta") {
-                                setStreamingActive(true);
-                                hydrateOverlayPersistence({ streamingActive: true });
-                            } else if (currentEvent === "stage") {
-                                const stageName = typeof data?.name === "string" ? data.name : "";
-                                setCurrentStage(stageName);
-                                const mapped = mapBackendEventToOverlayStage(stageName);
-                                if (mapped) {
-                                    applyPipelineStage(mapped);
-                                }
-                            } else if (currentEvent === "telemetry") {
-                                setStreamingTelemetry(data?.telemetry ?? data);
-                            } else if (currentEvent === "done") {
-                                if (data.ok) {
-                                    setSolveProgress(100);
-                                    localStorage.removeItem("uask.activeAttemptId");
-                                    localStorage.removeItem("uask.activeQuery");
-                                    clearPersistedSolveOverlayState();
-                                    setStreamingActive(false);
-                                    markPipelineCompleted();
-                                    setTimeout(() => router.push(resolveSessionRoute(data.session_id)), 500);
-                                } else if (data.error?.code === "ambiguous_response") {
-                                    localStorage.removeItem("uask.activeAttemptId");
-                                    localStorage.removeItem("uask.activeQuery");
-                                    clearPersistedSolveOverlayState();
-                                    setStreamingActive(false);
-                                    throw new Error("Clarification is disabled. Please submit one clear question.");
-                                } else {
-                                    localStorage.removeItem("uask.activeAttemptId");
-                                    localStorage.removeItem("uask.activeQuery");
-                                    clearPersistedSolveOverlayState();
-                                    setStreamingActive(false);
-                                    applyPipelineStage(currentStageKey, true);
-                                    if (data.error?.request_id) {
-                                        setStreamingMeta((prev) => ({ ...(prev || {}), request_id: data.error.request_id }));
-                                    }
-                                    const details = data.error?.details;
-                                    const providerMessage =
-                                        (typeof details?.message === "string" && details.message) ||
-                                        (typeof details?.provider_details?.message === "string" && details.provider_details.message) ||
-                                        "";
-                                    const requestId = data.error?.request_id;
-                                    const fullMessage = [
-                                        data.error?.message || "Solve failed",
-                                        providerMessage ? `provider: ${providerMessage}` : "",
-                                        requestId ? `request_id: ${requestId}` : "",
-                                    ]
-                                        .filter(Boolean)
-                                        .join(" | ");
-                                    setLastSolveError({
-                                        code: data.error?.code,
-                                        message: data.error?.message,
-                                        request_id: requestId,
-                                        details,
-                                    });
-                                    throw new Error(fullMessage);
-                                }
-                            }
+                            data = JSON.parse(trimmedLine.slice(6)) as Record<string, unknown>;
                         } catch (e) {
                             console.error("Error parsing SSE data", e);
+                            continue;
+                        }
+
+                        const fallbackEventType = typeof data?.type === "string" ? data.type : "";
+                        const eventType = currentEvent || fallbackEventType;
+                        if (eventType === "meta") {
+                            setStreamingMeta(data as StreamingRuntimeMeta);
+                            if (typeof data.attempt_id === "string" && data.attempt_id) {
+                                setActiveAttemptId(data.attempt_id);
+                                observedAttemptId = data.attempt_id;
+                                localStorage.setItem("uask.activeAttemptId", data.attempt_id);
+                                localStorage.setItem("uask.activeQuery", textToSolve);
+                                hydrateOverlayPersistence({
+                                    attemptId: data.attempt_id,
+                                    startTimeMs: solveStartedAt,
+                                });
+                            }
+                            const parsedMeta = buildRuntimeMetaFromPayload(data, requestedMode);
+                            setStreamingMeta((prev) => ({ ...(prev || {}), ...parsedMeta }));
+                            if (parsedMeta.request_id) {
+                                hydrateOverlayPersistence({
+                                    requestId: parsedMeta.request_id,
+                                    startTimeMs: solveStartedAt,
+                                });
+                            }
+                        } else if (eventType === "delta") {
+                            setStreamingActive(true);
+                            hydrateOverlayPersistence({ streamingActive: true });
+                        } else if (eventType === "stage") {
+                            const stageName = typeof data?.name === "string" ? data.name : "";
+                            setCurrentStage(stageName);
+                            const mapped = mapBackendEventToOverlayStage(stageName);
+                            if (mapped) {
+                                applyPipelineStage(mapped);
+                            }
+                        } else if (eventType === "telemetry") {
+                            setStreamingTelemetry((data?.telemetry as StreamingTelemetry) ?? (data as StreamingTelemetry));
+                        } else if (eventType === "done") {
+                            const doneOk = Boolean(data.ok);
+                            if (doneOk) {
+                                setSolveProgress(100);
+                                localStorage.removeItem("uask.activeAttemptId");
+                                localStorage.removeItem("uask.activeQuery");
+                                clearPersistedSolveOverlayState();
+                                setStreamingActive(false);
+                                markPipelineCompleted();
+                                const sessionId = typeof data.session_id === "number" ? data.session_id : null;
+                                if (sessionId) {
+                                    setTimeout(() => router.push(resolveSessionRoute(sessionId)), 500);
+                                }
+                            } else {
+                                const errorObj = (data.error ?? {}) as Record<string, unknown>;
+                                localStorage.removeItem("uask.activeAttemptId");
+                                localStorage.removeItem("uask.activeQuery");
+                                clearPersistedSolveOverlayState();
+                                setStreamingActive(false);
+                                if (errorObj.code === "ambiguous_response") {
+                                    throw new Error("Clarification is disabled. Please submit one clear question.");
+                                }
+                                applyPipelineStage(currentStageKey, true);
+                                if (typeof errorObj.request_id === "string" && errorObj.request_id) {
+                                    setStreamingMeta((prev) => ({ ...(prev || {}), request_id: errorObj.request_id as string }));
+                                }
+                                const details = errorObj.details as Record<string, unknown> | undefined;
+                                const providerMessage =
+                                    (typeof details?.message === "string" && details.message) ||
+                                    (typeof (details?.provider_details as Record<string, unknown> | undefined)?.message === "string" &&
+                                        ((details?.provider_details as Record<string, unknown>).message as string)) ||
+                                    "";
+                                const requestId = typeof errorObj.request_id === "string" ? errorObj.request_id : undefined;
+                                const fullMessage = [
+                                    (typeof errorObj.message === "string" && errorObj.message) || "Solve failed",
+                                    providerMessage ? `provider: ${providerMessage}` : "",
+                                    requestId ? `request_id: ${requestId}` : "",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" | ");
+                                setLastSolveError({
+                                    code: typeof errorObj.code === "string" ? errorObj.code : undefined,
+                                    message: typeof errorObj.message === "string" ? errorObj.message : "Solve failed",
+                                    request_id: requestId,
+                                    details,
+                                });
+                                throw new Error(fullMessage);
+                            }
+                            shouldTerminateStream = true;
+                            await reader.cancel().catch(() => undefined);
+                            break;
                         }
                     }
                 }
+
+                if (shouldTerminateStream) break;
             }
         } catch (err) {
             console.error("[SOLVER_STREAM] Error:", err);

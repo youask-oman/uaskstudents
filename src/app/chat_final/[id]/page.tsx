@@ -44,6 +44,25 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 const asString = (value: unknown): string | null =>
   typeof value === "string" ? value : (typeof value === "number" || typeof value === "boolean" ? String(value) : null);
 
+const extractSessionMessageText = (message: SessionMessage): string => {
+  const direct = asString(message.content);
+  if (direct && direct.trim()) return direct;
+  if (Array.isArray(message.content)) {
+    const chunks = message.content
+      .map((item) => {
+        const obj = asRecord(item);
+        if (!obj) return "";
+        const text = asString(obj.text);
+        if (text) return text;
+        const nested = asRecord(obj.content);
+        return asString(nested?.text) || "";
+      })
+      .filter((part) => part.trim().length > 0);
+    if (chunks.length > 0) return chunks.join("\n");
+  }
+  return "";
+};
+
 const normalizeSolveTier = (value: unknown): SolveTier | null => {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toUpperCase();
@@ -292,17 +311,35 @@ const extractShortSourcePayload = (messages: SessionMessage[]): ShortSourcePaylo
 
 const extractAssistantPlaybackSource = (
   messages: SessionMessage[]
-): { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null => {
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const message = messages[i];
-    if (String(message?.role || "").toLowerCase() !== "assistant") continue;
+): {
+  messageId: string;
+  assistantContent: string;
+  segments: PlaybackSegment[];
+  source: string;
+  structuredData?: Record<string, unknown> | null;
+} | null => {
+  const assistantMessages = [...messages]
+    .reverse()
+    .filter((message) => String(message?.role || "").toLowerCase() === "assistant");
+  const prioritized = [
+    ...assistantMessages.filter((message) => isSolvePrimaryAssistantMessage(message)),
+    ...assistantMessages.filter((message) => !isSolvePrimaryAssistantMessage(message)),
+  ];
+
+  for (const message of prioritized) {
     const messageIdRaw = message?.id;
     const messageId = messageIdRaw === undefined || messageIdRaw === null ? "" : String(messageIdRaw).trim();
     if (!messageId) continue;
+
     const resolved = resolvePlaybackFromMessage(message);
-    const assistantContent = (resolved.content || "").trim();
-    if (!assistantContent) continue;
-    return { messageId, assistantContent, segments: resolved.segments, source: resolved.source };
+    const assistantContent = (resolved.content || extractSessionMessageText(message) || "").trim();
+    return {
+      messageId,
+      assistantContent,
+      segments: Array.isArray(resolved.segments) ? resolved.segments : [],
+      source: resolved.source,
+      structuredData: asRecord(message.structured_data),
+    };
   }
   return null;
 };
@@ -313,7 +350,13 @@ const buildInitialPages = (
   options?: {
     shortTier?: boolean;
     shortSource?: ShortSourcePayload | null;
-    shortPlayback?: { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null;
+    shortPlayback?: {
+      messageId: string;
+      assistantContent: string;
+      segments: PlaybackSegment[];
+      source: string;
+      structuredData?: Record<string, unknown> | null;
+    } | null;
   }
 ): CanvasPageData[] => {
   const isShortTier = Boolean(options?.shortTier);
@@ -387,6 +430,7 @@ const buildInitialPages = (
       playbackFallbackContent: shortPlayback?.assistantContent,
       playbackSegments: shortPlayback?.segments,
       playbackSource: shortPlayback?.source,
+      playbackStructuredData: shortPlayback?.structuredData,
     });
   }
 

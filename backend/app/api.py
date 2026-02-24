@@ -6749,6 +6749,52 @@ async def solve_v3_stream_endpoint(
             tasks=list(task_parse.get("tasks") or []),
             selected_task_ids=list(task_parse.get("selected_task_ids") or [t.get("task_id") for t in (task_parse.get("tasks") or []) if isinstance(t, dict)]),
         )
+        # Align runtime billing with estimate endpoint:
+        # total = workload(task bundle) + tier base + plot addon + attempt fee
+        try:
+            from app.services.prompt_binding_pricing import normalize_tier_key, resolve_binding_pricing
+
+            source_type = "text"
+            tier_key = normalize_tier_key(effective_tier_internal)
+            binding_features, pricing_multipliers, pricing_binding = resolve_binding_pricing(session, effective_tier_internal)
+
+            base_cost = 0.0
+            attempt_fee_cost = 0.0
+            plot_addon_cost = 0.0
+            if (
+                pricing_binding is not None
+                and getattr(pricing_binding, "solve_text_cost", None) is not None
+                and getattr(pricing_binding, "attempt_fee", None) is not None
+                and getattr(pricing_binding, "plot_addon_cost", None) is not None
+            ):
+                base_cost = float(pricing_binding.solve_text_cost or 0)
+                attempt_fee_cost = float(pricing_binding.attempt_fee or 0)
+                plot_addon_cost = float(pricing_binding.plot_addon_cost or 0)
+            else:
+                tier_cfg = getattr(getattr(pricing_multipliers, "credits", None), "solve", None)
+                tier_row = getattr(tier_cfg, tier_key, None) if tier_cfg is not None else None
+                if tier_row is not None:
+                    base_cost = float(getattr(tier_row, source_type, 0) or 0)
+                attempt_map = getattr(getattr(pricing_multipliers, "credits", None), "attempt_fee", None)
+                attempt_fee_cost = float(getattr(attempt_map, tier_key, 0) or 0) if attempt_map is not None else 0.0
+                plot_addon_cost = float(getattr(getattr(pricing_multipliers, "credits", None), "plot_trigger", 0) or 0)
+
+            allow_plot = bool(getattr(binding_features, "allow_plot", True))
+            plot_requested_now = str(default_graph_mode or "auto").lower() != "off"
+            if str(effective_tier_internal or "").upper() == "FINAL":
+                plot_requested_now = False
+            extras_cost = attempt_fee_cost + (plot_addon_cost if (allow_plot and plot_requested_now) else 0.0)
+
+            workload_only = float(workload_billing.get("charged_total_credits") or workload_billing.get("estimated_total_credits") or 1)
+            combined_total = float(workload_only + base_cost + extras_cost)
+            workload_billing["workload_only_credits"] = workload_only
+            workload_billing["base_credits"] = base_cost
+            workload_billing["extras_credits"] = extras_cost
+            workload_billing["charged_total_credits"] = combined_total
+            workload_billing["estimated_total_credits"] = combined_total
+        except Exception:
+            # Keep solve path resilient; fallback to workload-only estimate.
+            pass
         try:
             if is_billing_v2_enabled(user_id):
                 try:
@@ -6780,7 +6826,7 @@ async def solve_v3_stream_endpoint(
                         mode=default_mode,
                         modality="text",
                         verify_requested=False,
-                        plot_requested=False,
+                        plot_requested=(str(default_graph_mode or "auto").lower() != "off" and str(effective_tier_internal or "").upper() != "FINAL"),
                         questions_json=runtime_questions_json,
                         request_id=request_id,
                         attempt_id=attempt_id,
@@ -16346,6 +16392,8 @@ async def get_attempt_status(
         "attempt_id": attempt.attempt_id,
         "request_id": attempt.request_id,
         "status": attempt.status,
+        "session_id": attempt.session_id,
+        "message_id": attempt.message_id,
         "failure_code": attempt.failure_code,
         "error_message": attempt.error_message,
         "clarification_count": attempt.clarification_count,

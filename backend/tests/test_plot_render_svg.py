@@ -105,3 +105,53 @@ def test_cache_key_stable() -> None:
 def test_safe_parser_rejects_bad_input() -> None:
     with pytest.raises(SympySafeError):
         safe_parse_expr("__import__('os').system('whoami')", allowed_symbols=["x"])
+
+
+def test_slope_field_and_phase_line_layers_render() -> None:
+    recipe = {
+        "kind": "ode_2d",
+        "title": "Logistic ODE",
+        "x_label": "x",
+        "y_label": "y",
+        "x_domain": {"min": -2, "max": 4},
+        "y_domain": {"min": -0.5, "max": 1.5},
+        "grid": True,
+        "axes_lines": True,
+        "legend": True,
+        "dy_dx_sympy": "y*(1-y)",
+        "series": [{"kind": "function", "label": "y(x)", "y_expr_sympy": "1/(1+4*exp(-x))", "variable": "x"}],
+        "points": [{"x": 0.0, "y": 0.2, "label": "y(0)=0.2"}],
+        "layers": [
+            {"layer_id": "sf", "type": "slope_field", "label": "field", "params": [{"name": "density", "number": 13}]},
+            {
+                "layer_id": "pl",
+                "type": "phase_line",
+                "label": "phase",
+                "params": [{"name": "equilibria", "text": "0,1"}, {"name": "stability", "text": ""}],
+            },
+        ],
+        "shapes": [],
+    }
+    svg, warnings, _ = render_recipe_svg(recipe)
+    assert "<svg" in svg.lower()
+    assert not any("fallback_plot_rendered" == w for w in warnings)
+
+
+def test_layers_missing_dydx_warns() -> None:
+    recipe = {
+        "kind": "ode_2d",
+        "title": "Layer warning",
+        "x_label": "x",
+        "y_label": "y",
+        "x_domain": {"min": -2, "max": 2},
+        "y_domain": {"min": -1, "max": 1},
+        "grid": True,
+        "axes_lines": True,
+        "legend": False,
+        "series": [{"kind": "function", "label": "y=x", "y_expr_sympy": "x", "variable": "x"}],
+        "layers": [{"layer_id": "sf", "type": "slope_field", "label": "field", "params": []}],
+        "points": [],
+        "shapes": [],
+    }
+    _, warnings, _ = render_recipe_svg(recipe)
+    assert any("layers_dy_dx_sympy_missing" == w for w in warnings)

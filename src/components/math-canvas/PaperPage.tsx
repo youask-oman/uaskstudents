@@ -876,6 +876,7 @@ export default function PaperPage({
                     playbackFallbackContent={block.playbackFallbackContent}
                     playbackSegments={block.playbackSegments}
                     playbackSource={block.playbackSource}
+                    playbackStructuredData={block.playbackStructuredData}
                     plotPayload={block.plotPayload}
                     pythonCode={block.pythonCode}
                     result={block.result}

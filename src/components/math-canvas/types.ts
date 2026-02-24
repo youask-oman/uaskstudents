@@ -284,6 +284,7 @@ export type CanvasBlock =
     playbackFallbackContent?: string;
     playbackSegments?: PlaybackSegment[];
     playbackSource?: string;
+    playbackStructuredData?: Record<string, unknown> | null;
   }
   | { id: string; type: "text"; text: string };
 

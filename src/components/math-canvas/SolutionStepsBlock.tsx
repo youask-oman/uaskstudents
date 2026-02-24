@@ -7,6 +7,7 @@ import CodeBlock from "@/components/code/CodeBlock";
 import PlotCard from "@/components/plot/PlotCard";
 import TypingPlaybackMessage from "./TypingPlaybackMessage";
 import ChatLikeSolvePlayer from "@/components/solve/ChatLikeSolvePlayer";
+import StandardChatSolvePlayer from "@/components/chat/StandardChatSolvePlayer";
 import RichTextElementEditor from "./RichTextElementEditor";
 import type { RichTextCommitPayload } from "./RichTextElementEditor";
 import { StepRow, VerificationCheck, FinalAnswer, ShortSection, ShortSourcePayload, PlaybackSegment } from "./types";
@@ -22,6 +23,7 @@ interface SolutionStepsBlockProps {
   playbackFallbackContent?: string;
   playbackSegments?: PlaybackSegment[];
   playbackSource?: string;
+  playbackStructuredData?: Record<string, unknown> | null;
   plotPayload?: Record<string, unknown>;
   pythonCode?: string;
   result?: string;
@@ -187,6 +189,7 @@ export default function SolutionStepsBlock({
   playbackFallbackContent,
   playbackSegments,
   playbackSource,
+  playbackStructuredData,
   plotPayload,
   pythonCode,
   result,
@@ -333,10 +336,24 @@ export default function SolutionStepsBlock({
   const hasShortSource = shortPaper && Array.isArray(shortSource?.sections) && shortSource.sections.length > 0;
   const hasPlaybackSource =
     typeof playbackMessageId === "string" &&
-    playbackMessageId.trim().length > 0 &&
-    typeof playbackFallbackContent === "string" &&
-    playbackFallbackContent.trim().length > 0;
-  const playbackContent = hasPlaybackSource ? String(playbackFallbackContent || "") : "";
+    playbackMessageId.trim().length > 0;
+  const playbackStructured = playbackStructuredData && typeof playbackStructuredData === "object"
+    ? (playbackStructuredData as Record<string, unknown>)
+    : null;
+  const playbackSchemaName = typeof playbackStructured?.schema_name === "string"
+    ? String(playbackStructured.schema_name).trim()
+    : "";
+  const isStandardStructuredPlayback =
+    !!playbackStructured &&
+    (
+      playbackSchemaName === "youask_math_openai_detailed_v2" ||
+      playbackSchemaName === "youask_math_openai_v2"
+    );
+  const standardAttemptId =
+    (typeof playbackStructured?.attempt_id === "string" && String(playbackStructured.attempt_id).trim()) ||
+    (typeof playbackMessageId === "string" && playbackMessageId.trim()) ||
+    "standard-chat-playback";
+  const playbackContent = String(playbackFallbackContent || "");
   const currentProblemText = wrapProblemMath(normalizedProblem || originalProblem || "");
   const filteredShortSections = React.useMemo(() => {
     if (!Array.isArray(shortSections)) return [];
@@ -400,11 +417,19 @@ export default function SolutionStepsBlock({
         )}
         <SectionRow label="SOLUTION" id={`${sectionId}-playback-solution`} hideLabel={false}>
           <div data-playback-source={playbackSource || "unknown"}>
-            <ChatLikeSolvePlayer
-              messageId={String(playbackMessageId)}
-              fallbackContent={playbackContent}
-              anchorPrefix={sectionId}
-            />
+            {isStandardStructuredPlayback ? (
+              <StandardChatSolvePlayer
+                structuredData={playbackStructured}
+                attemptId={standardAttemptId}
+                playbackMessageId={String(playbackMessageId)}
+              />
+            ) : (
+              <ChatLikeSolvePlayer
+                messageId={String(playbackMessageId)}
+                fallbackContent={playbackContent}
+                anchorPrefix={sectionId}
+              />
+            )}
           </div>
         </SectionRow>
       </div>

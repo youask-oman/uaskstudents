@@ -425,15 +425,17 @@ async def estimate_credits(
             tasks=capped_tasks,
             selected_task_ids=selected_task_ids,
         )
-        # Blend with existing tier/addon cost as a floor.
+        # Additive pricing contract:
+        # total = base + addons + workload(task bundle)
         workload_total = float(est.get("estimated_total_credits") or 0.0)
-        total = max(float(total), workload_total)
+        total = float(total) + workload_total
         per_question = total
         workload_payload = {
             "context_credits": float(est.get("context_credits") or 0.0),
             "per_task_credits": est.get("per_task_credits") or {},
             "bundle_factor": float(est.get("bundle_factor") or 0.85),
-            "estimated_total_credits": float(est.get("estimated_total_credits") or total),
+            # Keep this aligned to what UI shows as final estimate.
+            "estimated_total_credits": float(total),
             "selected_task_ids": est.get("selected_task_ids") or [],
             "breakdown_reasons": est.get("breakdown_reasons") or {},
             "solve_mode": (body.solve_mode or ("BUNDLE_COMBINED" if body.user_action == "combined_solution" else "PER_TASK_STEPS")),

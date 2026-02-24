@@ -44,6 +44,25 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 const asString = (value: unknown): string | null =>
   typeof value === "string" ? value : (typeof value === "number" || typeof value === "boolean" ? String(value) : null);
 
+const extractSessionMessageText = (message: SessionMessage): string => {
+  const direct = asString(message.content);
+  if (direct && direct.trim()) return direct;
+  if (Array.isArray(message.content)) {
+    const chunks = message.content
+      .map((item) => {
+        const obj = asRecord(item);
+        if (!obj) return "";
+        const text = asString(obj.text);
+        if (text) return text;
+        const nested = asRecord(obj.content);
+        return asString(nested?.text) || "";
+      })
+      .filter((part) => part.trim().length > 0);
+    if (chunks.length > 0) return chunks.join("\n");
+  }
+  return "";
+};
+
 const normalizeSolveTier = (value: unknown): SolveTier | null => {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toUpperCase();
@@ -292,19 +311,45 @@ const extractShortSourcePayload = (messages: SessionMessage[]): ShortSourcePaylo
 
 const extractAssistantPlaybackSource = (
   messages: SessionMessage[]
-): { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null => {
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const message = messages[i];
-    if (String(message?.role || "").toLowerCase() !== "assistant") continue;
+): {
+  messageId: string;
+  assistantContent: string;
+  segments: PlaybackSegment[];
+  source: string;
+  structuredData?: Record<string, unknown> | null;
+} | null => {
+  const assistantMessages = [...messages]
+    .reverse()
+    .filter((message) => String(message?.role || "").toLowerCase() === "assistant");
+  const prioritized = [
+    ...assistantMessages.filter((message) => isSolvePrimaryAssistantMessage(message)),
+    ...assistantMessages.filter((message) => !isSolvePrimaryAssistantMessage(message)),
+  ];
+
+  for (let index = 0; index < prioritized.length; index += 1) {
+    const message = prioritized[index];
     const messageIdRaw = message?.id;
-    const messageId = messageIdRaw === undefined || messageIdRaw === null ? "" : String(messageIdRaw).trim();
-    if (!messageId) continue;
+    const messageId = messageIdRaw === undefined || messageIdRaw === null
+      ? `chat-playback-${index + 1}`
+      : (String(messageIdRaw).trim() || `chat-playback-${index + 1}`);
+
     const resolved = resolvePlaybackFromMessage(message);
-    const assistantContent = (resolved.content || "").trim();
-    if (!assistantContent) continue;
-    return { messageId, assistantContent, segments: resolved.segments, source: resolved.source };
+    const assistantContent = (resolved.content || extractSessionMessageText(message) || "").trim();
+    return {
+      messageId,
+      assistantContent,
+      segments: Array.isArray(resolved.segments) ? resolved.segments : [],
+      source: resolved.source,
+      structuredData: asRecord(message.structured_data),
+    };
   }
-  return null;
+  return {
+    messageId: "chat-playback-fallback",
+    assistantContent: "",
+    segments: [],
+    source: "none",
+    structuredData: null,
+  };
 };
 
 const buildInitialPages = (
@@ -313,7 +358,13 @@ const buildInitialPages = (
   options?: {
     shortTier?: boolean;
     shortSource?: ShortSourcePayload | null;
-    shortPlayback?: { messageId: string; assistantContent: string; segments: PlaybackSegment[]; source: string } | null;
+    shortPlayback?: {
+      messageId: string;
+      assistantContent: string;
+      segments: PlaybackSegment[];
+      source: string;
+      structuredData?: Record<string, unknown> | null;
+    } | null;
   }
 ): CanvasPageData[] => {
   const isShortTier = Boolean(options?.shortTier);
@@ -387,6 +438,7 @@ const buildInitialPages = (
       playbackFallbackContent: shortPlayback?.assistantContent,
       playbackSegments: shortPlayback?.segments,
       playbackSource: shortPlayback?.source,
+      playbackStructuredData: shortPlayback?.structuredData,
     });
   }
 
@@ -663,15 +715,6 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
     () => extractAssistantPlaybackSource(session?.messages || []),
     [session?.messages]
   );
-  useEffect(() => {
-    if (!shortPlaybackSource) return;
-    console.log("[chat_final] playback_source", {
-      messageId: shortPlaybackSource.messageId,
-      source: shortPlaybackSource.source,
-      contentLen: shortPlaybackSource.assistantContent.length,
-      segments: shortPlaybackSource.segments.length,
-    });
-  }, [shortPlaybackSource]);
   const batchSolutions = useMemo(
     () => extractBatchSolutionsFromSessionMessages(session?.messages || []),
     [session?.messages]
@@ -729,9 +772,7 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
         const hasShortSourceSections = Array.isArray(block.shortSource?.sections) && block.shortSource.sections.length > 0;
         const hasPlayback =
           typeof block.playbackMessageId === "string" &&
-          block.playbackMessageId.trim().length > 0 &&
-          typeof block.playbackFallbackContent === "string" &&
-          block.playbackFallbackContent.trim().length > 0;
+          block.playbackMessageId.trim().length > 0;
         const isShortOutline = hasShortSections || hasShortSourceSections || hasPlayback;
 
         if (isShortOutline) {
@@ -904,14 +945,21 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
     if (!session) return;
     const latestSavedPages = savedPaperVersions[0]?.pages;
     const isShortTierSession = solveTier === "SHORT_STEPS";
-    const initialPages = latestSavedPages && latestSavedPages.length > 0
+    const forcePlaybackOnly = true;
+    const playbackSource = shortPlaybackSource || {
+      messageId: `chat-playback-${String(session.id)}`,
+      assistantContent: "",
+      segments: [],
+      source: "none" as const,
+    };
+    const initialPages = !forcePlaybackOnly && latestSavedPages && latestSavedPages.length > 0
       ? latestSavedPages
-      : (!isShortTierSession && batchSolutions.length > 0)
+      : (!forcePlaybackOnly && !isShortTierSession && batchSolutions.length > 0)
         ? buildBatchInitialPages(batchSolutions)
         : buildInitialPages(normalizedMessages, session.title || "", {
           shortTier: isShortTierSession,
           shortSource: shortSourcePayload,
-          shortPlayback: shortPlaybackSource,
+          shortPlayback: playbackSource,
         });
     dispatch({
       type: "RESET",

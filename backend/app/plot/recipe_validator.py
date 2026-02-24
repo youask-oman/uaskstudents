@@ -67,5 +67,25 @@ def validate_recipe(recipe: Dict[str, Any]) -> Tuple[bool, List[str], List[str]]
             except Exception:
                 errors.append(f"series_{idx}_sequence_range_invalid")
 
-    return len(errors) == 0, errors, warnings
+    layers = recipe.get("layers")
+    if isinstance(layers, list):
+        has_slope = False
+        has_phase = False
+        for idx, layer in enumerate(layers):
+            if not isinstance(layer, dict):
+                warnings.append(f"layer_{idx}_not_object")
+                continue
+            layer_type = str(layer.get("type") or "").strip().lower()
+            if not layer_type:
+                warnings.append(f"layer_{idx}_type_missing")
+                continue
+            if layer_type == "slope_field":
+                has_slope = True
+            if layer_type == "phase_line":
+                has_phase = True
+        if has_slope or has_phase:
+            dy_expr = recipe.get("dy_dx_sympy")
+            if not isinstance(dy_expr, str) or not dy_expr.strip():
+                warnings.append("layers_dy_dx_sympy_missing")
 
+    return len(errors) == 0, errors, warnings

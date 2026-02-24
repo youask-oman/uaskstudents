@@ -281,6 +281,32 @@ async def log_requests(request: Request, call_next):
 
 @app.middleware("http")
 async def enforce_terms_acceptance(request: Request, call_next):
+    path = request.url.path or ""
+
+    def _math_svg_fallback_response() -> JSONResponse:
+        # Frontend math renderers already support graceful fallback when ok=false.
+        # Returning 200 here avoids surfacing transient transport races as 500s.
+        if path.endswith("/math/svg/batch"):
+            return JSONResponse({"results": []}, status_code=200)
+        if path.endswith("/math/svg"):
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "error": "Math SVG render temporarily unavailable.",
+                    "code": "RENDER_UNAVAILABLE",
+                },
+                status_code=200,
+            )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "internal_error",
+                    "message": "Request failed before a response was produced.",
+                }
+            },
+        )
+
     async def _safe_call_next():
         try:
             return await call_next(request)
@@ -288,21 +314,12 @@ async def enforce_terms_acceptance(request: Request, call_next):
             if "No response returned." in str(exc):
                 logging.getLogger("app").exception(
                     "terms_acceptance_no_response path=%s method=%s",
-                    request.url.path,
+                    path,
                     request.method,
                 )
-                return JSONResponse(
-                    status_code=500,
-                    content={
-                        "error": {
-                            "code": "internal_error",
-                            "message": "Request failed before a response was produced.",
-                        }
-                    },
-                )
+                return _math_svg_fallback_response()
             raise
 
-    path = request.url.path or ""
     if not path.startswith("/api/"):
         return await _safe_call_next()
 

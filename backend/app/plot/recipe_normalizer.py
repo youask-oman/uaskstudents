@@ -226,6 +226,8 @@ def normalize_recipe(recipe: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]
         normalized["legend"] = True
     if "points" not in normalized or not isinstance(normalized.get("points"), list):
         normalized["points"] = []
+    if "layers" not in normalized or not isinstance(normalized.get("layers"), list):
+        normalized["layers"] = []
     if "annotations" not in normalized or not isinstance(normalized.get("annotations"), list):
         normalized["annotations"] = []
 
