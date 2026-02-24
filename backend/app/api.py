@@ -4103,7 +4103,13 @@ async def ocr_extract(
     prompt_entry = None
     schema_entry = None
     if engine_choice == "openai":
-        prompt_entry, schema_entry = ocr_config_service.get_openai_ocr_assets(session)
+        try:
+            prompt_entry, schema_entry = ocr_config_service.get_openai_ocr_assets(session)
+        except PromptRegistryError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"OpenAI OCR configuration error: {exc}",
+            ) from exc
 
     prompt_version = str(getattr(prompt_entry, "version", "local"))
     schema_version = str(getattr(schema_entry, "version", "local"))
@@ -4277,6 +4283,8 @@ async def ocr_extract(
             billing={"hold_applied": True, "hold_amount": float(hold_amount)},
         )
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         logging.exception("ocr_extract failed")
         ocr_job.status = "failed"
         ocr_job.error_code = "OCR_FAILED"
