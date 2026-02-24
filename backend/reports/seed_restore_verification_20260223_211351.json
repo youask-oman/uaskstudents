@@ -1,0 +1,36 @@
+﻿{
+    "generated_at":  "2026-02-23T21:13:51.3688706-08:00",
+    "throwaway_db":  "uask_db_seed_replay_verify",
+    "docker_services":  "healthy",
+    "seed_replay_status":  "passed",
+    "verification_success":  true,
+    "integrity_issues":  "PASS",
+    "key_counts":  {
+                       "user_internal":  5,
+                       "systemconfig":  56,
+                       "prompt_templates":  6,
+                       "prompt_bindings":  3,
+                       "json_schemas":  4,
+                       "providermodelpricing":  8,
+                       "credit_program_definition":  6,
+                       "plan":  6,
+                       "school":  117960,
+                       "credit_transfers":  0,
+                       "notifications":  0,
+                       "expected_school":  117960
+                   },
+    "forbidden_tables":  {
+                             "payment":  0,
+                             "invoice":  0,
+                             "invoice_line_item":  0,
+                             "refund":  0,
+                             "subscription":  0,
+                             "subscriptionperiod":  0,
+                             "chatsession":  0,
+                             "chatmessage":  0,
+                             "solveroutputattempt":  0,
+                             "billingledger":  0
+                         },
+    "seed_log_file":  "backend/reports/seed_replay_seed_output.txt",
+    "verify_log_file":  "backend/reports/seed_replay_verify_output.txt"
+}
