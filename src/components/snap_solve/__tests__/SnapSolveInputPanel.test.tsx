@@ -231,6 +231,80 @@ describe("SnapSolveInputPanel", () => {
         expect(solveCalls).toHaveLength(1);
     });
 
+    test("auto-includes source image for selected solve when confidence is below 85%", async () => {
+        const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+            const url = typeof input === "string" ? input : String(input);
+            if (url.includes("/api/v1/ocr/extract")) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        ocr_attempt_id: "ocr-low-confidence",
+                        status: "completed",
+                        extracted_text: "x+1=2",
+                        structured_json: {
+                            questions: [
+                                { id: "q1", text: "x+1=2", latex: "x+1=2", confidence: 0.7 },
+                            ],
+                        },
+                        cache_hit: false,
+                        billing: { hold_applied: true, hold_amount: 2 },
+                    }),
+                };
+            }
+            if (url.includes("/api/v1/math/solve_from_image_or_sketch")) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        answer_markdown: "x = 1",
+                        answer_latex: "x=1",
+                        meta: { mode: "upload", mime: "image/png", latency_ms: 11 },
+                    }),
+                };
+            }
+            if (url.includes("/api/v1/math/solve_text_batch")) {
+                return {
+                    ok: true,
+                    json: async () => ({ ok: true, solutions: [] }),
+                };
+            }
+            return {
+                ok: true,
+                json: async () => ({}),
+            };
+        });
+        global.fetch = fetchMock as unknown as typeof fetch;
+        render(<SnapSolveInputPanel />);
+
+        await act(async () => {
+            fireEvent.change(screen.getByTestId("snap-upload-input"), {
+                target: { files: [new File(["img"], "low-confidence.png", { type: "image/png" })] },
+            });
+        });
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Extract" }));
+        });
+        await waitFor(() => {
+            expect(screen.getByText("Auto-enabled: selected question confidence is below 85%.")).toBeInTheDocument();
+        });
+
+        await act(async () => {
+            fireEvent.click(screen.getByText("Solve selected questions individually"));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText("Solved Results")).toBeInTheDocument();
+        });
+
+        const withImageCalls = fetchMock.mock.calls.filter(
+            (call) => typeof call[0] === "string" && call[0].includes("/api/v1/math/solve_from_image_or_sketch")
+        );
+        const batchCalls = fetchMock.mock.calls.filter(
+            (call) => typeof call[0] === "string" && call[0].includes("/api/v1/math/solve_text_batch")
+        );
+        expect(withImageCalls).toHaveLength(1);
+        expect(batchCalls).toHaveLength(0);
+    });
+
     test("select all and clear selection controls toggle extracted question selection", async () => {
         const fetchMock = jest.fn().mockResolvedValue({
             ok: true,

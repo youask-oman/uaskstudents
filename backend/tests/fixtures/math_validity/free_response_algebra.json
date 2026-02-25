@@ -1,0 +1,16 @@
+{
+  "ocr_attempt_id": "fx-free-algebra",
+  "status": "completed",
+  "structured_json": {
+    "questions": [
+      {
+        "id": "q1",
+        "question_text": "Solve for x: 2x + 7 = 19",
+        "latex": "2x + 7 = 19",
+        "confidence": null,
+        "page_index": 0
+      }
+    ]
+  }
+}
+

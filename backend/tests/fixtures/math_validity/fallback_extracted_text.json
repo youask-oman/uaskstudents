@@ -1,0 +1,9 @@
+{
+  "ocr_attempt_id": "fx-fallback",
+  "status": "completed",
+  "extracted_text": "Find the ratio of sides in a right triangle if tan(theta) = 3/4.",
+  "structured_json": {
+    "questions": []
+  }
+}
+

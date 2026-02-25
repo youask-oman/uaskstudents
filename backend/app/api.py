@@ -115,6 +115,7 @@ from app.services.prompt_binding_policy import (
     ALLOWED_SCHEMA_IDS,
 )
 from app.services.billing_feature_flags import is_billing_v2_enabled
+from app.services.validation.math_validity import assess_math_validity
 
 
 
@@ -2897,6 +2898,53 @@ def _validate_extract_payload(payload: Dict[str, Any], page_hint: int = 0) -> Di
     return INVALID_EXTRACT_PAYLOAD
 
 
+def _attach_math_validity_to_questions(payload: Dict[str, Any], request_id: Optional[str] = None) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+    questions = payload.get("questions")
+    if not isinstance(questions, list):
+        return payload
+    updated_questions: List[Dict[str, Any]] = []
+    for idx, item in enumerate(questions):
+        if not isinstance(item, dict):
+            continue
+        question = dict(item)
+        source_text = str(question.get("text") or question.get("question_text") or "").strip()
+        ocr_input = {
+            "ocr_attempt_id": str(request_id or ""),
+            "request_id": str(request_id or ""),
+            "extracted_text": source_text,
+            "structured_json": {
+                "questions": [
+                    {
+                        "id": str(question.get("id") or f"q{idx+1}"),
+                        "question_text": source_text,
+                        "text": source_text,
+                        "latex": question.get("latex"),
+                        "page_index": question.get("page"),
+                    }
+                ]
+            },
+        }
+        try:
+            validity = assess_math_validity(ocr_input)
+            question["validity"] = validity
+            if question.get("confidence") is None:
+                question["confidence"] = round(float(validity.get("confidence_percent", 0)) / 100.0, 4)
+            question["is_valid_math_problem"] = bool(validity.get("is_valid_math_problem"))
+        except Exception as exc:
+            logging.warning(
+                "math_validity_attach_failed request_id=%s question_id=%s error=%s",
+                request_id,
+                str(question.get("id") or f"q{idx+1}"),
+                str(exc)[:200],
+            )
+        updated_questions.append(question)
+    out = dict(payload)
+    out["questions"] = updated_questions
+    return out
+
+
 def _clean_content_for_json(content: str) -> str:
     return CODE_FENCE_PATTERN.sub(r"\1", content)
 
@@ -2917,6 +2965,7 @@ class ExtractQuestionItem(BaseModel):
     latex: Optional[str] = None
     type: str
     confidence: Optional[float] = None
+    validity: Optional[Dict[str, Any]] = None
 
 
 class ExtractErrorItem(BaseModel):
@@ -3497,8 +3546,9 @@ async def _call_extract_questions(
                 )
             )
             token_usage = result.token_usage or {}
+            payload_with_validity = _attach_math_validity_to_questions(result.payload, request_id=request_id)
             return {
-                "payload": result.payload,
+                "payload": payload_with_validity,
                 "input_tokens": token_usage.get("input_tokens"),
                 "output_tokens": token_usage.get("output_tokens"),
                 "cached_tokens": token_usage.get("cached_tokens"),

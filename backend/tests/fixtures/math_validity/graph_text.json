@@ -1,0 +1,16 @@
+{
+  "ocr_attempt_id": "fx-graph",
+  "status": "completed",
+  "structured_json": {
+    "questions": [
+      {
+        "id": "q1",
+        "question_text": "Graph the function y = 2x - 3 for x from -2 to 4 and find the y-intercept.",
+        "latex": "y = 2x - 3",
+        "confidence": null,
+        "page_index": 1
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,16 @@
+{
+  "ocr_attempt_id": "fx-inline-mcq",
+  "status": "completed",
+  "structured_json": {
+    "questions": [
+      {
+        "id": "q1",
+        "question_text": "Find the value of x if x^2 = 9. A) -3 B) 0 C) 3 D) 9",
+        "latex": "x^2 = 9",
+        "confidence": null,
+        "page_index": 0
+      }
+    ]
+  }
+}
+

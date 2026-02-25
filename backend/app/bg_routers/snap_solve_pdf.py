@@ -18,6 +18,7 @@ from PIL import Image, ImageOps, ImageEnhance
 import pypdfium2 as pdfium
 
 from app.services.ocr.ocr_service import ocr_service
+from app.services.validation.math_validity import assess_math_validity
 
 
 router = APIRouter()
@@ -238,12 +239,31 @@ def _extract_questions_from_image(image_bytes: bytes, engine_choice: str, page_i
             lines = [text]
     questions: List[Dict[str, Any]] = []
     for idx, line in enumerate(lines[:30]):
+        validity = assess_math_validity(
+            {
+                "ocr_attempt_id": f"pdf:{page_index if page_index is not None else 'doc'}",
+                "extracted_text": line,
+                "structured_json": {
+                    "questions": [
+                        {
+                            "id": f"q_{page_index if page_index is not None else 'doc'}_{idx+1}",
+                            "question_text": line,
+                            "text": line,
+                            "latex": None,
+                            "page_index": page_index,
+                        }
+                    ]
+                },
+            }
+        )
         questions.append(
             {
                 "id": f"q_{page_index if page_index is not None else 'doc'}_{idx+1}",
                 "text": line,
                 "confidence": float(ocr.get("confidence") or 0.7),
-                "is_valid_math": True,
+                "is_valid_math": bool(validity.get("is_valid_math_problem")),
+                "is_valid_math_problem": bool(validity.get("is_valid_math_problem")),
+                "validity": validity,
                 "source_page_index": page_index,
                 "ocr_engine": ocr.get("engine_used") or tried[-1],
             }

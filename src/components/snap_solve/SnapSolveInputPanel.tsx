@@ -33,10 +33,19 @@ type PdfPrepareResponse = {
     page_count: number;
 };
 
+type MathValidityBlock = {
+    is_valid_math_problem?: boolean;
+    confidence_percent?: number;
+    reasons?: string[];
+    warnings?: string[];
+    normalized_question?: Record<string, unknown>;
+};
+
 type ExtractedQuestion = {
     id: string;
     text: string;
     confidence?: number;
+    validity?: MathValidityBlock | null;
     is_valid_math?: boolean;
     page?: number;
     latex?: string | null;
@@ -59,14 +68,6 @@ type OcrExtractResponse = {
     quality_score?: number | null;
     cache_hit?: boolean;
     billing?: { hold_applied?: boolean; hold_amount?: number };
-};
-
-type LatexToSympyResponse = {
-    ok?: boolean;
-    backend?: string;
-    expression?: string | null;
-    error?: string | null;
-    detail?: string | null;
 };
 
 type SolvedQuestion = {
@@ -122,18 +123,19 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const [solvingSelected, setSolvingSelected] = React.useState(false);
     const [imageExtracting, setImageExtracting] = React.useState(false);
     const [imageExtractedQuestions, setImageExtractedQuestions] = React.useState<ExtractedQuestion[]>([]);
+    const [lastImageQualityScore, setLastImageQualityScore] = React.useState<number | null>(null);
     const [imageExtractEngine, setImageExtractEngine] = React.useState<ImageExtractEngine>("auto");
     const [imageExtractNote, setImageExtractNote] = React.useState<string | null>(null);
     const [imageCrop, setImageCrop] = React.useState<PdfCropSelection | null>(null);
     const [imageRender, setImageRender] = React.useState<{ width: number; height: number } | null>(null);
+    const [lastImageExtractUsedCrop, setLastImageExtractUsedCrop] = React.useState(false);
     const [ocrAttemptId, setOcrAttemptId] = React.useState<string | null>(null);
     const [ocrEngineUsed, setOcrEngineUsed] = React.useState<string | null>(null);
     const [ocrReviewed, setOcrReviewed] = React.useState(false);
     const [extractProgressPct, setExtractProgressPct] = React.useState(0);
     const [pdfExtractProgress, setPdfExtractProgress] = React.useState<{ current: number; total: number; mode: "crop" | "page" | "document" } | null>(null);
-    const [sympyParsedExpression, setSympyParsedExpression] = React.useState("");
-    const [sympyParseError, setSympyParseError] = React.useState<string | null>(null);
-    const [isSympyParsing, setIsSympyParsing] = React.useState(false);
+    const [lastPdfExtractMode, setLastPdfExtractMode] = React.useState<"crop" | "page" | "document" | null>(null);
+    const [includeExtractedImage, setIncludeExtractedImage] = React.useState(false);
     const [ocrEngineAvailability, setOcrEngineAvailability] = React.useState<OcrEngineAvailability>({
         local_engine_enabled: true,
         openai_engine_enabled: true,
@@ -222,6 +224,16 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const getUserId = React.useCallback((): string => {
         if (typeof window === "undefined") return "1";
         return localStorage.getItem("user_id") || "1";
+    }, []);
+    const ensureUniqueQuestionIds = React.useCallback((questions: ExtractedQuestion[]): ExtractedQuestion[] => {
+        const seen = new Map<string, number>();
+        return questions.map((question, index) => {
+            const baseId = String(question.id || `q-${index + 1}`).trim() || `q-${index + 1}`;
+            const count = seen.get(baseId) || 0;
+            seen.set(baseId, count + 1);
+            if (count === 0) return { ...question, id: baseId };
+            return { ...question, id: `${baseId}__${count + 1}` };
+        });
     }, []);
     React.useEffect(() => {
         if (typeof window === "undefined") return;
@@ -349,69 +361,36 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             .join("\n\n"),
         [extractedPreviewQuestions, normalizeLatexForReview],
     );
-    const sympyLatexInput = React.useMemo(() => {
-        for (const q of extractedPreviewQuestions) {
-            const source = q.latex || q.text || "";
-            const normalized = normalizeLatexForReview(source).trim();
-            if (normalized) return normalized;
+    const getQuestionConfidenceRatio = React.useCallback((question: ExtractedQuestion): number | null => {
+        if (typeof question.confidence === "number" && Number.isFinite(question.confidence)) {
+            return question.confidence;
         }
-        return "";
-    }, [extractedPreviewQuestions, normalizeLatexForReview]);
-
-    React.useEffect(() => {
-        let cancelled = false;
-        const run = async () => {
-            if (!sympyLatexInput) {
-                if (!cancelled) {
-                    setSympyParsedExpression("");
-                    setSympyParseError(null);
-                    setIsSympyParsing(false);
-                }
-                return;
+        const validityPct = question.validity?.confidence_percent;
+        if (typeof validityPct === "number" && Number.isFinite(validityPct)) {
+            return Math.max(0, Math.min(1, validityPct / 100));
+        }
+        return null;
+    }, []);
+    const extractionConfidenceSummary = React.useMemo(() => {
+        const confidences = extractedPreviewQuestions
+            .map((q) => getQuestionConfidenceRatio(q))
+            .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+        if (!confidences.length) {
+            if (!isPdfMode && typeof lastImageQualityScore === "number" && Number.isFinite(lastImageQualityScore)) {
+                const pct = Math.round(Math.max(0, Math.min(1, lastImageQualityScore)) * 100);
+                return { avgPct: pct, minPct: pct, count: 1, source: "quality_score" as const };
             }
-            setIsSympyParsing(true);
-            setSympyParseError(null);
-            try {
-                const res = await fetch("/api/extract/latex-to-sympy", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ latex: sympyLatexInput, backend: "antlr" }),
-                });
-                const raw = await res.text();
-                let data: LatexToSympyResponse = {};
-                if (raw) {
-                    try {
-                        data = JSON.parse(raw) as LatexToSympyResponse;
-                    } catch {
-                        throw new Error(raw || "Invalid parser response.");
-                    }
-                }
-                if (!res.ok) {
-                    throw new Error(String(data.detail || raw || "Unable to parse LaTeX."));
-                }
-                if (!cancelled) {
-                    if (data.ok && typeof data.expression === "string" && data.expression.trim()) {
-                        setSympyParsedExpression(data.expression.trim());
-                        setSympyParseError(null);
-                    } else {
-                        setSympyParsedExpression("");
-                        setSympyParseError(String(data.error || "Unable to parse LaTeX with SymPy."));
-                    }
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    setSympyParsedExpression("");
-                    setSympyParseError(err instanceof Error ? err.message : "Unable to parse LaTeX with SymPy.");
-                }
-            } finally {
-                if (!cancelled) setIsSympyParsing(false);
-            }
+            return null;
+        }
+        const avg = confidences.reduce((sum, value) => sum + value, 0) / confidences.length;
+        const min = Math.min(...confidences);
+        return {
+            avgPct: Math.round(avg * 100),
+            minPct: Math.round(min * 100),
+            count: confidences.length,
+            source: "question_confidence" as const,
         };
-        void run();
-        return () => {
-            cancelled = true;
-        };
-    }, [sympyLatexInput]);
+    }, [extractedPreviewQuestions, getQuestionConfidenceRatio, isPdfMode, lastImageQualityScore]);
 
     React.useEffect(() => {
         if (!ocrAttemptId) return;
@@ -441,6 +420,18 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         [ocrAttemptId, imageExtractedQuestions.length]
     );
     const resolveEnabled = isSubmitEnabled && (!requiresOcrReview || ocrReviewed);
+    const selectedExtractedQuestions = React.useMemo(
+        () => extractedQuestions.filter((q) => selectedQuestionIds.has(q.id)),
+        [extractedQuestions, selectedQuestionIds]
+    );
+    const selectedHasLowConfidence = React.useMemo(
+        () => selectedExtractedQuestions.some((q) => {
+            const ratio = getQuestionConfidenceRatio(q);
+            return ratio !== null && ratio < 0.85;
+        }),
+        [selectedExtractedQuestions, getQuestionConfidenceRatio]
+    );
+    const shouldIncludeImageInSelectedSolve = includeExtractedImage || selectedHasLowConfidence;
 
     const resolveSolveTier = React.useCallback((): "short_steps" | "standard" | "research" | "final" => {
         const propTier = (tier || "").toLowerCase();
@@ -487,11 +478,11 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setImageExtractNote(null);
         setImageCrop(null);
         setImageRender(null);
-        setSympyParsedExpression("");
-        setSympyParseError(null);
-        setIsSympyParsing(false);
+        setLastImageExtractUsedCrop(false);
         setOcrAttemptId(null);
         setOcrEngineUsed(null);
+        setLastPdfExtractMode(null);
+        setIncludeExtractedImage(false);
     }, [clearPdfCache]);
 
     const clearExtractedState = React.useCallback(() => {
@@ -504,12 +495,13 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setImageExtracting(false);
         setImageExtractedQuestions([]);
         setImageExtractNote(null);
-        setSympyParsedExpression("");
-        setSympyParseError(null);
-        setIsSympyParsing(false);
+        setLastImageQualityScore(null);
+        setLastImageExtractUsedCrop(false);
         setOcrAttemptId(null);
         setOcrEngineUsed(null);
         setOcrReviewed(false);
+        setLastPdfExtractMode(null);
+        setIncludeExtractedImage(false);
     }, []);
 
     const setUploadFile = React.useCallback(
@@ -542,6 +534,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             setOcrReviewed(false);
             setImageExtracting(true);
             setImageExtractedQuestions([]);
+            setLastImageQualityScore(null);
             setImageExtractNote(null);
             setOcrAttemptId(null);
             setOcrEngineUsed(null);
@@ -571,6 +564,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 });
                 const payload = (await res.json().catch(() => ({}))) as OcrExtractResponse;
                 if (!res.ok) throw new Error(extractErrorMessage(payload, "Unable to extract questions from image."));
+                if (typeof payload.quality_score === "number" && Number.isFinite(payload.quality_score)) {
+                    setLastImageQualityScore(payload.quality_score);
+                }
                 const extractedText = normalizeExtractText(payload.extracted_text || "");
                 const structured = payload.structured_json || {};
                 const structuredQuestions = Array.isArray((structured as { questions?: unknown[] }).questions)
@@ -583,11 +579,13 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         const text = normalizeExtractText(String(q.text || q.question_text || "").trim());
                         if (!text) return null;
                         const latexRaw = q.latex || q.question_latex;
+                        const validityRaw = q.validity;
                         return {
                             id: String(q.id || q.question_id || `${payload.ocr_attempt_id || "ocr"}-${index + 1}`),
                             text,
                             latex: typeof latexRaw === "string" ? normalizeExtractText(latexRaw) : undefined,
                             confidence: typeof q.confidence === "number" ? q.confidence : undefined,
+                            validity: validityRaw && typeof validityRaw === "object" ? (validityRaw as MathValidityBlock) : undefined,
                             page: typeof q.page === "number" ? q.page : (typeof q.page_index === "number" ? q.page_index : undefined),
                         };
                     })
@@ -613,14 +611,16 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                     latex: extractedText,
                                 } as ExtractedQuestion]
                                 : [])));
-                setImageExtractedQuestions(nextQuestions);
-                setExtractedQuestions(nextQuestions);
-                setSelectedQuestionIds(new Set(nextQuestions.map((q) => q.id)));
+                const uniqueQuestions = ensureUniqueQuestionIds(nextQuestions);
+                setImageExtractedQuestions(uniqueQuestions);
+                setExtractedQuestions(uniqueQuestions);
+                setSelectedQuestionIds(new Set(uniqueQuestions.map((q) => q.id)));
                 setSolvedQuestions([]);
                 // Keep the optional free-text field empty after OCR extraction.
                 setQuestionText("");
                 setOcrAttemptId(payload.ocr_attempt_id || null);
                 setOcrEngineUsed(engineChoice);
+                setLastImageExtractUsedCrop(isCropMode);
                 // billing hold info is surfaced via note for now
                 if (imageExtractEngine === "auto") {
                     const autoEngine = ocrEngineAvailability.default_engine === "glm_ocr"
@@ -636,7 +636,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 setImageExtracting(false);
             }
         },
-        [extractErrorMessage, getUserId, imageCrop, imageExtractEngine, imageRender, normalizeExtractText, ocrEngineAvailability, splitNumberedQuestions]
+        [ensureUniqueQuestionIds, extractErrorMessage, getUserId, imageCrop, imageExtractEngine, imageRender, normalizeExtractText, ocrEngineAvailability, splitNumberedQuestions]
     );
 
     React.useEffect(() => {
@@ -1081,9 +1081,11 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 questions = data.extracted_questions || [];
                 setPdfExtractProgress({ current: 1, total: 1, mode });
             }
-            setExtractedQuestions(questions);
-            setSelectedQuestionIds(new Set(questions.map((q) => q.id)));
-            if (!questions.length) {
+            const uniqueQuestions = ensureUniqueQuestionIds(questions);
+            setExtractedQuestions(uniqueQuestions);
+            setSelectedQuestionIds(new Set(uniqueQuestions.map((q) => q.id)));
+            setLastPdfExtractMode(mode);
+            if (!uniqueQuestions.length) {
                 const warning = mode === "crop"
                     ? "No questions detected in this crop. Try a larger crop or use Extract This Page."
                     : "No questions detected in selected PDF pages.";
@@ -1096,8 +1098,88 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         }
     };
 
+    const blobUrlToFile = React.useCallback(async (url: string, fileName: string): Promise<File> => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Failed to load extracted source image.");
+        const blob = await res.blob();
+        const mime = blob.type || "image/png";
+        return new File([blob], fileName, { type: mime });
+    }, []);
+
+    const cropImageUrlToFile = React.useCallback(
+        async (
+            imageUrl: string,
+            crop: PdfCropSelection,
+            renderSize: { width: number; height: number } | { width: number; height: number; scale: number } | null,
+            fileName: string
+        ): Promise<File> => {
+            const image = new Image();
+            image.src = imageUrl;
+            await new Promise<void>((resolve, reject) => {
+                image.onload = () => resolve();
+                image.onerror = () => reject(new Error("Failed to decode image crop."));
+            });
+
+            const baseWidth = renderSize?.width || image.naturalWidth;
+            const baseHeight = renderSize?.height || image.naturalHeight;
+            const sx = Math.max(0, Math.floor((crop.x / Math.max(1, baseWidth)) * image.naturalWidth));
+            const sy = Math.max(0, Math.floor((crop.y / Math.max(1, baseHeight)) * image.naturalHeight));
+            const sw = Math.max(1, Math.floor((crop.width / Math.max(1, baseWidth)) * image.naturalWidth));
+            const sh = Math.max(1, Math.floor((crop.height / Math.max(1, baseHeight)) * image.naturalHeight));
+            const boundedW = Math.max(1, Math.min(sw, image.naturalWidth - sx));
+            const boundedH = Math.max(1, Math.min(sh, image.naturalHeight - sy));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = boundedW;
+            canvas.height = boundedH;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("Canvas context unavailable for crop.");
+            ctx.drawImage(image, sx, sy, boundedW, boundedH, 0, 0, boundedW, boundedH);
+
+            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", 0.95));
+            if (!blob) throw new Error("Failed to create cropped image.");
+            return new File([blob], fileName, { type: "image/png" });
+        },
+        []
+    );
+
+    const buildSelectedSolveImageFile = React.useCallback(async (): Promise<File | null> => {
+        if (isPdfMode) {
+            if (!pdfPageImage?.url) return null;
+            if (lastPdfExtractMode === "crop" && pdfCrop) {
+                return cropImageUrlToFile(
+                    pdfPageImage.url,
+                    pdfCrop,
+                    pdfRender,
+                    `pdf-page-${pdfPage}-crop.png`
+                );
+            }
+            return blobUrlToFile(pdfPageImage.url, `pdf-page-${pdfPage}.png`);
+        }
+
+        if (!uploadedFile || !uploadedFile.type.startsWith("image/")) return null;
+        if (lastImageExtractUsedCrop && imageCrop && imageRender && previewUrl) {
+            return cropImageUrlToFile(previewUrl, imageCrop, imageRender, "snap-extract-crop.png");
+        }
+        return uploadedFile;
+    }, [
+        blobUrlToFile,
+        cropImageUrlToFile,
+        imageCrop,
+        imageRender,
+        isPdfMode,
+        lastImageExtractUsedCrop,
+        lastPdfExtractMode,
+        pdfCrop,
+        pdfPage,
+        pdfPageImage,
+        pdfRender,
+        previewUrl,
+        uploadedFile,
+    ]);
+
     const solveSelectedQuestions = async () => {
-        const selected = extractedQuestions.filter((q) => selectedQuestionIds.has(q.id));
+        const selected = selectedExtractedQuestions;
         if (!selected.length) {
             setError("Select at least one extracted question.");
             return;
@@ -1117,6 +1199,41 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setError(null);
         try {
             const userId = (typeof window !== "undefined" && window.localStorage.getItem("user_id")) || "1";
+            if (shouldIncludeImageInSelectedSolve) {
+                const sourceImageFile = await buildSelectedSolveImageFile();
+                if (!sourceImageFile) {
+                    setError("Unable to attach extracted image for selected solve.");
+                    return;
+                }
+                const out: SolvedQuestion[] = [];
+                for (const q of selected) {
+                    try {
+                        const formData = new FormData();
+                        formData.append("mode", "upload");
+                        formData.append("question_text", q.text || "");
+                        formData.append("tier", effectiveTier);
+                        formData.append("requested_mode", effectiveMode);
+                        formData.append("image", sourceImageFile);
+                        formData.append("original_filename", sourceImageFile.name);
+                        const response = await fetch(`/api/v1/math/solve_from_image_or_sketch?user_id=${encodeURIComponent(userId)}`, {
+                            method: "POST",
+                            body: formData,
+                        });
+                        const payload = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            const message = payload?.detail || payload?.error || "Unable to solve this question.";
+                            out.push({ questionId: q.id, error: String(message) });
+                            continue;
+                        }
+                        out.push({ questionId: q.id, result: payload as SolveResponse });
+                    } catch (err) {
+                        out.push({ questionId: q.id, error: err instanceof Error ? err.message : "Solve failed." });
+                    }
+                }
+                setSolvedQuestions(out);
+                return;
+            }
+
             const body = buildSolveBatchPayload({
                 selectedQuestions: selected.map((q) => ({ question_id: q.id, text: q.text })),
                 mode: batchMode,
@@ -1182,26 +1299,28 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     };
 
     const btnBase =
-        "inline-flex items-center justify-center rounded-xl px-3.5 py-2 text-xs font-semibold tracking-[0.01em] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 disabled:pointer-events-none disabled:opacity-50";
+        "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-xs font-semibold tracking-[0.015em] transition-all duration-250 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
     const btnGhost =
-        `${btnBase} border border-slate-500/45 bg-slate-900/55 text-slate-100 shadow-[0_8px_18px_-12px_rgba(6,182,212,0.45)] hover:-translate-y-[1px] hover:border-cyan-300/60 hover:bg-slate-800/80`;
+        `${btnBase} border border-slate-300 bg-[whitesmoke] text-slate-800 shadow-[0_14px_24px_-18px_rgba(15,23,42,0.25)] hover:-translate-y-0.5 hover:border-cyan-400 hover:bg-white`;
     const btnLightGhost =
-        `${btnBase} border border-slate-300 bg-white text-slate-700 shadow-[0_8px_18px_-12px_rgba(2,132,199,0.22)] hover:-translate-y-[1px] hover:border-sky-400 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-400 dark:hover:text-sky-200`;
+        `${btnBase} border border-slate-300/90 bg-gradient-to-br from-white to-slate-50 text-slate-700 shadow-[0_12px_22px_-16px_rgba(14,116,144,0.35)] hover:-translate-y-0.5 hover:border-cyan-400 hover:from-cyan-50 hover:to-emerald-50 hover:text-cyan-800 dark:border-slate-700 dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-800 dark:text-slate-100 dark:hover:border-cyan-400 dark:hover:from-slate-800 dark:hover:to-slate-700`;
     const btnPrimary =
-        `${btnBase} border border-sky-400/40 bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 text-white shadow-[0_12px_24px_-14px_rgba(14,165,233,0.9)] hover:-translate-y-[1px] hover:brightness-110`;
+        `${btnBase} border border-cyan-300/55 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white shadow-[0_16px_28px_-18px_rgba(6,182,212,0.95)] hover:-translate-y-0.5 hover:brightness-110`;
+    const btnRose =
+        `${btnBase} border border-rose-300/60 bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 text-white shadow-[0_16px_28px_-18px_rgba(244,63,94,0.95)] hover:-translate-y-0.5 hover:brightness-110`;
     const btnSuccess =
-        `${btnBase} border border-emerald-400/40 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-[0_12px_24px_-14px_rgba(16,185,129,0.9)] hover:-translate-y-[1px] hover:brightness-110`;
+        `${btnBase} border border-emerald-300/55 bg-gradient-to-r from-emerald-500 via-teal-500 to-lime-500 text-white shadow-[0_16px_28px_-18px_rgba(16,185,129,0.95)] hover:-translate-y-0.5 hover:brightness-110`;
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-slate-200/90 bg-white/85 p-1.5 shadow-[0_16px_30px_-24px_rgba(2,132,199,0.65)] backdrop-blur dark:border-slate-700 dark:bg-slate-800/85">
+            <div className="grid w-full grid-cols-2 gap-2 rounded-3xl border border-slate-200/90 bg-gradient-to-r from-cyan-50 via-white to-emerald-50 p-1.5 shadow-[0_20px_32px_-26px_rgba(8,145,178,0.8)] backdrop-blur dark:border-slate-700 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
                 <button
                     type="button"
                     onClick={() => setActiveSubTab("upload")}
                     data-testid="snap-subtab-upload"
                     className={`${btnBase} px-4 py-2.5 text-sm font-bold ${activeSubTab === "upload"
-                        ? "border border-sky-400/60 bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-[0_14px_24px_-14px_rgba(14,165,233,0.95)]"
-                        : "border border-slate-300 bg-slate-50 text-slate-700 hover:bg-sky-50 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-200 dark:hover:bg-sky-950/40 dark:hover:text-sky-200"
+                        ? "border border-cyan-300/70 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white shadow-[0_16px_28px_-16px_rgba(14,165,233,0.95)]"
+                        : "border border-slate-300 bg-white/85 text-slate-700 hover:-translate-y-0.5 hover:border-cyan-400 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-200 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200"
                         }`}
                 >
                     Upload
@@ -1211,8 +1330,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                     onClick={() => setActiveSubTab("sketch")}
                     data-testid="snap-subtab-sketch"
                     className={`${btnBase} px-4 py-2.5 text-sm font-bold ${activeSubTab === "sketch"
-                        ? "border border-emerald-400/60 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_14px_24px_-14px_rgba(16,185,129,0.9)]"
-                        : "border border-slate-300 bg-slate-50 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-200 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
+                        ? "border border-emerald-300/70 bg-gradient-to-r from-emerald-500 via-teal-500 to-lime-500 text-white shadow-[0_16px_28px_-16px_rgba(16,185,129,0.9)]"
+                        : "border border-slate-300 bg-white/85 text-slate-700 hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-200 dark:hover:bg-emerald-950/35 dark:hover:text-emerald-200"
                         }`}
                 >
                     Sketch
@@ -1220,7 +1339,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             </div>
 
             {activeSubTab === "upload" ? (
-                <div onDrop={handleDrop} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} className={`rounded-2xl border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-slate-700 bg-slate-900 text-slate-100"}`}>
+                <div onDrop={handleDrop} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} className={`rounded-3xl border-2 border-dashed p-6 transition-all duration-250 ${isDragging ? "border-cyan-300 bg-gradient-to-br from-cyan-500/20 to-emerald-400/20 shadow-[0_20px_40px_-28px_rgba(45,212,191,0.95)]" : "border-cyan-300/35 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-slate-100 shadow-[0_20px_34px_-24px_rgba(8,145,178,0.9)]"}`}>
                     <div className="mb-4 flex items-center gap-2 text-xs">
                         <button
                             type="button"
@@ -1349,6 +1468,18 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                     </div>
                                 </div>
                             )}
+                            {!imageExtracting && imageExtractedQuestions.length > 0 && (
+                                <div className="mt-3 rounded-lg border border-slate-200 bg-[whitesmoke] p-2 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
+                                    <div className="font-semibold">Extraction confidence</div>
+                                    <div>
+                                        {extractionConfidenceSummary
+                                            ? (extractionConfidenceSummary.source === "quality_score"
+                                                ? `LLM/OCR confidence: ${extractionConfidenceSummary.avgPct}% (estimated from OCR quality score).`
+                                                : `LLM/OCR confidence: ${extractionConfidenceSummary.avgPct}% average (${extractionConfidenceSummary.minPct}% lowest across ${extractionConfidenceSummary.count} question${extractionConfidenceSummary.count === 1 ? "" : "s"}).`)
+                                            : "LLM/OCR confidence: unavailable for this extraction."}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1400,8 +1531,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                     )}
                                 </div>
                             )}
-                            <div className="flex flex-wrap items-center gap-2">
-                                <button type="button" onClick={() => void runPdfExtract("crop")} disabled={extracting || !pdfCrop} className={btnPrimary}>Extract Crop</button>
+                            <div className="flex w-full items-center justify-between gap-2">
+                                <button type="button" onClick={() => void runPdfExtract("crop")} disabled={extracting || !pdfCrop} className={btnRose}>Extract Crop</button>
                                 <button type="button" onClick={() => void runPdfExtract("page")} disabled={extracting} className={btnPrimary}>Extract This Page</button>
                                 {PDF_DOCUMENT_ENABLED && (
                                     <button type="button" onClick={() => void runPdfExtract("document")} disabled={extracting} className={btnPrimary}>Extract Entire PDF (page-by-page)</button>
@@ -1424,6 +1555,18 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                             className="h-full rounded bg-cyan-400 transition-all duration-300"
                                             style={{ width: `${extractProgressPct}%` }}
                                         />
+                                    </div>
+                                </div>
+                            )}
+                            {!extracting && extractedQuestions.length > 0 && (
+                                <div className="rounded-lg border border-slate-200 bg-[whitesmoke] p-2 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
+                                    <div className="font-semibold">Extraction confidence</div>
+                                    <div>
+                                        {extractionConfidenceSummary
+                                            ? (extractionConfidenceSummary.source === "quality_score"
+                                                ? `LLM/OCR confidence: ${extractionConfidenceSummary.avgPct}% (estimated from OCR quality score).`
+                                                : `LLM/OCR confidence: ${extractionConfidenceSummary.avgPct}% average (${extractionConfidenceSummary.minPct}% lowest across ${extractionConfidenceSummary.count} question${extractionConfidenceSummary.count === 1 ? "" : "s"}).`)
+                                            : "LLM/OCR confidence: unavailable for this extraction."}
                                     </div>
                                 </div>
                             )}
@@ -1467,27 +1610,6 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                             </div>
                         </div>
                     )}
-                    <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-3 dark:border-violet-900/40 dark:bg-violet-950/20">
-                        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
-                            SymPy `parse_latex()` Output
-                        </div>
-                        <textarea
-                            readOnly
-                            value={
-                                isSympyParsing
-                                    ? "Parsing extracted LaTeX with sympy.parsing.latex.parse_latex()..."
-                                    : (sympyParsedExpression || "")
-                            }
-                            rows={3}
-                            className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 font-mono text-sm text-violet-900 outline-none dark:border-violet-900/50 dark:bg-slate-900 dark:text-violet-200"
-                            placeholder="Parsed SymPy expression will appear here."
-                        />
-                        {sympyParseError && (
-                            <div className="mt-2 text-xs text-rose-700 dark:text-rose-300">
-                                Parse error: {sympyParseError}
-                            </div>
-                        )}
-                    </div>
                 </div>
             )}
 
@@ -1538,12 +1660,34 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                 />
                                 <div className="flex-1">
                                     <div className="font-medium">{q.text}</div>
-                                    <div className="text-xs text-slate-500">confidence: {Math.round((q.confidence || 0) * 100)}%</div>
+                                    <div className="text-xs text-slate-500">
+                                        {(() => {
+                                            const ratio = getQuestionConfidenceRatio(q);
+                                            return ratio === null
+                                                ? "confidence: unavailable"
+                                                : `confidence: ${Math.round(ratio * 100)}%`;
+                                        })()}
+                                    </div>
                                 </div>
                             </label>
                         ))}
                     </div>
-                    <button type="button" onClick={() => void solveSelectedQuestions()} disabled={solvingSelected || selectedQuestionIds.size === 0} className={`mt-3 ${btnSuccess}`}>
+                    <div className="mt-3 flex flex-col items-start gap-2">
+                        <label className="flex w-full items-start gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                            <input
+                                type="checkbox"
+                                checked={includeExtractedImage}
+                                onChange={(e) => setIncludeExtractedImage(e.target.checked)}
+                            />
+                            <span>Include extracted image / cropped PDF page when solving</span>
+                        </label>
+                    </div>
+                    {selectedHasLowConfidence && (
+                        <div className="mt-1 text-xs text-amber-600 dark:text-amber-300">
+                            Auto-enabled: selected question confidence is below 85%.
+                        </div>
+                    )}
+                    <button type="button" onClick={() => void solveSelectedQuestions()} disabled={solvingSelected || selectedQuestionIds.size === 0} className={`mt-3 self-start ${btnSuccess}`}>
                         {solvingSelected ? "Solving..." : "Solve selected questions individually"}
                     </button>
                 </div>
@@ -1552,7 +1696,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             <div className="sticky bottom-3 z-20 mt-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95">
                 {requiresOcrReview && (
                     <div className="mb-3 flex justify-end">
-                        <label className="inline-flex items-center gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-100 px-5 py-2.5 text-base font-extrabold text-emerald-950 shadow-md ring-1 ring-emerald-300/70">
+                        <label className="inline-flex items-center gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-100 px-5 py-2.5 text-sm font-extrabold text-emerald-950 shadow-md ring-1 ring-emerald-300/70">
                             <input
                                 type="checkbox"
                                 checked={ocrReviewed}

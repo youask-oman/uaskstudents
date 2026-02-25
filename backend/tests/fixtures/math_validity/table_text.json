@@ -1,0 +1,16 @@
+{
+  "ocr_attempt_id": "fx-table",
+  "status": "completed",
+  "structured_json": {
+    "questions": [
+      {
+        "id": "q1",
+        "question_text": "From the table of values x: 1,2,3 and y: 2,4,6, find the linear function that represents y in terms of x.",
+        "latex": null,
+        "confidence": null,
+        "page_index": 0
+      }
+    ]
+  }
+}
+

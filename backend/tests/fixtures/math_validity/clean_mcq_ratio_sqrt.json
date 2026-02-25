@@ -1,0 +1,17 @@
+{
+  "ocr_attempt_id": "fx-clean-mcq",
+  "status": "completed",
+  "extracted_text": "",
+  "structured_json": {
+    "questions": [
+      {
+        "id": "q1",
+        "question_text": "If the angles of elevation of the top of a tower from three collinear points A, B and C are 30 degree, 45 degree and 60 degree respectively, then the ratio AB:BC is:\n(a) 1:√3\n(b) 2:3\n(c) √3:1\n(d) √3:√2",
+        "latex": null,
+        "confidence": null,
+        "page_index": 0
+      }
+    ]
+  }
+}
+
