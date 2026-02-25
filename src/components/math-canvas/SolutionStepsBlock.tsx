@@ -131,8 +131,33 @@ const shouldRenderAsProse = (value: string): boolean => {
 
 const normalizeValueLabel = (value: string): string => (value || "").replace(/_/g, " ").trim();
 
+const decodeEscapedMathText = (value: string): string => {
+  let text = String(value || "");
+  if (!text) return "";
+  text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
+    try {
+      return String.fromCodePoint(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
+  return text;
+};
+
 const wrapProblemMath = (value: string): string => {
-  let text = (value || "")
+  let text = decodeEscapedMathText((value || ""))
     .trim()
     .replace(/\\\\\(/g, "\\(")
     .replace(/\\\\\)/g, "\\)")
@@ -323,9 +348,14 @@ export default function SolutionStepsBlock({
   };
 
   // Compute display values for final answer
-  const displayAnswerText = finalAnswer?.answer_text || "";
-  const displayAnswerLatex = finalAnswer?.answer_latex || result || "";
-  const displayValues = finalAnswer?.values || [];
+  const displayAnswerText = decodeEscapedMathText(finalAnswer?.answer_text || "");
+  const displayAnswerLatex = decodeEscapedMathText(finalAnswer?.answer_latex || result || "");
+  const displayValues = (finalAnswer?.values || []).map((val) => ({
+    ...val,
+    label: decodeEscapedMathText(String(val.label || "")),
+    value_latex: val.value_latex ? decodeEscapedMathText(String(val.value_latex)) : val.value_latex,
+    value: typeof val.value === "string" ? decodeEscapedMathText(val.value) : val.value,
+  }));
   const plotAttemptId =
     plotPayload && typeof plotPayload.attempt_id === "string"
       ? String(plotPayload.attempt_id)
@@ -354,7 +384,7 @@ export default function SolutionStepsBlock({
     (typeof playbackMessageId === "string" && playbackMessageId.trim()) ||
     "standard-chat-playback";
   const playbackContent = String(playbackFallbackContent || "");
-  const currentProblemText = wrapProblemMath(normalizedProblem || originalProblem || "");
+  const currentProblemText = wrapProblemMath(originalProblem || normalizedProblem || "");
   const filteredShortSections = React.useMemo(() => {
     if (!Array.isArray(shortSections)) return [];
     return shortSections.filter((section) => {
@@ -411,7 +441,7 @@ export default function SolutionStepsBlock({
         {(originalProblem || normalizedProblem || shortSource?.question) && (
           <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
             <div style={problemTextStyle}>
-              <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || shortSource?.question || "")} mode="prose" />
+              <MathRenderer content={wrapProblemMath(originalProblem || normalizedProblem || shortSource?.question || "")} mode="prose" />
             </div>
           </SectionRow>
         )}
@@ -442,7 +472,7 @@ export default function SolutionStepsBlock({
         {(originalProblem || normalizedProblem) && (
           <SectionRow label={problemSectionLabel} id={`${sectionId}-problem`} hideLabel={false}>
             <div style={problemTextStyle}>
-              <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
+              <MathRenderer content={wrapProblemMath(originalProblem || normalizedProblem || "")} mode="prose" />
             </div>
           </SectionRow>
         )}
@@ -672,7 +702,7 @@ export default function SolutionStepsBlock({
           ) : (
             <>
               <div style={problemTextStyle}>
-                <MathRenderer content={wrapProblemMath(normalizedProblem || originalProblem || "")} mode="prose" />
+                <MathRenderer content={wrapProblemMath(originalProblem || normalizedProblem || "")} mode="prose" />
               </div>
               {editable && !exportMode && (
                 <div className={styles.blockActions} style={{ marginTop: 8 }}>
@@ -1038,7 +1068,11 @@ export default function SolutionStepsBlock({
                       ) : (
                         <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 700, fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
                           {typeof val.value === "string"
-                            ? val.value
+                            ? (
+                              looksLikeMathExpression(val.value)
+                                ? <MathRenderer content={val.value} mode="inline" />
+                                : val.value
+                            )
                             : (val.value === null || val.value === undefined)
                               ? "null"
                               : JSON.stringify(val.value, null, 2)

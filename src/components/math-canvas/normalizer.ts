@@ -457,9 +457,9 @@ const parseRecognizedLatexFromObject = (value: unknown): string | undefined => {
   const problem = asRecord(obj.problem) || asRecord(obj.question);
   if (problem) {
     return (
+      asString(problem.original_text) ||
       asString(problem.normalized_text) ||
       asString(problem.normalized_latex) ||
-      asString(problem.original_text) ||
       undefined
     );
   }
@@ -821,9 +821,13 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
 
   const questionText = compactQuestionText(asString(obj.question_text) || undefined);
   const questionSummary = asString(obj.question_summary) || undefined;
+  const originalText =
+    asString(asRecord(obj.problem)?.original_text) ||
+    asString(asRecord(obj.problem)?.text) ||
+    undefined;
   return {
     layoutTitle,
-    recognizedLatex: recognizedLatex || questionSummary || questionText,
+    recognizedLatex: recognizedLatex || originalText || questionText || questionSummary,
     steps: combinedSteps,
     result,
     finalAnswer,
@@ -833,10 +837,9 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
     verificationChecks,
     assumptions: asStringArray(obj.assumptions),
     originalProblem:
-      questionSummary ||
+      originalText ||
       questionText ||
-      asString(asRecord(obj.problem)?.original_text) ||
-      asString(asRecord(obj.problem)?.text) ||
+      questionSummary ||
       undefined,
     normalizedProblem:
       asString(asRecord(obj.problem)?.normalized_text) ||

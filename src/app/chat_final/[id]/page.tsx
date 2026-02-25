@@ -919,9 +919,25 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     if (!session) return;
     const latestSavedPages = savedPaperVersions[0]?.pages;
+    const fallbackOriginalProblem =
+      shortSourcePayload?.question ||
+      primarySolution?.originalProblem ||
+      "";
+    const hydratedSavedPages = (latestSavedPages || []).map((page) => ({
+      ...page,
+      blocks: (Array.isArray(page.blocks) ? page.blocks : []).map((block) => {
+        if (block.type !== "steps") return block;
+        const hasOriginal = typeof block.originalProblem === "string" && block.originalProblem.trim().length > 0;
+        if (hasOriginal || !fallbackOriginalProblem) return block;
+        return {
+          ...block,
+          originalProblem: fallbackOriginalProblem,
+        };
+      }),
+    }));
     const isShortTierSession = solveTier === "SHORT_STEPS";
-    const initialPages = latestSavedPages && latestSavedPages.length > 0
-      ? latestSavedPages
+    const initialPages = hydratedSavedPages.length > 0
+      ? hydratedSavedPages
       : (!isShortTierSession && batchSolutions.length > 0)
         ? buildBatchInitialPages(batchSolutions)
         : buildInitialPages(normalizedMessages, session.title || "", {
@@ -933,7 +949,7 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
       type: "RESET",
       state: buildInitialDocumentState(initialPages, "none"),
     });
-  }, [batchSolutions, normalizedMessages, savedPaperVersions, session, shortPlaybackSource, shortSourcePayload, solveTier]);
+  }, [batchSolutions, normalizedMessages, primarySolution?.originalProblem, savedPaperVersions, session, shortPlaybackSource, shortSourcePayload, solveTier]);
 
   const tokenUsage = useMemo(() => {
     let input = 0;

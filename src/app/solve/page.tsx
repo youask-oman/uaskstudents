@@ -1829,6 +1829,10 @@ export default function DashboardPage() {
         setClarificationResponse("");
         setClarificationHistory([]);
         setActiveAttemptId(null);
+        if (typeof window !== "undefined") {
+            localStorage.removeItem("uask.activeAttemptId");
+            localStorage.removeItem("uask.activeQuery");
+        }
 
         const createIdempotencyKey = () =>
             typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -1836,9 +1840,22 @@ export default function DashboardPage() {
                 : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         try {
-            const streamCandidates = ["/api/v1/solve_v3_stream_detached", "/api/v1/solve_v3_stream"];
+            // Prefer direct stream first to avoid stale detached-worker state.
+            const streamCandidates = ["/api/v1/solve_v3_stream", "/api/v1/solve_v3_stream_detached"];
             const requestedMode = (effectiveSolveTier === "SHORT_STEPS" || effectiveSolveTier === "FINAL") ? "minimal" : "detailed";
             const idempotencyKey = createIdempotencyKey();
+            const recoverSessionFromHistory = async (): Promise<string | number | null> => {
+                try {
+                    const res = await fetch(`/api/v1/history?user_id=${encodeURIComponent(userId)}`);
+                    if (!res.ok) return null;
+                    const data = await res.json();
+                    if (!Array.isArray(data) || data.length === 0) return null;
+                    const latest = data[0] as { id?: string | number };
+                    return normalizeSessionId(latest?.id);
+                } catch {
+                    return null;
+                }
+            };
 
             void fetchSolveRuntimeMeta(userId, effectiveSolveTier, requestedMode)
                 .then((runtimeMeta) => {
@@ -2086,6 +2103,14 @@ export default function DashboardPage() {
                                                 }
                                             })
                                             .catch(() => undefined);
+                                    } else {
+                                        recoverSessionFromHistory()
+                                            .then((recoveredSessionId) => {
+                                                if (recoveredSessionId) {
+                                                    router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, recoveredSessionId));
+                                                }
+                                            })
+                                            .catch(() => undefined);
                                     }
                                 }
                             } else {
@@ -2153,6 +2178,11 @@ export default function DashboardPage() {
                             const sessionId = normalizeSessionId(statusData.session_id);
                             if (sessionId) {
                                 setTimeout(() => router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, sessionId)), 200);
+                            } else {
+                                const recoveredSessionId = await recoverSessionFromHistory();
+                                if (recoveredSessionId) {
+                                    setTimeout(() => router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, recoveredSessionId)), 200);
+                                }
                             }
                             shouldTerminateStream = true;
                         } else if (statusData.status === "failure") {
@@ -2160,6 +2190,12 @@ export default function DashboardPage() {
                         } else if (statusData.status === "ambiguous") {
                             throw new Error("Clarification is disabled. Please submit one clear question.");
                         }
+                    }
+                } else {
+                    const recoveredSessionId = await recoverSessionFromHistory();
+                    if (recoveredSessionId) {
+                        setTimeout(() => router.push(resolveSessionRouteByTier(effectiveSolveTierRef.current, recoveredSessionId)), 200);
+                        shouldTerminateStream = true;
                     }
                 }
             }

@@ -72,6 +72,44 @@ const initialState = (): PlaybackState => ({
 
 const getNow = (): number => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
+const decodeEscapedMathText = (value: string): string => {
+  let text = String(value || "");
+  if (!text) return "";
+  text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
+    try {
+      return String.fromCodePoint(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
+  return text;
+};
+
+const decodeDeep = (value: unknown): unknown => {
+  if (typeof value === "string") return decodeEscapedMathText(value);
+  if (Array.isArray(value)) return value.map((item) => decodeDeep(item));
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = decodeDeep(v);
+    }
+    return out;
+  }
+  return value;
+};
+
 export function useRenderPlayback(events: RenderEvent[]) {
   const [state, setState] = useState<PlaybackState>(initialState);
   const [playing, setPlaying] = useState(false);
@@ -119,7 +157,7 @@ export function useRenderPlayback(events: RenderEvent[]) {
           next.isTyping = true;
           return next;
         case "QUESTION_SET":
-          next.questionText = String(p.text || "");
+          next.questionText = decodeEscapedMathText(String(p.text || ""));
           return next;
         case "STEP_START": {
           const title = String(p.title || `Step ${stepIndex}`);
@@ -138,7 +176,7 @@ export function useRenderPlayback(events: RenderEvent[]) {
             step.blocks.push(block);
           }
           block.kind = "text";
-          block.text = `${block.text || ""}${String(p.chunk || "")}`;
+          block.text = `${block.text || ""}${decodeEscapedMathText(String(p.chunk || ""))}`;
           next.isTyping = true;
           return next;
         }
@@ -151,7 +189,7 @@ export function useRenderPlayback(events: RenderEvent[]) {
             step.blocks.push(block);
           }
           block.kind = "math";
-          block.latex = String(p.latex || "");
+          block.latex = decodeEscapedMathText(String(p.latex || ""));
           block.display = Boolean(p.display);
           next.isTyping = true;
           return next;
@@ -163,7 +201,7 @@ export function useRenderPlayback(events: RenderEvent[]) {
           return next;
         }
         case "FINAL_ANSWER_SET":
-          next.finalAnswer = p;
+          next.finalAnswer = decodeDeep(p) as Record<string, unknown>;
           return next;
         case "PLOT_SET":
           next.plot = p;

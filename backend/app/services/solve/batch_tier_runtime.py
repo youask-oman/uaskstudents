@@ -2882,16 +2882,17 @@ async def execute_batch_solve(
     )
     unresolved_placeholders = sorted(set(PLACEHOLDER_TOKEN_RE.findall(developer_prompt)))
     if unresolved_placeholders:
-        raise BatchSolveError(
-            "Developer prompt contains unresolved placeholders.",
-            status_code=500,
-            code="developer_prompt_unresolved_placeholders",
-            details={
-                "placeholders": unresolved_placeholders,
-                "binding_id": binding_id,
-                "developer_prompt_id": _bget("developer_prompt_id"),
-            },
+        # Fail-soft: strip unresolved template tokens so provider calls can proceed.
+        # This avoids hard failures when prompt templates include optional/legacy keys.
+        logger.warning(
+            "developer_prompt_unresolved_placeholders request_id=%s attempt_id=%s binding_id=%s developer_prompt_id=%s placeholders=%s",
+            runtime_request_id,
+            runtime_attempt_id,
+            binding_id,
+            _bget("developer_prompt_id"),
+            unresolved_placeholders,
         )
+        developer_prompt = PLACEHOLDER_TOKEN_RE.sub("", developer_prompt)
 
     user_runtime_payload: Dict[str, Any] = {
         "request_id": runtime_request_id,

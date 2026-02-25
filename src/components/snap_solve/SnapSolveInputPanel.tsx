@@ -14,6 +14,7 @@ import {
     resolveSolveBatchMode,
     resolveSolveBatchTier,
 } from "@/lib/solve-batch";
+import { fetchCreditsEstimate, fetchWalletSummary, SolveTier } from "@/lib/wallet";
 
 type SnapSubTab = "upload" | "sketch";
 
@@ -123,6 +124,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const [solvingSelected, setSolvingSelected] = React.useState(false);
     const [imageExtracting, setImageExtracting] = React.useState(false);
     const [imageExtractedQuestions, setImageExtractedQuestions] = React.useState<ExtractedQuestion[]>([]);
+    const [editableExtractText, setEditableExtractText] = React.useState("");
     const [lastImageQualityScore, setLastImageQualityScore] = React.useState<number | null>(null);
     const [imageExtractEngine, setImageExtractEngine] = React.useState<ImageExtractEngine>("auto");
     const [imageExtractNote, setImageExtractNote] = React.useState<string | null>(null);
@@ -475,6 +477,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setSolvedQuestions([]);
         setImageExtracting(false);
         setImageExtractedQuestions([]);
+        setEditableExtractText("");
         setImageExtractNote(null);
         setImageCrop(null);
         setImageRender(null);
@@ -494,6 +497,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setSolvedQuestions([]);
         setImageExtracting(false);
         setImageExtractedQuestions([]);
+        setEditableExtractText("");
         setImageExtractNote(null);
         setLastImageQualityScore(null);
         setLastImageExtractUsedCrop(false);
@@ -527,6 +531,37 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         },
         [previewUrl, clearPdfState, clearExtractedState]
     );
+
+    const applyEditedExtractText = React.useCallback((rawText: string) => {
+        const normalized = normalizeExtractText(rawText || "");
+        if (!normalized) {
+            if (isPdfMode) {
+                setExtractedQuestions([]);
+            } else {
+                setImageExtractedQuestions([]);
+                setExtractedQuestions([]);
+            }
+            setSelectedQuestionIds(new Set());
+            return;
+        }
+        const idPrefix = ocrAttemptId || (isPdfMode ? "pdf-edit" : "img-edit");
+        const split = splitNumberedQuestions(normalized, idPrefix);
+        const rebuilt = split.length
+            ? split
+            : [{
+                id: `${idPrefix}-q1`,
+                text: normalized,
+                latex: normalized,
+            } as ExtractedQuestion];
+        const unique = ensureUniqueQuestionIds(rebuilt);
+        if (isPdfMode) {
+            setExtractedQuestions(unique);
+        } else {
+            setImageExtractedQuestions(unique);
+            setExtractedQuestions(unique);
+        }
+        setSelectedQuestionIds(new Set(unique.map((q) => q.id)));
+    }, [ensureUniqueQuestionIds, isPdfMode, normalizeExtractText, ocrAttemptId, splitNumberedQuestions]);
 
     const extractImageQuestions = React.useCallback(
         async (file: File) => {
@@ -615,6 +650,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 setImageExtractedQuestions(uniqueQuestions);
                 setExtractedQuestions(uniqueQuestions);
                 setSelectedQuestionIds(new Set(uniqueQuestions.map((q) => q.id)));
+                setEditableExtractText(
+                    uniqueQuestions.map((q) => normalizeExtractText(q.text || "")).filter(Boolean).join("\n\n")
+                );
                 setSolvedQuestions([]);
                 // Keep the optional free-text field empty after OCR extraction.
                 setQuestionText("");
@@ -1084,6 +1122,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             const uniqueQuestions = ensureUniqueQuestionIds(questions);
             setExtractedQuestions(uniqueQuestions);
             setSelectedQuestionIds(new Set(uniqueQuestions.map((q) => q.id)));
+            setEditableExtractText(
+                uniqueQuestions.map((q) => normalizeExtractText(q.text || "")).filter(Boolean).join("\n\n")
+            );
             setLastPdfExtractMode(mode);
             if (!uniqueQuestions.length) {
                 const warning = mode === "crop"
@@ -1188,10 +1229,41 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         const effectiveMode = resolveSolveMode(effectiveTier);
         const batchMode = resolveSolveBatchMode(effectiveTier, effectiveMode);
         const cap = getSolveBatchCap(batchMode);
+        const tierForEstimate: SolveTier = (
+            effectiveTier === "short_steps"
+                ? "SHORT_STEPS"
+                : (effectiveTier === "final" ? "FINAL" : (effectiveTier === "research" ? "RESEARCH" : "STANDARD"))
+        );
         if (selected.length > cap) {
             const message = mapSolveBatchErrorMessage("TOO_MANY_QUESTIONS", cap);
             setError(message);
             toast?.pushToast({ type: "error", title: "Selection too large", message });
+            return;
+        }
+
+        try {
+            const [estimate, wallet] = await Promise.all([
+                fetchCreditsEstimate({
+                    tier: tierForEstimate,
+                    input_type: shouldIncludeImageInSelectedSolve ? "snap" : "text",
+                    asset_type: shouldIncludeImageInSelectedSolve ? (isPdfMode ? "pdf" : "image") : "none",
+                    question_count: selected.length,
+                    addons: { ocr: false, voice: false, verify: false, plot: false },
+                }),
+                fetchWalletSummary(),
+            ]);
+            const required = Number(estimate.total_credits || 0);
+            const available = Number(wallet.spendable_balance || wallet.available_credits || 0);
+            if (required > available) {
+                const message = `Insufficient credits for ${selected.length} question(s) on ${tierForEstimate}. Need ${required.toFixed(2)}, available ${available.toFixed(2)}.`;
+                setError(message);
+                toast?.pushToast({ type: "error", title: "Insufficient credits", message });
+                return;
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Unable to validate credits before solve.";
+            setError(message);
+            toast?.pushToast({ type: "error", title: "Credits check failed", message });
             return;
         }
 
@@ -1596,9 +1668,18 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         <div className="grid gap-3 md:grid-cols-2">
                             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
                                 <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Plain Text</div>
-                                <pre data-testid="snap-image-extract-plain" className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
-                                    {extractedPreviewText || `No questions detected from this ${isPdfMode ? "PDF" : "image"}.`}
-                                </pre>
+                                <textarea
+                                    data-testid="snap-image-extract-plain"
+                                    value={editableExtractText}
+                                    onChange={(e) => {
+                                        const next = e.target.value;
+                                        setEditableExtractText(next);
+                                        applyEditedExtractText(next);
+                                    }}
+                                    rows={16}
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-2 font-mono text-sm text-slate-700 outline-none focus:border-cyan-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                                    placeholder={`No questions detected from this ${isPdfMode ? "PDF" : "image"}.`}
+                                />
                             </div>
                             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
                                 <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">LaTeX Review</div>

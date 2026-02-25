@@ -6,7 +6,6 @@ import PlotCard from "@/components/plot/PlotCard";
 import BlockRenderer from "@/components/solve/BlockRenderer";
 import TypingIndicator from "@/components/solve/TypingIndicator";
 import UnifiedMathRenderer from "@/components/math/UnifiedMathRenderer";
-import MarkdownMathContent from "@/components/math/MarkdownMathContent";
 import { useRenderPlayback, type RenderEvent } from "@/lib/playback/useRenderPlayback";
 
 interface Props {
@@ -24,8 +23,42 @@ const fallbackEvents = (text: string): RenderEvent[] => [
   { id: "evt_00006", at_ms: 60, type: "MESSAGE_END", payload: {} },
 ];
 
+const decodeEscapedMathText = (value: unknown): string => {
+  let text = typeof value === "string" ? value : value == null ? "" : String(value);
+  if (!text) return "";
+  text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
+    try {
+      return String.fromCodePoint(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
+  return text;
+};
+
+const looksMathy = (value: string): boolean => {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  if (/[√∫∑πθ∞≤≥≈]/.test(text)) return true;
+  if (/\\[a-zA-Z]+/.test(text)) return true;
+  if (/[=^_]/.test(text)) return true;
+  return false;
+};
+
 function normalizeQuestionForDisplay(raw: string): string {
-  let text = String(raw || "");
+  let text = decodeEscapedMathText(raw);
   if (!text) return "";
   text = text
     .replace(/\?_\{n=1\}\^\{\?\}/g, "\\sum_{n=1}^{\\infty}")
@@ -76,8 +109,8 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
   }, [instant, skipToEnd]);
 
   const questionText = useMemo(() => normalizeQuestionForDisplay(String(state.questionText || "")), [state.questionText]);
-  const finalText = useMemo(() => String(state.finalAnswer?.answer_text || ""), [state.finalAnswer]);
-  const finalLatex = useMemo(() => String(state.finalAnswer?.answer_latex || ""), [state.finalAnswer]);
+  const finalText = useMemo(() => decodeEscapedMathText(state.finalAnswer?.answer_text || ""), [state.finalAnswer]);
+  const finalLatex = useMemo(() => decodeEscapedMathText(state.finalAnswer?.answer_latex || ""), [state.finalAnswer]);
   const finalValues = useMemo(() => {
     const raw = state.finalAnswer?.values;
     return Array.isArray(raw) ? raw : [];
@@ -123,7 +156,7 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
       {finalText || finalLatex || finalValues.length > 0 ? (
         <section id={anchorPrefix ? `${anchorPrefix}-final-answer` : undefined} style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 10, padding: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.75, marginBottom: 6 }}>FINAL ANSWER</div>
-          {finalText ? <MarkdownMathContent content={finalText} /> : null}
+          {finalText ? <UnifiedMathRenderer content={finalText} mode={looksMathy(finalText) ? "prose" : "prose"} /> : null}
           {finalLatex ? <UnifiedMathRenderer content={finalLatex} mode="block" /> : null}
           {finalValues.length > 0 ? (
             <div style={{ marginTop: 10, overflowX: "auto" }}>
@@ -138,15 +171,17 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
                 <tbody>
                   {finalValues.map((entry, idx) => {
                     const row = entry && typeof entry === "object" ? (entry as Record<string, unknown>) : {};
-                    const label = String(row.label ?? row.key ?? "");
+                    const label = decodeEscapedMathText(row.label ?? row.key ?? "");
                     const valueRaw = row.value ?? row.text ?? row.number ?? "";
-                    const valueText = typeof valueRaw === "string" ? valueRaw : String(valueRaw ?? "");
-                    const valueLatex = String(row.value_latex ?? row.latex ?? "");
+                    const valueText = decodeEscapedMathText(typeof valueRaw === "string" ? valueRaw : String(valueRaw ?? ""));
+                    const valueLatex = decodeEscapedMathText(row.value_latex ?? row.latex ?? "");
                     return (
                       <tr key={`final-value-${idx}`}>
-                        <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>{label || "-"}</td>
                         <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
-                          {valueText ? <MarkdownMathContent content={valueText} /> : "-"}
+                          {label ? <UnifiedMathRenderer content={label} mode="inline" /> : "-"}
+                        </td>
+                        <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
+                          {valueText ? <UnifiedMathRenderer content={valueText} mode="inline" /> : "-"}
                         </td>
                         <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
                           {valueLatex ? <UnifiedMathRenderer content={valueLatex} mode="inline" /> : "-"}

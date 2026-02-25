@@ -28,6 +28,31 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 
 const asString = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
 
+const decodeEscapedMathText = (value: unknown): string => {
+  let text = asString(value);
+  if (!text) return "";
+  text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
+    try {
+      return String.fromCodePoint(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch {
+      return _;
+    }
+  });
+  text = text
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
+  return text;
+};
+
 const hasNonEmptyValue = (value: unknown): boolean => {
   if (value === null || value === undefined) return false;
   if (typeof value === "string") return value.trim().length > 0;
@@ -245,13 +270,13 @@ export default function StandardChatSolvePlayer({
               ))}
             </div>
           ) : null}
-          {state.questionSummary.trim() ? (
+          {decodeEscapedMathText(state.questionSummary).trim() ? (
             <div style={{ marginBottom: 8, color: "#475569", fontSize: 14 }}>
-              <MarkdownMathContent content={state.questionSummary} />
+              <MarkdownMathContent content={decodeEscapedMathText(state.questionSummary)} />
             </div>
           ) : null}
-          {state.questionText.trim() ? (
-            <UnifiedMathRenderer content={state.questionText} mode="prose" />
+          {decodeEscapedMathText(state.questionText).trim() ? (
+            <UnifiedMathRenderer content={decodeEscapedMathText(state.questionText)} mode="prose" />
           ) : (
             <div style={{ fontSize: 13, color: "#64748b" }}>Preparing question...</div>
           )}
@@ -307,12 +332,14 @@ export default function StandardChatSolvePlayer({
         {!isRefusal && (hasNonEmptyValue(state.finalAnswerText) || hasNonEmptyValue(state.finalAnswerLatex) || finalValues.length > 0) ? (
           <section id="std-final-answer" style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", borderRadius: 10, padding: 12, marginTop: 6 }}>
             <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.78, marginBottom: 8 }}>FINAL ANSWER</div>
-            {state.finalAnswerText ? <MarkdownMathContent content={state.finalAnswerText} /> : null}
-            {state.finalAnswerLatex ? <UnifiedMathRenderer content={state.finalAnswerLatex} mode="block" /> : null}
+            {decodeEscapedMathText(state.finalAnswerText) ? <MarkdownMathContent content={decodeEscapedMathText(state.finalAnswerText)} /> : null}
+            {decodeEscapedMathText(state.finalAnswerLatex) ? <UnifiedMathRenderer content={decodeEscapedMathText(state.finalAnswerLatex)} mode="block" /> : null}
             {finalValues.length > 0 ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
                 {finalValues.map((entry, idx) => {
-                  const value = entry.text || entry.latex || (typeof entry.number === "number" ? String(entry.number) : null) || "";
+                  const value = decodeEscapedMathText(
+                    entry.text || entry.latex || (typeof entry.number === "number" ? String(entry.number) : null) || ""
+                  );
                   return (
                     <span
                       key={`value-${idx}`}
@@ -325,7 +352,7 @@ export default function StandardChatSolvePlayer({
                         color: "#166534",
                       }}
                     >
-                      {entry.key || "value"}: {value}
+                      {decodeEscapedMathText(entry.key || "value")}: <UnifiedMathRenderer content={value} mode="inline" />
                       {entry.unit ? ` ${entry.unit}` : ""}
                     </span>
                   );
