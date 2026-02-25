@@ -129,6 +129,10 @@ export default function ProfilePage() {
     const [whatsappEnabled, setWhatsappEnabled] = useState(true);
     const [whatsappBotStatus, setWhatsappBotStatus] = useState<WhatsAppBotStatus>("disconnected");
     const [whatsappBotConnected, setWhatsappBotConnected] = useState(false);
+    const [pairingCode, setPairingCode] = useState("");
+    const [pairingCodeExpiresIn, setPairingCodeExpiresIn] = useState<number | null>(null);
+    const [whatsappBotNumber, setWhatsappBotNumber] = useState("");
+    const [creatingPairingCode, setCreatingPairingCode] = useState(false);
 
     // Security (password)
     const [currentPassword, setCurrentPassword] = useState("");
@@ -223,6 +227,9 @@ export default function ProfilePage() {
                 const connected = status === "connected";
                 setWhatsappBotStatus(status);
                 setWhatsappBotConnected(connected);
+                if (data?.phoneNumber) {
+                    setWhatsappBotNumber(String(data.phoneNumber));
+                }
                 if (!connected) {
                     setWhatsappEnabled(false);
                 }
@@ -496,6 +503,72 @@ export default function ProfilePage() {
         }
     };
 
+    const handleGeneratePairingCode = async () => {
+        if (!whatsappBotConnected) {
+            pushToast({
+                type: "error",
+                title: "WhatsApp bot offline",
+                message: "Bot is offline. Ask admin to initialize WhatsApp first, then generate a pairing code.",
+            });
+            return;
+        }
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
+        setCreatingPairingCode(true);
+        try {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/whatsapp/pairing-code`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                pushToast({
+                    type: "error",
+                    title: "Cannot generate code",
+                    message:
+                        err.status === 404
+                            ? "Pairing endpoint not found on backend. Backend must be restarted with latest code."
+                            : err.message,
+                    requestId: err.requestId,
+                });
+                return;
+            }
+            const data = await res.json();
+            if (data?.status === "already_linked") {
+                setWhatsappLinked(true);
+                setPairingCode("");
+                setPairingCodeExpiresIn(null);
+                pushToast({
+                    type: "success",
+                    title: "Already linked",
+                    message: "Your WhatsApp number is already linked.",
+                });
+                return;
+            }
+            setPairingCode(String(data?.pairing_code || ""));
+            setPairingCodeExpiresIn(Number(data?.expires_in_seconds || 0));
+            setWhatsappBotNumber(String(data?.bot_number || "").trim());
+            pushToast({
+                type: "success",
+                title: "Pairing code ready",
+                message: "Send this code to the WhatsApp bot to link your number.",
+            });
+        } catch (err) {
+            pushToast({
+                type: "error",
+                title: "Cannot generate code",
+                message: err instanceof Error ? err.message : "Unexpected error",
+            });
+        } finally {
+            setCreatingPairingCode(false);
+        }
+    };
+
     const handleSelectSchool = (school: SchoolSearchResult) => {
         setSchoolId(school.id);
         setSelectedSchoolName(school.school_name);
@@ -508,6 +581,10 @@ export default function ProfilePage() {
         setSelectedSchoolName("");
         setSchoolQuery("");
     };
+
+    const waDigits = (whatsappBotNumber || process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "").replace(/\D+/g, "");
+    const waText = pairingCode ? encodeURIComponent(`CODE ${pairingCode}`) : encodeURIComponent("CODE");
+    const waLink = waDigits ? `https://wa.me/${waDigits}?text=${waText}` : "";
 
     // If profile has school_id but API payload misses school_name, resolve by ID.
     useEffect(() => {
@@ -1075,15 +1152,26 @@ export default function ProfilePage() {
                                             <label className="text-sm font-bold">WhatsApp Integration</label>
                                             <p className="text-xs text-slate-500">Get math help via WhatsApp on your phone</p>
                                         </div>
-                                        <span
-                                            className={`ml-auto px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                                whatsappLinked
-                                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                                                    : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                                            }`}
-                                        >
-                                            {whatsappLinked ? "Linked" : "Not Linked"}
-                                        </span>
+                                        <div className="ml-auto flex items-center gap-2">
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                    whatsappBotConnected
+                                                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                                }`}
+                                            >
+                                                {whatsappBotConnected ? "Bot Online" : "Bot Offline"}
+                                            </span>
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                    whatsappLinked
+                                                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                                        : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                                }`}
+                                            >
+                                                {whatsappLinked ? "Linked" : "Not Linked"}
+                                            </span>
+                                        </div>
                                     </div>
                                     
                                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-5 space-y-4">
@@ -1110,11 +1198,72 @@ export default function ProfilePage() {
                                                     <li>Keep this toggle on to receive WhatsApp replies.</li>
                                                 </ol>
                                             ) : (
-                                                <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
-                                                    <li>Ask admin/support to reissue your pairing flow.</li>
-                                                    <li>Complete linking from WhatsApp, then return here.</li>
-                                                    <li>Turn on WhatsApp Notifications after linking.</li>
-                                                </ol>
+                                                <div className="space-y-3">
+                                                    <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
+                                                        <li>Generate your one-time pairing code below.</li>
+                                                        <li>Open WhatsApp and send <code className="bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded">CODE XXXXXXXX</code> to the bot.</li>
+                                                        <li>Send from a different WhatsApp account than the bot account.</li>
+                                                        <li>When linked, return here and enable WhatsApp Notifications.</li>
+                                                    </ol>
+                                                    <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-700 space-y-3">
+                                                        <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                                                            Bot number: <span className="font-mono">{waDigits || "unknown"}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div>
+                                                                <div className="text-xs text-slate-500 uppercase tracking-wide">One-time pairing code</div>
+                                                                <div className="font-mono text-lg font-bold text-slate-900 dark:text-white">
+                                                                    {pairingCode || "Not generated yet"}
+                                                                </div>
+                                                                {pairingCodeExpiresIn ? (
+                                                                    <div className="text-[11px] text-slate-500">Expires in {pairingCodeExpiresIn}s</div>
+                                                                ) : null}
+                                                            </div>
+                                                            <button
+                                                                onClick={handleGeneratePairingCode}
+                                                                disabled={creatingPairingCode || !whatsappBotConnected}
+                                                                className="px-3 py-2 text-xs font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                                                            >
+                                                                {creatingPairingCode ? "Generating..." : pairingCode ? "Refresh Code" : "Generate Code"}
+                                                            </button>
+                                                        </div>
+                                                        {!whatsappBotConnected ? (
+                                                            <div className="text-[11px] text-amber-700 dark:text-amber-300">
+                                                                Bot is currently offline. Admin must initialize WhatsApp before linking can work.
+                                                            </div>
+                                                        ) : null}
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (!pairingCode) return;
+                                                                    navigator.clipboard.writeText(`CODE ${pairingCode}`);
+                                                                    pushToast({
+                                                                        type: "success",
+                                                                        title: "Copied",
+                                                                        message: "Pairing code copied.",
+                                                                    });
+                                                                }}
+                                                                disabled={!pairingCode}
+                                                                className="px-3 py-2 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+                                                            >
+                                                                Copy Code
+                                                            </button>
+                                                            <a
+                                                                href={waLink || "#"}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className={`px-3 py-2 text-xs font-bold rounded-lg ${waLink ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-slate-200 text-slate-500 pointer-events-none"}`}
+                                                            >
+                                                                Open WhatsApp
+                                                            </a>
+                                                            {!waLink ? (
+                                                                <span className="text-[11px] text-amber-700 dark:text-amber-300">
+                                                                    Bot number not configured yet.
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
                                     </div>

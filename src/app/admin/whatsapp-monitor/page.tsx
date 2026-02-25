@@ -120,6 +120,15 @@ export default function WhatsAppMonitorPage() {
     const [forceLockPhone, setForceLockPhone] = useState("");
     const [forceLockSeconds, setForceLockSeconds] = useState("300");
     const [forceLockReason, setForceLockReason] = useState("manual_admin_lock");
+    const [pairingUserId, setPairingUserId] = useState("");
+    const [pairingInfo, setPairingInfo] = useState<{
+        user_id?: number;
+        active?: boolean;
+        pairing_code?: string | null;
+        expires_in_seconds?: number;
+        whatsapp_linked?: boolean;
+        whatsapp_number?: string | null;
+    } | null>(null);
 
     const getAuthHeaders = (): HeadersInit => {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -324,6 +333,89 @@ export default function WhatsAppMonitorPage() {
             pushToast({
                 type: "error",
                 title: "Clear lock failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
+    };
+
+    const readPairingCode = async () => {
+        const userId = Number(pairingUserId || "0");
+        if (!userId) return;
+        try {
+            const res = await fetch(`/api/admin/whatsapp/pairing-code/${userId}`, {
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                throw new Error(err.message);
+            }
+            const json = await res.json();
+            setPairingInfo(json);
+        } catch (e: unknown) {
+            pushToast({
+                type: "error",
+                title: "Pairing lookup failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
+    };
+
+    const issuePairingCode = async () => {
+        const userId = Number(pairingUserId || "0");
+        if (!userId) return;
+        try {
+            const res = await fetch("/api/admin/whatsapp/pairing-code/issue", {
+                method: "POST",
+                headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId }),
+            });
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                throw new Error(err.message);
+            }
+            const json = await res.json();
+            setPairingInfo({
+                user_id: json.user_id,
+                active: Boolean(json.pairing_code),
+                pairing_code: json.pairing_code || null,
+                expires_in_seconds: Number(json.expires_in_seconds || 0),
+            });
+            pushToast({
+                type: "success",
+                title: "Pairing code issued",
+                message: `User #${userId} pairing code is ready.`,
+            });
+        } catch (e: unknown) {
+            pushToast({
+                type: "error",
+                title: "Issue code failed",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        }
+    };
+
+    const clearPairingCode = async () => {
+        const userId = Number(pairingUserId || "0");
+        if (!userId) return;
+        try {
+            const res = await fetch(`/api/admin/whatsapp/pairing-code/${userId}`, {
+                method: "DELETE",
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                throw new Error(err.message);
+            }
+            pushToast({
+                type: "success",
+                title: "Pairing code cleared",
+                message: `Pairing key cleared for user #${userId}.`,
+            });
+            setPairingInfo(null);
+        } catch (e: unknown) {
+            pushToast({
+                type: "error",
+                title: "Clear code failed",
                 message: e instanceof Error ? e.message : "Unexpected error",
             });
         }
@@ -623,6 +715,41 @@ export default function WhatsAppMonitorPage() {
                         <p className="text-xs text-slate-500 mt-3">No connected users found.</p>
                     )}
                 </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 p-4 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-semibold text-slate-900 dark:text-white">Pairing Code Controls</h2>
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                    Issue, inspect, or clear TTL pairing codes for any user by user ID.
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <input
+                        value={pairingUserId}
+                        onChange={(e) => setPairingUserId(e.target.value)}
+                        placeholder="User ID"
+                        className="px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-transparent text-sm w-40"
+                    />
+                    <button onClick={readPairingCode} className="px-3 py-2 rounded border border-slate-200 dark:border-slate-700 text-xs">
+                        Check
+                    </button>
+                    <button onClick={issuePairingCode} className="px-3 py-2 rounded border border-emerald-300 text-emerald-700 text-xs">
+                        Issue/Refresh
+                    </button>
+                    <button onClick={clearPairingCode} className="px-3 py-2 rounded border border-rose-300 text-rose-700 text-xs">
+                        Clear
+                    </button>
+                </div>
+                {pairingInfo && (
+                    <div className="mt-3 p-3 rounded border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                        <div>User: #{pairingInfo.user_id}</div>
+                        <div>Active: {pairingInfo.active ? "yes" : "no"}</div>
+                        <div>Code: {pairingInfo.pairing_code || "-"}</div>
+                        <div>TTL: {pairingInfo.expires_in_seconds ?? 0}s</div>
+                        <div>Linked: {pairingInfo.whatsapp_linked ? "yes" : "no"} {pairingInfo.whatsapp_number ? `(${pairingInfo.whatsapp_number})` : ""}</div>
+                    </div>
+                )}
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 p-4 mb-6">

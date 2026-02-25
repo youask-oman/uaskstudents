@@ -9,6 +9,7 @@ import asyncio
 import subprocess
 import base64
 import shutil
+import signal
 from typing import Optional, Dict, Any
 from datetime import datetime
 import tempfile
@@ -25,6 +26,45 @@ class WhatsAppService:
         self.error: Optional[str] = None
         self.logged_out = False
         self._setup_node_script()
+
+    def _cleanup_stale_bridge_processes(self) -> None:
+        """
+        Best-effort cleanup for stale Node bridge processes that can keep port 8791 busy.
+        """
+        # Prefer direct /proc scan so this works even in minimal containers without pkill/lsof/fuser.
+        try:
+            for pid in [p for p in os.listdir("/proc") if p.isdigit()]:
+                cmdline_path = f"/proc/{pid}/cmdline"
+                try:
+                    raw = open(cmdline_path, "rb").read()
+                except Exception:
+                    continue
+                cmd = raw.replace(b"\x00", b" ").decode("utf-8", "ignore")
+                if "node" in cmd and "whatsapp_bot.js" in cmd:
+                    try:
+                        os.kill(int(pid), signal.SIGTERM)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        commands = [
+            "pkill -f whatsapp_bot.js || true",
+            "pkill -f '/app/storage/whatsapp_bot/whatsapp_bot.js' || true",
+            "fuser -k 8791/tcp || true",
+            "lsof -t -i:8791 | xargs -r kill -9 || true",
+        ]
+        for cmd in commands:
+            try:
+                subprocess.run(
+                    ["sh", "-lc", cmd],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+            except Exception:
+                continue
 
     def _setup_node_script(self):
         """Create the Node.js script that uses Baileys"""
@@ -406,11 +446,29 @@ async function connectToWhatsApp() {
         if (m.viewOnceMessageV2?.message) m = m.viewOnceMessageV2.message;
         if (m.viewOnceMessageV2Extension?.message) m = m.viewOnceMessageV2Extension.message;
         if (m.documentWithCaptionMessage?.message) m = m.documentWithCaptionMessage.message;
+        if (m.deviceSentMessage?.message) m = m.deviceSentMessage.message;
+        if (m.editedMessage?.message) m = m.editedMessage.message;
+        if (m.groupStatusMentionMessage?.message) m = m.groupStatusMentionMessage.message;
         return m || {};
     }
 
+    function deepFindFirstString(obj, keys, depth = 0) {
+        if (!obj || typeof obj !== 'object' || depth > 5) return '';
+        for (const k of keys) {
+            const v = obj[k];
+            if (typeof v === 'string' && v.trim()) return v.trim();
+        }
+        for (const v of Object.values(obj)) {
+            if (v && typeof v === 'object') {
+                const found = deepFindFirstString(v, keys, depth + 1);
+                if (found) return found;
+            }
+        }
+        return '';
+    }
+
     function extractIncomingText(message) {
-        return message?.conversation
+        const direct = message?.conversation
             || message?.extendedTextMessage?.text
             || message?.imageMessage?.caption
             || message?.videoMessage?.caption
@@ -423,6 +481,17 @@ async function connectToWhatsApp() {
             || message?.templateButtonReplyMessage?.selectedId
             || message?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson
             || '';
+        if (typeof direct === 'string' && direct.trim()) return direct.trim();
+        return deepFindFirstString(message, [
+            'conversation',
+            'text',
+            'caption',
+            'selectedDisplayText',
+            'selectedButtonId',
+            'selectedId',
+            'title',
+            'selectedRowId',
+        ]);
     }
 
     sock.ev.on('messages.upsert', async (m) => {
@@ -432,6 +501,22 @@ async function connectToWhatsApp() {
             const normalizedMessage = unwrapMessage(msg.message);
             const text = extractIncomingText(normalizedMessage);
             const requestId = makeRequestId();
+            if (!text && !normalizedMessage?.imageMessage) {
+                const botJid = (sock.user?.id || '').split(':')[0];
+                const fromJid = String(msg.key.remoteJid || '');
+                const fromNormalized = fromJid.replace(/\D+/g, '');
+                console.log(JSON.stringify({
+                    type: 'status',
+                    status: 'message_ignored_empty_text',
+                    message_id: messageId,
+                    from: fromJid,
+                    from_normalized: fromNormalized,
+                    bot_number: botJid,
+                    from_bot_account: !!(botJid && fromNormalized === botJid),
+                    keys: Object.keys(normalizedMessage || {}),
+                }));
+                return;
+            }
             const messageData = {
                 type: 'message',
                 from: msg.key.remoteJid,
@@ -641,8 +726,15 @@ connectToWhatsApp();
 
     async def initialize(self) -> Dict[str, Any]:
         """Start the WhatsApp bot and generate QR code"""
-        if self.status in ["connecting", "connected", "qr_ready"]:
+        if self.status in ["connected", "qr_ready"]:
             return self.get_status()
+        if self.status == "connecting":
+            # Guard against stale "connecting" state when process already died.
+            if self.process is None or self.process.poll() is not None:
+                self.status = "disconnected"
+                self.error = "Previous WhatsApp start attempt ended unexpectedly. Retrying."
+            else:
+                return self.get_status()
         
         try:
             self.status = "connecting"
@@ -670,6 +762,7 @@ connectToWhatsApp();
                     print(f"[WhatsApp] Error during process cleanup: {e}")
                 finally:
                     self.process = None
+            self._cleanup_stale_bridge_processes()
 
             # If previously logged out, clear auth to force a fresh QR code.
             if self.logged_out:
@@ -814,6 +907,11 @@ connectToWhatsApp();
                         print(f"[WhatsApp] Non-JSON output: {line}")
             
             print("[WhatsApp] Process monitor ended")
+            return_code = self.process.poll() if self.process else None
+            if self.status not in {"connected", "qr_ready"}:
+                self.status = "disconnected"
+                if not self.error:
+                    self.error = f"WhatsApp bridge exited before ready (code={return_code}). Re-initialize to retry."
         
         except Exception as e:
             print(f"[WhatsApp] Monitor error: {e}")

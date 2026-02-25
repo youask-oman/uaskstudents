@@ -13,7 +13,13 @@ from app.services.admin_config_service import admin_config_service
 from app.services.pricing_service import pricing_service
 from app.auth import SECRET_KEY, ALGORITHM
 from app.services.whatsapp import whatsapp_service
-from app.services.whatsapp.whatsapp_state import get_whatsapp_events, get_redis
+from app.services.whatsapp.whatsapp_state import (
+    get_whatsapp_events,
+    get_redis,
+    create_pairing_code,
+    get_pairing_code_for_user,
+    clear_pairing_code_for_user,
+)
 from app.services.whatsapp.ingress_security import get_metrics_snapshot
 from app.services.whatsapp import anti_abuse as wa_abuse
 from app.worker import celery_app
@@ -158,6 +164,10 @@ class WhatsAppAbuseClearLockRequest(BaseModel):
 class WhatsAppCircuitRequest(BaseModel):
     disable_solve: Optional[bool] = None
     disable_media: Optional[bool] = None
+
+
+class WhatsAppPairingCodeRequest(BaseModel):
+    user_id: int
 
 
 class LegalDocumentUpsertRequest(BaseModel):
@@ -710,6 +720,62 @@ def admin_whatsapp_user_transactions(
             for log in logs
         ],
     }
+
+
+@admin_router.post("/whatsapp/pairing-code/issue")
+def admin_issue_whatsapp_pairing_code(
+    body: WhatsAppPairingCodeRequest,
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, int(body.user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.whatsapp_number:
+        return {"status": "already_linked", "user_id": user.id, "whatsapp_linked": True}
+
+    payload = create_pairing_code(user.id)
+    return {
+        "status": "ok",
+        "user_id": user.id,
+        "pairing_code": payload.get("code"),
+        "expires_in_seconds": int(payload.get("expires_in_seconds") or 0),
+        "bot_number": (os.getenv("WHATSAPP_BOT_NUMBER", "") or "").strip(),
+    }
+
+
+@admin_router.get("/whatsapp/pairing-code/{user_id}")
+def admin_get_whatsapp_pairing_code(
+    user_id: int,
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, int(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    payload = get_pairing_code_for_user(user.id)
+    return {
+        "status": "ok",
+        "user_id": user.id,
+        "active": bool(payload),
+        "pairing_code": (payload or {}).get("code"),
+        "expires_in_seconds": int((payload or {}).get("expires_in_seconds") or 0),
+        "whatsapp_linked": bool(user.whatsapp_number),
+        "whatsapp_number": user.whatsapp_number,
+    }
+
+
+@admin_router.delete("/whatsapp/pairing-code/{user_id}")
+def admin_clear_whatsapp_pairing_code(
+    user_id: int,
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, int(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    cleared = clear_pairing_code_for_user(user.id)
+    return {"status": "ok", "user_id": user.id, "cleared": bool(cleared)}
 
 
 @admin_router.patch("/whatsapp/users/{user_id}")

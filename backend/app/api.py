@@ -82,6 +82,9 @@ from app.services.whatsapp.whatsapp_state import (
     set_upload_meta,
     create_upload_id,
     get_upload_meta,
+    create_pairing_code,
+    get_pairing_code_for_user,
+    consume_pairing_code,
     log_whatsapp_event,
     get_whatsapp_events,
 )
@@ -125,6 +128,7 @@ from app.services.whatsapp.ingress_security import (
     verify_signature_headers_and_body,
 )
 from app.services.whatsapp import anti_abuse as wa_abuse
+from app.services.whatsapp.code_parser import extract_pairing_code
 from app.services.billing_feature_flags import is_billing_v2_enabled
 from app.services.validation.math_validity import assess_math_validity
 
@@ -11456,6 +11460,43 @@ async def update_user_preferences(
     db.refresh(user)
     return {"status": "ok", "message": "Preferences updated"}
 
+
+@api_router.post("/user/whatsapp/pairing-code")
+async def issue_user_whatsapp_pairing_code(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    user = db.get(User, current_user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.whatsapp_number:
+        return {
+            "status": "already_linked",
+            "whatsapp_linked": True,
+        }
+
+    existing = get_pairing_code_for_user(user.id)
+    if existing:
+        code_payload = existing
+    else:
+        code_payload = create_pairing_code(user.id)
+
+    bot_number = (os.getenv("WHATSAPP_BOT_NUMBER", "") or "").strip()
+    if not bot_number:
+        try:
+            bot_number = str((whatsapp_service.get_status() or {}).get("phoneNumber") or "").strip()
+        except Exception:
+            bot_number = ""
+
+    return {
+        "status": "ok",
+        "whatsapp_linked": False,
+        "pairing_code": code_payload["code"],
+        "expires_in_seconds": int(code_payload["expires_in_seconds"]),
+        "bot_number": bot_number,
+    }
+
 @api_router.post("/user/change-password")
 async def change_user_password(
     request: ChangePasswordRequest,
@@ -16560,6 +16601,7 @@ async def handle_whatsapp_message(
 
     from_number = str(payload.get("from") or payload.get("from_number") or "")
     normalized_number = normalize_phone(from_number)
+    bot_phone = normalize_phone(str((whatsapp_service.get_status() or {}).get("phoneNumber") or ""))
     client_ip = request.client.host if request.client else None
     text = str(payload.get("text") or "").strip()
     has_image = bool(payload.get("hasImage"))
@@ -16577,6 +16619,10 @@ async def handle_whatsapp_message(
         "upload_id": upload_id,
         "request_id": request_id,
     })
+
+    if bot_phone and normalized_number and normalized_number == bot_phone:
+        logger.info("wa_ignore_bot_self_message request_id=%s from=%s", request_id, from_number)
+        return {"reply": "This message came from the bot account itself. Please send CODE from a different student WhatsApp number."}
 
     if not enforce_dedup(message_id):
         wa_abuse.note_dedup_drop()
@@ -16616,14 +16662,12 @@ async def handle_whatsapp_message(
             "retry_after_seconds": int(inbound_retry or 1),
         }
 
-    cleaned_text = re.sub(r"[\u200B-\u200D\uFEFF]", "", text).strip()
-    code_match = re.match(
-        r"^(?:CODE[\s:\-]*)?([A-Z0-9]{8})$",
-        cleaned_text.upper(),
-    )
-    if code_match:
-        code = code_match.group(1)
-        user = db.exec(select(User).where(User.whatsapp_secret == code)).first()
+    code = extract_pairing_code(text, code_length=WHATSAPP_SECRET_LENGTH)
+    if code:
+        code_user_id = consume_pairing_code(code)
+        user = db.get(User, int(code_user_id)) if code_user_id else None
+        if not user:
+            user = db.exec(select(User).where(User.whatsapp_secret == code)).first()
         if user:
             if user.whatsapp_number and user.whatsapp_number != normalized_number and not wa_abuse.can_relink_user_today(user.id):
                 return {"reply": "Phone change limit reached for today. Try again tomorrow."}

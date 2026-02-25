@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -11,6 +12,9 @@ OCR_STATE_TTL_SECONDS = 2 * 60 * 60
 UPLOAD_META_TTL_SECONDS = 2 * 60 * 60
 DEDUPE_TTL_SECONDS = 2 * 60 * 60
 STEP_TTL_SECONDS = int(os.environ.get("WHATSAPP_STEP_TTL_SECONDS", "7200"))
+PAIR_CODE_TTL_SECONDS = int(os.environ.get("WHATSAPP_PAIR_CODE_TTL_SECONDS", "600"))
+PAIR_CODE_LENGTH = int(os.environ.get("WHATSAPP_PAIR_CODE_LENGTH", "8"))
+PAIR_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 _redis_client: Optional[redis.Redis] = None
 
@@ -89,6 +93,70 @@ def set_upload_meta(upload_id: str, data: Dict[str, Any]) -> None:
 def get_upload_meta(upload_id: str) -> Optional[Dict[str, Any]]:
     key = f"whatsapp:upload:{upload_id}"
     return _get_json(key)
+
+
+def create_pairing_code(user_id: int) -> Dict[str, Any]:
+    """
+    Create (or rotate) a short-lived one-time pairing code for a user.
+    """
+    code = "".join(secrets.choice(PAIR_CODE_ALPHABET) for _ in range(PAIR_CODE_LENGTH))
+    user_key = f"wa:pair_code:user:{user_id}"
+    code_key = f"wa:pair_code:{code}"
+    redis = get_redis()
+    prev_code = redis.get(user_key)
+    if prev_code:
+        redis.delete(f"wa:pair_code:{prev_code}")
+    redis.setex(user_key, PAIR_CODE_TTL_SECONDS, code)
+    redis.setex(code_key, PAIR_CODE_TTL_SECONDS, str(user_id))
+    return {"code": code, "expires_in_seconds": PAIR_CODE_TTL_SECONDS}
+
+
+def get_pairing_code_for_user(user_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Return current active pairing code for user if present.
+    """
+    redis = get_redis()
+    user_key = f"wa:pair_code:user:{user_id}"
+    code = redis.get(user_key)
+    if not code:
+        return None
+    ttl = redis.ttl(user_key)
+    return {
+        "code": str(code),
+        "expires_in_seconds": int(ttl if isinstance(ttl, int) and ttl > 0 else PAIR_CODE_TTL_SECONDS),
+    }
+
+
+def clear_pairing_code_for_user(user_id: int) -> bool:
+    redis = get_redis()
+    user_key = f"wa:pair_code:user:{user_id}"
+    code = redis.get(user_key)
+    deleted = 0
+    if code:
+        deleted += int(redis.delete(f"wa:pair_code:{code}") or 0)
+    deleted += int(redis.delete(user_key) or 0)
+    return deleted > 0
+
+
+def consume_pairing_code(code: str) -> Optional[int]:
+    """
+    Resolve and consume one-time pairing code.
+    """
+    normalized = str(code or "").strip().upper()
+    if not normalized:
+        return None
+    redis = get_redis()
+    code_key = f"wa:pair_code:{normalized}"
+    raw_user_id = redis.get(code_key)
+    if not raw_user_id:
+        return None
+    try:
+        user_id = int(raw_user_id)
+    except Exception:
+        return None
+    redis.delete(code_key)
+    redis.delete(f"wa:pair_code:user:{user_id}")
+    return user_id
 
 
 def log_whatsapp_event(event: Dict[str, Any], max_len: int = 200) -> None:
