@@ -1,0 +1,558 @@
+{
+  "generated_at": "2026-02-25T22:20:18.449Z",
+  "total": 47,
+  "rows": [
+    {
+      "capability": "Credits Overview",
+      "ui_tab": "Credits Overview",
+      "route": "/admin/billing",
+      "backend_endpoints": [
+        "/api/v1/admin/credits/overview"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Chat Billing",
+      "ui_tab": "Chat Billing",
+      "route": "/admin/billing/chat-billing",
+      "backend_endpoints": [
+        "/api/v1/admin/observability/chat-billing"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Enrollments",
+      "ui_tab": "Enrollments",
+      "route": "/admin/billing/enrollments",
+      "backend_endpoints": [
+        "/api/admin/billing/programs/enrollments/all"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Feature Flags",
+      "ui_tab": "Feature Flags",
+      "route": "/admin/billing/flags",
+      "backend_endpoints": [
+        "/api/admin/billing/flags"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Billing Health",
+      "ui_tab": "Billing Health",
+      "route": "/admin/billing/health",
+      "backend_endpoints": [
+        "/api/admin/billing/health"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Holds Monitor",
+      "ui_tab": "Holds Monitor",
+      "route": "/admin/billing/holds",
+      "backend_endpoints": [
+        "/api/v1/admin/credits/holds"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "User Credit Inspector",
+      "ui_tab": "User Credit Inspector",
+      "route": "/admin/billing/inspector",
+      "backend_endpoints": [
+        "/api/v1/admin/credits/overview"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Invoices",
+      "ui_tab": "Invoices",
+      "route": "/admin/billing/invoices",
+      "backend_endpoints": [
+        "/api/admin/billing/invoices"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Usage Ledger",
+      "ui_tab": "Usage Ledger",
+      "route": "/admin/billing/ledger",
+      "backend_endpoints": [
+        "/api/v1/admin/credits/ledger"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "/admin/billing/legacy",
+      "ui_tab": "(excluded)",
+      "route": "/admin/billing/legacy",
+      "backend_endpoints": [],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "Intentionally Hidden",
+      "notes": "Legacy compatibility page; intentionally not in primary nav"
+    },
+    {
+      "capability": "Credit Packs",
+      "ui_tab": "Credit Packs",
+      "route": "/admin/billing/packs",
+      "backend_endpoints": [
+        "/api/v1/admin/credits/packs"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Model Pricing",
+      "ui_tab": "Model Pricing",
+      "route": "/admin/billing/pricing",
+      "backend_endpoints": [
+        "/api/admin/billing/pricing"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Credit Programs",
+      "ui_tab": "Credit Programs",
+      "route": "/admin/billing/programs",
+      "backend_endpoints": [
+        "/api/admin/billing/programs"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "/admin/billing/programs/enrollments",
+      "ui_tab": "(excluded)",
+      "route": "/admin/billing/programs/enrollments",
+      "backend_endpoints": [],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "Intentionally Hidden",
+      "notes": "Program-scoped enrollments detail route; primary entry is /admin/billing/enrollments"
+    },
+    {
+      "capability": "Refund Center",
+      "ui_tab": "Refund Center",
+      "route": "/admin/billing/refunds",
+      "backend_endpoints": [
+        "/api/admin/billing/refunds"
+      ],
+      "permission_role": "admin+ (refund execution may require elevated role)",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Top-Up Products",
+      "ui_tab": "Top-Up Products",
+      "route": "/admin/billing/topup-products",
+      "backend_endpoints": [
+        "/api/admin/payments/pricing"
+      ],
+      "permission_role": "superadmin (mutations), admin (read-only)",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "/admin/billing/users/[userId]/wallet",
+      "ui_tab": "(excluded)",
+      "route": "/admin/billing/users/[userId]/wallet",
+      "backend_endpoints": [],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "Intentionally Hidden",
+      "notes": "Context detail route reachable from billing inspector/ledger links"
+    },
+    {
+      "capability": "Canonical Cache",
+      "ui_tab": "Canonical Cache",
+      "route": "/admin/cache/canonical",
+      "backend_endpoints": [
+        "/api/v1/admin/cache/canonical/problems",
+        "/api/v1/admin/cache/canonical/solutions"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Question Identity",
+      "ui_tab": "Question Identity",
+      "route": "/admin/cache/question-identity",
+      "backend_endpoints": [
+        "/api/v1/admin/cache/question-identity"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Credit Transfer Config",
+      "ui_tab": "Credit Transfer Config",
+      "route": "/admin/config/credit_transfer",
+      "backend_endpoints": [
+        "/api/v1/admin/config/credit_transfer"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Content",
+      "ui_tab": "Content",
+      "route": "/admin/content",
+      "backend_endpoints": [
+        "/api/admin/content/concepts"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Overview",
+      "ui_tab": "Overview",
+      "route": "/admin/dashboard",
+      "backend_endpoints": [
+        "/api/v1/admin/stats/dashboard",
+        "/api/v1/admin/analytics/overview"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Data",
+      "ui_tab": "Data",
+      "route": "/admin/data",
+      "backend_endpoints": [
+        "/api/admin/db/tables"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Jobs & Workers",
+      "ui_tab": "Jobs & Workers",
+      "route": "/admin/jobs",
+      "backend_endpoints": [
+        "/api/admin/jobs/status"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "/admin/legacy/payments",
+      "ui_tab": "(excluded)",
+      "route": "/admin/legacy/payments",
+      "backend_endpoints": [],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "Intentionally Hidden",
+      "notes": "Deprecated legacy route kept for backward compatibility"
+    },
+    {
+      "capability": "/admin/legacy/plans",
+      "ui_tab": "(excluded)",
+      "route": "/admin/legacy/plans",
+      "backend_endpoints": [],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "Intentionally Hidden",
+      "notes": "Deprecated legacy route kept for backward compatibility"
+    },
+    {
+      "capability": "/admin/legacy/subscriptions",
+      "ui_tab": "(excluded)",
+      "route": "/admin/legacy/subscriptions",
+      "backend_endpoints": [],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "Intentionally Hidden",
+      "notes": "Deprecated legacy route kept for backward compatibility"
+    },
+    {
+      "capability": "Privacy Policy",
+      "ui_tab": "Privacy Policy",
+      "route": "/admin/legal/privacy",
+      "backend_endpoints": [
+        "/api/legal/privacy"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Terms of Service",
+      "ui_tab": "Terms of Service",
+      "route": "/admin/legal/terms",
+      "backend_endpoints": [
+        "/api/legal/terms"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Logs",
+      "ui_tab": "Logs",
+      "route": "/admin/logs",
+      "backend_endpoints": [
+        "/api/v1/admin/solve-traces"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "LLM Usage",
+      "ui_tab": "LLM Usage",
+      "route": "/admin/observability/llm-usage",
+      "backend_endpoints": [
+        "/api/v1/admin/observability/llm-usage"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "OCR Configuration",
+      "ui_tab": "OCR Configuration",
+      "route": "/admin/ocr-configuration",
+      "backend_endpoints": [
+        "/api/admin/ocr-configuration"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Promo Codes",
+      "ui_tab": "Promo Codes",
+      "route": "/admin/promo-codes",
+      "backend_endpoints": [
+        "/api/admin/promo-codes"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Prompt Binding Pricing",
+      "ui_tab": "Prompt Binding Pricing",
+      "route": "/admin/prompt-bindings",
+      "backend_endpoints": [
+        "/api/v1/admin/prompt_bindings?scope=solve"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Prompt Registry",
+      "ui_tab": "Prompt Registry",
+      "route": "/admin/prompt-registry",
+      "backend_endpoints": [
+        "/api/v1/admin/prompt-registry/prompts"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Prompts",
+      "ui_tab": "Prompts",
+      "route": "/admin/prompts",
+      "backend_endpoints": [
+        "/api/v1/admin/prompt-registry/prompts"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Quotas",
+      "ui_tab": "Quotas",
+      "route": "/admin/quotas",
+      "backend_endpoints": [
+        "/api/v1/admin/quotas"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Schema Registry",
+      "ui_tab": "Schema Registry",
+      "route": "/admin/schema-registry",
+      "backend_endpoints": [
+        "/api/v1/admin/prompt-registry/schemas"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Social Logs",
+      "ui_tab": "Social Logs",
+      "route": "/admin/social-logs",
+      "backend_endpoints": [
+        "/api/admin/whatsapp/monitor"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Solvers",
+      "ui_tab": "Solvers",
+      "route": "/admin/solver-attempts",
+      "backend_endpoints": [
+        "/api/v1/admin/solver-output-attempts"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Subscriptions",
+      "ui_tab": "Subscriptions",
+      "route": "/admin/subscriptions",
+      "backend_endpoints": [
+        "/api/v1/admin/users"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "System Config",
+      "ui_tab": "System Config",
+      "route": "/admin/system-config",
+      "backend_endpoints": [
+        "/api/v1/admin/system-config"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "Users",
+      "ui_tab": "Users",
+      "route": "/admin/users",
+      "backend_endpoints": [
+        "/api/v1/admin/users"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "/admin/users/[id]",
+      "ui_tab": "(excluded)",
+      "route": "/admin/users/[id]",
+      "backend_endpoints": [],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "Intentionally Hidden",
+      "notes": "Context detail route reachable from /admin/users"
+    },
+    {
+      "capability": "WhatsApp Abuse Ops",
+      "ui_tab": "WhatsApp Abuse Ops",
+      "route": "/admin/whatsapp-abuse",
+      "backend_endpoints": [
+        "/api/admin/whatsapp/abuse/overview"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "WhatsApp Bot",
+      "ui_tab": "WhatsApp Bot",
+      "route": "/admin/whatsapp-bot",
+      "backend_endpoints": [
+        "/api/admin/whatsapp/status"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    },
+    {
+      "capability": "WhatsApp Monitor",
+      "ui_tab": "WhatsApp Monitor",
+      "route": "/admin/whatsapp-monitor",
+      "backend_endpoints": [
+        "/api/admin/whatsapp/monitor"
+      ],
+      "permission_role": "admin",
+      "feature_flag": "none",
+      "status": "OK",
+      "notes": ""
+    }
+  ]
+}

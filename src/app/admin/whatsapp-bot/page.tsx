@@ -23,7 +23,10 @@ export default function WhatsAppBotPage() {
 
     const fetchBotStatus = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/whatsapp/status`);
+            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+            const response = await fetch(`${API_BASE_URL}/api/admin/whatsapp/status`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
             if (response.ok) {
                 const data = await response.json();
                 setBotState((prev) => ({ ...prev, ...data, error: undefined }));

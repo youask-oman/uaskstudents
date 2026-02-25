@@ -2,18 +2,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Header, Request
 from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select, desc, SQLModel
-from sqlalchemy import text as sql_text
+from sqlalchemy import text as sql_text, func
 from pydantic import BaseModel
 from jose import JWTError, jwt
 import hashlib
 
 from app.database import get_session
-from app.models import User, SystemConfigVersion, BillingLedger, PromoCode, LegalDocument, LegalAcceptance
+from app.models import User, SystemConfigVersion, BillingLedger, PromoCode, LegalDocument, LegalAcceptance, UsageLog
 from app.services.admin_config_service import admin_config_service
 from app.services.pricing_service import pricing_service
 from app.auth import SECRET_KEY, ALGORITHM
 from app.services.whatsapp import whatsapp_service
 from app.services.whatsapp.whatsapp_state import get_whatsapp_events, get_redis
+from app.services.whatsapp.ingress_security import get_metrics_snapshot
+from app.services.whatsapp import anti_abuse as wa_abuse
 from app.worker import celery_app
 from app.services.privacy_policy_generator import build_privacy_policy_markdown
 from app.services.legal_document_renderer import markdown_to_basic_html
@@ -22,6 +24,7 @@ from app.services.superadmin_policy import enforce_superadmin_role
 from fastapi.responses import StreamingResponse
 import asyncio
 import io
+import json
 from datetime import datetime, timezone
 import os
 import secrets
@@ -132,6 +135,29 @@ class RunJobRequest(BaseModel):
     task: str
     args: Optional[List[Any]] = None
     kwargs: Optional[Dict[str, Any]] = None
+
+
+class WhatsAppUserControlRequest(BaseModel):
+    whatsapp_enabled: Optional[bool] = None
+    unlink_number: bool = False
+    rotate_secret: bool = False
+
+
+class WhatsAppAbuseLockRequest(BaseModel):
+    user_id: Optional[int] = None
+    phone: Optional[str] = None
+    seconds: int = 300
+    reason: str = "manual_admin_lock"
+
+
+class WhatsAppAbuseClearLockRequest(BaseModel):
+    user_id: Optional[int] = None
+    phone: Optional[str] = None
+
+
+class WhatsAppCircuitRequest(BaseModel):
+    disable_solve: Optional[bool] = None
+    disable_media: Optional[bool] = None
 
 
 class LegalDocumentUpsertRequest(BaseModel):
@@ -473,19 +499,16 @@ def update_config(
 
 @admin_router.get("/whatsapp/status")
 def admin_whatsapp_status(
-    request: Request,
-    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
 ):
-    _resolve_admin_from_request(request, session)
     return whatsapp_service.get_status()
 
 
 @admin_router.post("/whatsapp/initialize")
 async def admin_whatsapp_initialize(
-    request: Request,
     session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
 ):
-    _resolve_admin_from_request(request, session)
     previous_status = (whatsapp_service.get_status() or {}).get("status")
     result = await whatsapp_service.initialize()
     current_status = (result or {}).get("status")
@@ -500,22 +523,18 @@ async def admin_whatsapp_initialize(
 
 @admin_router.post("/whatsapp/disconnect")
 async def admin_whatsapp_disconnect(
-    request: Request,
-    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
 ):
-    _resolve_admin_from_request(request, session)
     return await whatsapp_service.disconnect()
 
 
 @admin_router.get("/whatsapp/monitor")
 def admin_whatsapp_monitor(
-    request: Request,
     limit: int = 50,
     phone: Optional[str] = None,
     direction: Optional[str] = None,
-    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
 ):
-    _resolve_admin_from_request(request, session)
     queue_len = None
     queue_len_whatsapp = None
     try:
@@ -528,6 +547,7 @@ def admin_whatsapp_monitor(
         "bot_status": whatsapp_service.get_status(),
         "queue_length": queue_len,
         "queue_length_whatsapp": queue_len_whatsapp,
+        "ingress_metrics": get_metrics_snapshot(),
         "events": get_whatsapp_events(limit=limit, phone=phone, direction=direction),
         "server_time": datetime.utcnow().isoformat() + "Z",
     }
@@ -535,13 +555,11 @@ def admin_whatsapp_monitor(
 
 @admin_router.get("/whatsapp/monitor/export")
 def admin_whatsapp_monitor_export(
-    request: Request,
     limit: int = 200,
     phone: Optional[str] = None,
     direction: Optional[str] = None,
-    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
 ):
-    _resolve_admin_from_request(request, session)
     events = get_whatsapp_events(limit=limit, phone=phone, direction=direction)
     rows = ["timestamp,direction,type,from,to,message_id,upload_id,ok,text,error"]
     for e in events:
@@ -569,11 +587,8 @@ def admin_whatsapp_monitor_export(
 
 @admin_router.get("/whatsapp/monitor/stream")
 async def admin_whatsapp_monitor_stream(
-    request: Request,
-    session: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
 ):
-    _resolve_admin_from_request(request, session)
-
     async def event_generator():
         pubsub = get_redis().pubsub()
         pubsub.subscribe("whatsapp:events:stream")
@@ -593,6 +608,292 @@ async def admin_whatsapp_monitor_stream(
                 pass
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@admin_router.get("/whatsapp/users")
+def admin_whatsapp_users(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    search: Optional[str] = Query(None),
+    enabled: Optional[bool] = Query(None),
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    query = select(User).where(User.whatsapp_number.is_not(None))
+    if enabled is not None:
+        query = query.where(User.whatsapp_enabled == enabled)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(
+            (User.email.ilike(like))
+            | (User.full_name.ilike(like))
+            | (User.whatsapp_number.ilike(like))
+        )
+    total = int(session.exec(select(func.count()).select_from(query.subquery())).one() or 0)
+    users = session.exec(query.order_by(desc(User.last_active_at)).offset(offset).limit(limit)).all()
+    user_ids = [u.id for u in users if u.id is not None]
+
+    usage_stats: Dict[int, Dict[str, Any]] = {}
+    if user_ids:
+        rows = session.exec(
+            select(
+                UsageLog.user_id,
+                func.count(UsageLog.id),
+                func.coalesce(func.sum(UsageLog.tokens_used), 0),
+                func.max(UsageLog.timestamp),
+            )
+            .where(UsageLog.user_id.in_(user_ids))
+            .where(UsageLog.action_type.ilike("whatsapp%"))
+            .group_by(UsageLog.user_id)
+        ).all()
+        for row in rows:
+            usage_stats[int(row[0])] = {
+                "count": int(row[1] or 0),
+                "tokens": int(row[2] or 0),
+                "last_ts": row[3].isoformat() if row[3] else None,
+            }
+
+    items = []
+    for u in users:
+        st = usage_stats.get(int(u.id), {})
+        items.append(
+            {
+                "user_id": u.id,
+                "full_name": u.full_name,
+                "email": u.email,
+                "whatsapp_number": u.whatsapp_number,
+                "whatsapp_enabled": bool(u.whatsapp_enabled),
+                "subscription_tier": u.subscription_tier,
+                "subscription_status": u.subscription_status,
+                "last_active_at": u.last_active_at.isoformat() if u.last_active_at else None,
+                "whatsapp_solve_count": int(st.get("count", 0)),
+                "whatsapp_tokens_used": int(st.get("tokens", 0)),
+                "last_whatsapp_activity_at": st.get("last_ts"),
+            }
+        )
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "items": items,
+    }
+
+
+@admin_router.get("/whatsapp/users/{user_id}/transactions")
+def admin_whatsapp_user_transactions(
+    user_id: int,
+    limit: int = Query(50, ge=1, le=500),
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    logs = session.exec(
+        select(UsageLog)
+        .where(UsageLog.user_id == user_id)
+        .where(UsageLog.action_type.ilike("whatsapp%"))
+        .order_by(desc(UsageLog.timestamp))
+        .limit(limit)
+    ).all()
+    return {
+        "user_id": user_id,
+        "transactions": [
+            {
+                "id": log.id,
+                "action_type": log.action_type,
+                "tokens_used": int(log.tokens_used or 0),
+                "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+            }
+            for log in logs
+        ],
+    }
+
+
+@admin_router.patch("/whatsapp/users/{user_id}")
+def admin_whatsapp_user_control(
+    user_id: int,
+    body: WhatsAppUserControlRequest,
+    admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.whatsapp_enabled is not None:
+        user.whatsapp_enabled = bool(body.whatsapp_enabled)
+    if body.unlink_number:
+        user.whatsapp_number = None
+    if body.rotate_secret:
+        user.whatsapp_secret = _generate_whatsapp_secret()
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return {
+        "user_id": user.id,
+        "whatsapp_enabled": bool(user.whatsapp_enabled),
+        "whatsapp_number": user.whatsapp_number,
+        "rotated_secret": bool(body.rotate_secret),
+    }
+
+
+@admin_router.get("/whatsapp/abuse/overview")
+def admin_whatsapp_abuse_overview(
+    minutes: int = Query(5, ge=1, le=60),
+    top_limit: int = Query(25, ge=1, le=200),
+    admin: User = Depends(get_admin_user),
+):
+    return {
+        "ingress_metrics": get_metrics_snapshot(),
+        "realtime": wa_abuse.get_realtime_snapshot(minutes=minutes),
+        "top_offenders": wa_abuse.top_offenders(limit=top_limit),
+        "circuits": wa_abuse.circuit_flags(),
+    }
+
+
+@admin_router.get("/whatsapp/abuse/locks")
+def admin_whatsapp_abuse_locks(
+    limit: int = Query(200, ge=1, le=1000),
+    admin: User = Depends(get_admin_user),
+):
+    return {
+        "items": wa_abuse.list_locks(limit=limit),
+    }
+
+
+@admin_router.post("/whatsapp/abuse/lock")
+def admin_whatsapp_force_lock(
+    body: WhatsAppAbuseLockRequest,
+    request: Request,
+    admin: User = Depends(get_admin_user),
+):
+    actor = f"admin:{admin.id}:{admin.email}"
+    return wa_abuse.force_lock(
+        user_id=body.user_id,
+        phone=body.phone,
+        seconds=body.seconds,
+        reason=body.reason,
+        actor=actor,
+    )
+
+
+@admin_router.delete("/whatsapp/abuse/lock")
+def admin_whatsapp_clear_lock(
+    body: WhatsAppAbuseClearLockRequest,
+    request: Request,
+    admin: User = Depends(get_admin_user),
+):
+    actor = f"admin:{admin.id}:{admin.email}"
+    return wa_abuse.clear_lock(user_id=body.user_id, phone=body.phone, actor=actor)
+
+
+@admin_router.get("/whatsapp/abuse/audit")
+def admin_whatsapp_abuse_audit(
+    limit: int = Query(200, ge=1, le=1000),
+    admin: User = Depends(get_admin_user),
+):
+    return {
+        "items": wa_abuse.list_audit(limit=limit),
+    }
+
+
+@admin_router.post("/whatsapp/abuse/circuit")
+def admin_whatsapp_abuse_circuit(
+    body: WhatsAppCircuitRequest,
+    admin: User = Depends(get_admin_user),
+):
+    actor = f"admin:{admin.id}:{admin.email}"
+    return wa_abuse.set_circuit_flags(
+        disable_solve=body.disable_solve,
+        disable_media=body.disable_media,
+        actor=actor,
+    )
+
+
+@admin_router.get("/whatsapp/abuse/export/offenders")
+def admin_whatsapp_abuse_export_offenders(
+    limit: int = Query(200, ge=1, le=2000),
+    admin: User = Depends(get_admin_user),
+):
+    rows = wa_abuse.top_offenders(limit=limit)
+    lines = ["user_id,lock_count,rate_limit_hits,quota_exceeded,abuse_hits,score"]
+    for row in rows:
+        lines.append(
+            ",".join(
+                [
+                    str(row.get("user_id", "")),
+                    str(row.get("lock_count", 0)),
+                    str(row.get("rate_limit_hits", 0)),
+                    str(row.get("quota_exceeded", 0)),
+                    str(row.get("abuse_hits", 0)),
+                    str(row.get("score", 0)),
+                ]
+            )
+        )
+    content = "\n".join(lines)
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=whatsapp_abuse_offenders.csv"},
+    )
+
+
+@admin_router.get("/whatsapp/abuse/export/locks")
+def admin_whatsapp_abuse_export_locks(
+    limit: int = Query(500, ge=1, le=5000),
+    admin: User = Depends(get_admin_user),
+):
+    rows = wa_abuse.list_locks(limit=limit)
+    lines = ["key,scope,subject,ttl_seconds,reason"]
+    for row in rows:
+        lines.append(
+            ",".join(
+                [
+                    str(row.get("key", "")).replace(",", " "),
+                    str(row.get("scope", "")).replace(",", " "),
+                    str(row.get("subject", "")).replace(",", " "),
+                    str(row.get("ttl_seconds", 0)),
+                    str(row.get("reason", "")).replace(",", " ").replace("\n", " "),
+                ]
+            )
+        )
+    content = "\n".join(lines)
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=whatsapp_abuse_locks.csv"},
+    )
+
+
+@admin_router.get("/whatsapp/abuse/export/audit")
+def admin_whatsapp_abuse_export_audit(
+    limit: int = Query(500, ge=1, le=5000),
+    admin: User = Depends(get_admin_user),
+):
+    rows = wa_abuse.list_audit(limit=limit)
+    lines = ["timestamp,action,actor,payload_json"]
+    for row in rows:
+        payload = json.dumps(row.get("payload") or {}, ensure_ascii=True).replace(",", ";")
+        lines.append(
+            ",".join(
+                [
+                    str(row.get("timestamp", "")).replace(",", " "),
+                    str(row.get("action", "")).replace(",", " "),
+                    str(row.get("actor", "")).replace(",", " "),
+                    payload,
+                ]
+            )
+        )
+    content = "\n".join(lines)
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=whatsapp_abuse_audit.csv"},
+    )
 
 
 # ------------------------------------------------------------------

@@ -1,33 +1,5 @@
-import { NextResponse } from "next/server";
+import { proxyJson } from "../_proxy";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
-const FALLBACK_BACKEND_URL = process.env.NEXT_PUBLIC_API_FALLBACK_URL || process.env.API_BACKEND_BASE_URL || `http://orchestrator:${process.env.API_BACKEND_PORT || "9000"}`;
-
-export async function POST() {
-    try {
-        const urls = [BACKEND_URL, FALLBACK_BACKEND_URL].filter(Boolean);
-        let lastError: unknown = null;
-
-        for (const baseUrl of urls) {
-            try {
-                const response = await fetch(`${baseUrl}/api/v1/admin/whatsapp/disconnect`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                });
-                const data = await response.json();
-                return NextResponse.json(data);
-            } catch (err) {
-                lastError = err;
-            }
-        }
-        throw lastError;
-    } catch (error) {
-        console.error("Error disconnecting WhatsApp bot:", error);
-        return NextResponse.json(
-            { error: "Failed to disconnect WhatsApp bot" },
-            { status: 500 }
-        );
-    }
+export async function POST(request: Request) {
+  return proxyJson(request, "POST", "/api/admin/whatsapp/disconnect");
 }

@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import re
+import logging
 from typing import Optional
 
 from sqlmodel import Session, create_engine
@@ -18,6 +19,9 @@ from app.services.whatsapp.whatsapp_send import send_whatsapp_message, send_what
 from app.services.whatsapp.step_delivery import build_step_pack, send_step_pack
 from app.models import UsageLog, User, ChatSession, ChatMessage
 from app.services.solver import solver_service
+from app.services.whatsapp.ingress_security import increment_metric
+
+logger = logging.getLogger(__name__)
 
 
 def _run_async(coro):
@@ -90,15 +94,24 @@ def _format_steps_for_history(steps, final_text: str = "") -> str:
     soft_time_limit=120,
     hard_time_limit=150,
 )
-def whatsapp_ocr_extract(self, upload_id: str, user_id: int, phone: str, message_id: Optional[str] = None):
+def whatsapp_ocr_extract(
+    self,
+    upload_id: str,
+    user_id: int,
+    phone: str,
+    message_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+):
     meta = get_upload_meta(upload_id)
     if not meta:
         send_whatsapp_message(phone, "I couldn't find that image. Please resend a clearer photo.")
+        increment_metric("worker_failure")
         return "missing_upload"
 
     image_path = meta.get("path")
     if not image_path:
         send_whatsapp_message(phone, "I couldn't read that image. Please resend a clearer photo.")
+        increment_metric("worker_failure")
         return "missing_path"
 
     try:
@@ -108,14 +121,16 @@ def whatsapp_ocr_extract(self, upload_id: str, user_id: int, phone: str, message
         result = ocr_service.process_job(image_path, engine_name=configured_ocr_engine)
         extracted = _clean_extracted_text(result.get("plain_text") or result.get("markdown") or "")
     except Exception as e:
-        print(f"[WhatsApp OCR] Failed: {e}")
+        logger.exception("wa_worker_ocr_failed request_id=%s error=%s", request_id, str(e))
         send_whatsapp_message(phone, "I couldn't read that clearly. Please resend a sharper photo (crop to the question).")
         clear_ocr_state(phone)
+        increment_metric("worker_failure")
         return "ocr_failed"
 
     if not extracted or len(extracted) < 3:
         send_whatsapp_message(phone, "I couldn't read that clearly. Please resend a sharper photo (crop to the question).")
         clear_ocr_state(phone)
+        increment_metric("worker_failure")
         return "ocr_empty"
 
     set_ocr_state(
@@ -139,6 +154,7 @@ def whatsapp_ocr_extract(self, upload_id: str, user_id: int, phone: str, message
         "CANCEL"
     )
     send_whatsapp_message(phone, confirmation_msg)
+    increment_metric("worker_success")
     return "ok"
 
 
@@ -151,9 +167,18 @@ def whatsapp_ocr_extract(self, upload_id: str, user_id: int, phone: str, message
     soft_time_limit=180,
     hard_time_limit=240,
 )
-def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optional[str] = None, message_id: Optional[str] = None):
+def whatsapp_solve(
+    self,
+    user_id: int,
+    phone: str,
+    text: str,
+    upload_id: Optional[str] = None,
+    message_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+):
     if not text:
         send_whatsapp_message(phone, "I didn't receive any text to solve. Please try again.")
+        increment_metric("worker_failure")
         return "no_text"
 
     DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://uask_user:uask_password@localhost:5432/uask_db")
@@ -166,6 +191,7 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
         user = session.get(User, user_id)
         if not user:
             send_whatsapp_message(phone, "I couldn't verify your account. Please try again.")
+            increment_metric("worker_failure")
             return "no_user"
 
         if use_v3:
@@ -181,8 +207,9 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
                     )
                 )
             except Exception as e:
-                print(f"[WhatsApp Solve V3] Failed: {e}")
+                logger.exception("wa_worker_solve_v3_failed request_id=%s error=%s", request_id, str(e))
                 send_whatsapp_message(phone, "Sorry, I hit an error solving that. Please try again.")
+                increment_metric("worker_failure")
                 return "solve_v3_failed"
 
             steps = v3_result.get("steps", [])
@@ -216,6 +243,7 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
                 _save_whatsapp_history(session, user, text, history_text)
                 session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve_v3", tokens_used=len(text.split())))
                 session.commit()
+                increment_metric("worker_success")
                 return "ok"
 
             reply = "*Problem:* " + text + "\n\n"
@@ -239,14 +267,16 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
             send_whatsapp_logo(phone)
             send_whatsapp_message(phone, reply)
             _save_whatsapp_history(session, user, text, reply)
+            increment_metric("worker_success")
             return "ok"
 
         # Legacy solver (current WhatsApp text behavior)
         try:
             result = _run_async(solver_service.solve_problem(text, "", session))
         except Exception as e:
-            print(f"[WhatsApp Solve] Failed: {e}")
+            logger.exception("wa_worker_solve_failed request_id=%s error=%s", request_id, str(e))
             send_whatsapp_message(phone, "Sorry, I encountered an error processing your problem. Please try again.")
+            increment_metric("worker_failure")
             return "solve_failed"
 
         reply = "*Problem:* " + text + "\n\n"
@@ -281,6 +311,7 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
             _save_whatsapp_history(session, user, text, history_text)
             session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve", tokens_used=len(text.split())))
             session.commit()
+            increment_metric("worker_success")
             return "ok"
 
         if steps:
@@ -305,4 +336,5 @@ def whatsapp_solve(self, user_id: int, phone: str, text: str, upload_id: Optiona
         send_whatsapp_logo(phone)
         send_whatsapp_message(phone, reply)
         _save_whatsapp_history(session, user, text, reply)
+        increment_metric("worker_success")
         return "ok"

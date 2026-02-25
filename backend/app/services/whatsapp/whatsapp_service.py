@@ -69,6 +69,7 @@ try {
 }
 
 const INTERNAL_KEY = process.env.WHATSAPP_INTERNAL_KEY || '';
+const SIGNING_SECRET = process.env.WHATSAPP_SIGNING_SECRET || INTERNAL_KEY || '';
 const INTERNAL_PORT = process.env.WHATSAPP_INTERNAL_PORT || '8791';
 const API_BACKEND_SCHEME = process.env.API_BACKEND_SCHEME || 'http';
 const API_BACKEND_HOST = process.env.API_BACKEND_HOST || '127.0.0.1';
@@ -79,6 +80,27 @@ const API_BACKEND_BASE_URL = (
 ).replace(/[/]+$/, '');
 let currentSock = null;
 let sendServerStarted = false;
+
+function makeRequestId() {
+    return `wa-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+}
+
+function buildSignatureHeaders(rawBody, requestId) {
+    if (!SIGNING_SECRET) {
+        throw new Error('WHATSAPP_SIGNING_SECRET (or WHATSAPP_INTERNAL_KEY fallback) is required for signed ingress');
+    }
+    const ts = String(Math.floor(Date.now() / 1000));
+    const nonce = crypto.randomUUID();
+    const bodyBuffer = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody || '');
+    const base = Buffer.concat([Buffer.from(`${ts}.${nonce}.`, 'utf8'), bodyBuffer]);
+    const digest = crypto.createHmac('sha256', SIGNING_SECRET).update(base).digest('hex');
+    return {
+        'X-YouAsk-Timestamp': ts,
+        'X-YouAsk-Nonce': nonce,
+        'X-YouAsk-Signature': `sha256=${digest}`,
+        'X-Request-Id': requestId,
+    };
+}
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
@@ -409,13 +431,16 @@ async function connectToWhatsApp() {
             const messageId = msg.key.id;
             const normalizedMessage = unwrapMessage(msg.message);
             const text = extractIncomingText(normalizedMessage);
+            const requestId = makeRequestId();
             const messageData = {
                 type: 'message',
                 from: msg.key.remoteJid,
                 text,
                 hasImage: !!normalizedMessage?.imageMessage,
                 timestamp: new Date().toISOString(),
-                message_id: messageId
+                message_id: messageId,
+                request_id: requestId,
+                normalized_phone: String(msg.key.remoteJid || '').replace(/\D+/g, ''),
             };
             console.log(JSON.stringify(messageData));
             
@@ -440,14 +465,27 @@ async function connectToWhatsApp() {
                         const form = new FormData();
                         form.append('from', messageData.from);
                         form.append('message_id', messageId || '');
+                        form.append('request_id', requestId);
                         form.append('timestamp', messageData.timestamp);
                         form.append('mime_type', mimeType);
                         if (caption) form.append('caption', caption);
                         form.append('file', new Blob([buffer], { type: mimeType }), filename);
 
+                        const mediaCanonicalPayload = JSON.stringify({
+                            from: messageData.from,
+                            message_id: messageId || '',
+                            request_id: requestId,
+                            timestamp: messageData.timestamp,
+                            mime_type: mimeType,
+                            caption: caption || '',
+                        });
+                        const mediaSig = buildSignatureHeaders(Buffer.from(mediaCanonicalPayload, 'utf8'), requestId);
                         const mediaResp = await fetch(`${API_BACKEND_BASE_URL}/api/v1/whatsapp/media`, {
                             method: 'POST',
-                            headers: INTERNAL_KEY ? { 'X-UASK-INTERNAL-KEY': INTERNAL_KEY } : {},
+                            headers: {
+                                ...(INTERNAL_KEY ? { 'X-UASK-INTERNAL-KEY': INTERNAL_KEY } : {}),
+                                ...mediaSig,
+                            },
                             body: form
                         });
 
@@ -466,10 +504,12 @@ async function connectToWhatsApp() {
                     }
                 }
 
+                const messageBody = JSON.stringify(messageData);
+                const sigHeaders = buildSignatureHeaders(Buffer.from(messageBody, 'utf8'), requestId);
                 const response = await fetch(`${API_BACKEND_BASE_URL}/api/v1/whatsapp/message`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(messageData)
+                    headers: { 'Content-Type': 'application/json', ...sigHeaders },
+                    body: messageBody
                 });
                 const result = await response.json();
                 

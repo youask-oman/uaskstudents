@@ -77,7 +77,6 @@ from app.services.admin.analytics_service import record_request_event, _calc_cos
 from app.services.solve.trace_logger import log_solve_trace
 from app.services.whatsapp import whatsapp_service
 from app.services.whatsapp.whatsapp_state import (
-    mark_dedupe,
     get_ocr_state,
     clear_ocr_state,
     set_upload_meta,
@@ -91,7 +90,6 @@ from app.services.tier_utils import get_user_effective_tier_slug
 from app.services.mode_execution_service import mode_execution_service, ModeExecutionError
 from app.services.llm import get_llm_manager, LLMProviderError
 from app.services.whatsapp.whatsapp_state import get_redis
-from app.services.whatsapp.whatsapp_send import send_whatsapp_logo
 from app.services.whatsapp.step_delivery import handle_navigation
 from app.worker import celery_app
 from app.services.solve.cache_service import cache_service
@@ -114,6 +112,19 @@ from app.services.prompt_binding_policy import (
     ALLOWED_PROMPT_IDS,
     ALLOWED_SCHEMA_IDS,
 )
+from app.services.whatsapp.ingress_security import (
+    enforce_caps,
+    enforce_dedup,
+    enforce_rate_limit,
+    get_request_id,
+    increment_metric,
+    normalize_phone,
+    parse_signed_json,
+    queue_is_overloaded,
+    verify_request_signature,
+    verify_signature_headers_and_body,
+)
+from app.services.whatsapp import anti_abuse as wa_abuse
 from app.services.billing_feature_flags import is_billing_v2_enabled
 from app.services.validation.math_validity import assess_math_validity
 
@@ -1207,7 +1218,7 @@ def _detect_image_kind(raw: bytes) -> Optional[str]:
 def _normalize_whatsapp_number(value: str) -> str:
     if not value:
         return ""
-    digits = re.sub(r"\\D+", "", value)
+    digits = re.sub(r"\D+", "", value)
     return digits or value
 
 
@@ -2153,7 +2164,7 @@ class UserProfileResponse(BaseModel):
     school_name: Optional[str] = None
     
     # WhatsApp Integration
-    whatsapp_secret: Optional[str] = None
+    whatsapp_linked: bool = False
     whatsapp_enabled: bool = True
 
     usage: UserUsageStats
@@ -11313,8 +11324,16 @@ Questions remaining: {turns_remaining}/10"""
 # --- Profile & Preferences ---
 
 @api_router.get("/user/profile", response_model=UserProfileResponse)
-async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_session)):
-    user = db.get(User, user_id)
+async def get_user_profile(
+    user_id: Optional[int] = Query(None),
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    resolved_user_id = int(user_id or current_user.id)
+    if resolved_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only access your own profile")
+
+    user = db.get(User, resolved_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.whatsapp_secret:
@@ -11327,13 +11346,13 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
     # Questions count: count solve_request in UsageLog in last 30 days
     questions_count = db.exec(
         select(UsageLog)
-        .where(UsageLog.user_id == user_id)
+        .where(UsageLog.user_id == resolved_user_id)
         .where(UsageLog.action_type == "solve_request")
     ).all() # Should ideally filter by date
     
     scans_count = db.exec(
         select(OCRJob)
-        .where(OCRJob.user_id == user_id)
+        .where(OCRJob.user_id == resolved_user_id)
     ).all()
     
     return UserProfileResponse(
@@ -11359,7 +11378,7 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
         school_name=(user.school.school_name if user.school else None),
         
         # WhatsApp Integration
-        whatsapp_secret=user.whatsapp_secret,
+        whatsapp_linked=bool(user.whatsapp_number),
         whatsapp_enabled=user.whatsapp_enabled,
         
         usage=UserUsageStats(
@@ -11371,8 +11390,17 @@ async def get_user_profile(user_id: int = Query(...), db: Session = Depends(get_
     )
 
 @api_router.post("/user/profile")
-async def update_user_profile(request: ProfileUpdateRequest, user_id: int = Query(...), db: Session = Depends(get_session)):
-    user = db.get(User, user_id)
+async def update_user_profile(
+    request: ProfileUpdateRequest,
+    user_id: Optional[int] = Query(None),
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    resolved_user_id = int(user_id or current_user.id)
+    if resolved_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only update your own profile")
+
+    user = db.get(User, resolved_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -11395,8 +11423,17 @@ async def update_user_profile(request: ProfileUpdateRequest, user_id: int = Quer
     return {"status": "ok", "message": "Profile updated"}
 
 @api_router.post("/user/preferences")
-async def update_user_preferences(request: PreferenceUpdateRequest, user_id: int = Query(...), db: Session = Depends(get_session)):
-    user = db.get(User, user_id)
+async def update_user_preferences(
+    request: PreferenceUpdateRequest,
+    user_id: Optional[int] = Query(None),
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    resolved_user_id = int(user_id or current_user.id)
+    if resolved_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only update your own preferences")
+
+    user = db.get(User, resolved_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -16236,16 +16273,8 @@ async def solve_selected(
 # WHATSAPP BOT ENDPOINTS
 # ============================================================================
 
-class WhatsAppMessageRequest(BaseModel):
-    from_number: str = Field(..., alias="from")
-    text: str = ""
-    hasImage: bool = False
-    timestamp: str
-    message_id: Optional[str] = None
-    upload_id: Optional[str] = None
-
 @api_router.get("/admin/whatsapp/status")
-async def get_whatsapp_status():
+async def get_whatsapp_status(admin: User = Depends(get_admin_user)):
     """Get current WhatsApp bot status"""
     return whatsapp_service.get_status()
 
@@ -16255,7 +16284,10 @@ async def get_public_whatsapp_status():
     return whatsapp_service.get_status()
 
 @api_router.post("/admin/whatsapp/initialize")
-async def initialize_whatsapp_bot(db: Session = Depends(get_session)):
+async def initialize_whatsapp_bot(
+    db: Session = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+):
     """Initialize WhatsApp bot and generate QR code"""
     previous_status = (whatsapp_service.get_status() or {}).get("status")
     result = await whatsapp_service.initialize()
@@ -16269,7 +16301,7 @@ async def initialize_whatsapp_bot(db: Session = Depends(get_session)):
     return result
 
 @api_router.post("/admin/whatsapp/disconnect")
-async def disconnect_whatsapp_bot():
+async def disconnect_whatsapp_bot(admin: User = Depends(get_admin_user)):
     """Disconnect WhatsApp bot"""
     return await whatsapp_service.disconnect()
 
@@ -16278,15 +16310,11 @@ async def get_whatsapp_ocr_state(
     request: Request,
     phone: Optional[str] = None,
     upload_id: Optional[str] = None,
+    admin: User = Depends(get_admin_user),
 ):
     """
     Internal-only diagnostics endpoint for WhatsApp OCR state.
     """
-    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
-    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
-    if expected_key and provided_key != expected_key:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
     state = get_ocr_state(phone) if phone else None
     upload = get_upload_meta(upload_id) if upload_id else None
     return {
@@ -16297,15 +16325,10 @@ async def get_whatsapp_ocr_state(
     }
 
 @api_router.get("/admin/whatsapp/diag")
-async def whatsapp_diag(request: Request):
+async def whatsapp_diag(request: Request, admin: User = Depends(get_admin_user)):
     """
     Internal diagnostics for WhatsApp OCR flow.
     """
-    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
-    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
-    if expected_key and provided_key != expected_key:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
     send_url = os.environ.get("WHATSAPP_INTERNAL_SEND_URL", "http://orchestrator:8791/send")
     send_ok = False
     send_status = None
@@ -16361,15 +16384,16 @@ async def admin_clear_whatsapp_monitor(admin: User = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=f"Failed to clear Redis: {str(e)}")
 
 @api_router.get("/admin/whatsapp/monitor")
-async def whatsapp_monitor(request: Request, limit: int = 50, phone: Optional[str] = None, direction: Optional[str] = None):
+async def whatsapp_monitor(
+    request: Request,
+    limit: int = 50,
+    phone: Optional[str] = None,
+    direction: Optional[str] = None,
+    admin: User = Depends(get_admin_user),
+):
     """
     Admin monitor: recent WhatsApp events + Celery queue length.
     """
-    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
-    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
-    if expected_key and provided_key != expected_key:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
     queue_len = None
     queue_len_whatsapp = None
     try:
@@ -16388,12 +16412,13 @@ async def whatsapp_monitor(request: Request, limit: int = 50, phone: Optional[st
     }
 
 @api_router.get("/admin/whatsapp/monitor/export")
-async def whatsapp_monitor_export(request: Request, limit: int = 200, phone: Optional[str] = None, direction: Optional[str] = None):
-    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
-    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
-    if expected_key and provided_key != expected_key:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
+async def whatsapp_monitor_export(
+    request: Request,
+    limit: int = 200,
+    phone: Optional[str] = None,
+    direction: Optional[str] = None,
+    admin: User = Depends(get_admin_user),
+):
     events = get_whatsapp_events(limit=limit, phone=phone, direction=direction)
     rows = ["timestamp,direction,type,from,to,message_id,upload_id,ok,text,error"]
     for e in events:
@@ -16419,12 +16444,7 @@ async def whatsapp_monitor_export(request: Request, limit: int = 200, phone: Opt
     )
 
 @api_router.get("/admin/whatsapp/monitor/stream")
-async def whatsapp_monitor_stream(request: Request):
-    expected_key = os.environ.get("WHATSAPP_INTERNAL_KEY", "")
-    provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
-    if expected_key and provided_key != expected_key:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
+async def whatsapp_monitor_stream(request: Request, admin: User = Depends(get_admin_user)):
     async def event_generator():
         pubsub = get_redis().pubsub()
         pubsub.subscribe("whatsapp:events:stream")
@@ -16463,6 +16483,19 @@ async def upload_whatsapp_media(
     provided_key = request.headers.get("X-UASK-INTERNAL-KEY", "")
     if expected_key and provided_key != expected_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+    canonical_meta = {
+        "from": from_number,
+        "message_id": message_id or "",
+        "request_id": request.headers.get("X-Request-Id", ""),
+        "timestamp": timestamp or "",
+        "mime_type": mime_type or "",
+        "caption": caption or "",
+    }
+    verify_signature_headers_and_body(
+        request,
+        json.dumps(canonical_meta, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
+    )
 
     # Limit to 10MB
     content = await file.read()
@@ -16504,19 +16537,29 @@ async def upload_whatsapp_media(
 
 @api_router.post("/whatsapp/message")
 async def handle_whatsapp_message(
-    request: WhatsAppMessageRequest,
+    request: Request,
     db: Session = Depends(get_session)
 ):
     """
-    Handle incoming WhatsApp message
-    Verify user, process math problem, and return solution
+    Fast ingress path for incoming WhatsApp messages.
     """
-    from_number = request.from_number
-    normalized_number = _normalize_whatsapp_number(from_number)
-    text = request.text.strip()
-    has_image = request.hasImage
-    message_id = request.message_id
-    upload_id = request.upload_id
+    request_id = get_request_id(request)
+    raw_body = await verify_request_signature(request)
+    payload = parse_signed_json(raw_body)
+    wa_abuse.note_inbound()
+    try:
+        enforce_caps(payload, raw_body)
+    except HTTPException:
+        wa_abuse.note_caps_drop()
+        raise
+
+    from_number = str(payload.get("from") or payload.get("from_number") or "")
+    normalized_number = normalize_phone(from_number)
+    client_ip = request.client.host if request.client else None
+    text = str(payload.get("text") or "").strip()
+    has_image = bool(payload.get("hasImage"))
+    message_id = payload.get("message_id")
+    upload_id = payload.get("upload_id")
     whatsapp_ocr_enabled = os.getenv("WHATSAPP_OCR_ENABLED", "false").lower() == "true"
     whatsapp_latex_enabled = os.getenv("WHATSAPP_LATEX_RENDER_ENABLED", "false").lower() == "true"
 
@@ -16527,39 +16570,14 @@ async def handle_whatsapp_message(
         "text": text,
         "message_id": message_id,
         "upload_id": upload_id,
+        "request_id": request_id,
     })
 
-    # Dedupe by message_id to avoid double-processing
-    if not mark_dedupe(message_id):
-        return {"reply": ""}
-    
-    # Check if this is a verification code (handle this first, before checking user)
-    cleaned_text = re.sub(r"[\u200B-\u200D\uFEFF]", "", text).strip()
-    code_match = re.match(
-        r"^(?:CODE[\s:\-]*)?([A-Z0-9]{8})$",
-        cleaned_text.upper(),
-    )
-    if code_match:
-        code = code_match.group(1)
-        # Find user by verification code
-        user = db.exec(
-            select(User).where(User.whatsapp_secret == code)
-        ).first()
-        
-        if user:
-            # Link the phone number to this user
-            user.whatsapp_number = normalized_number
-            db.add(user)
-            db.commit()
-            return {
-                "reply": "✅ Verification successful!\n\nYou can now send me your math problems, and I'll help you solve them step by step.\n\nYou can:\n• Send text problems\n• Send photos of math problems\n• Ask follow-up questions"
-            }
-        else:
-            return {
-                "reply": "❌ Invalid verification code. Please check your code in Settings → Preferences and try again."
-            }
-    
-    # Check if user is already verified for this number
+    if not enforce_dedup(message_id):
+        wa_abuse.note_dedup_drop()
+        logger.info("wa_dedup_hit request_id=%s message_id=%s", request_id, message_id)
+        return {"reply": "", "retry_after_seconds": 0}
+
     user = db.exec(
         select(User).where(
             or_(
@@ -16568,38 +16586,135 @@ async def handle_whatsapp_message(
             )
         )
     ).first()
-    
+
+    active_lock = wa_abuse.check_lock(user_id=user.id if user else None, phone=normalized_number)
+    if active_lock:
+        wa_abuse.note_lock_drop()
+        return {
+            "reply": "You are temporarily paused for high activity. Please try again later.",
+            "retry_after_seconds": int(active_lock.get("ttl_seconds") or 60),
+        }
+
+    inbound_ok, inbound_retry, _layer = wa_abuse.check_inbound_rate_limits(
+        user_id=user.id if user else None,
+        phone=normalized_number,
+        ip=client_ip,
+    )
+    if not inbound_ok:
+        offense = wa_abuse.register_offense(user.id if user else None, normalized_number, "rate_limit")
+        if offense.get("disable_recommended") and user:
+            user.whatsapp_enabled = False
+            db.add(user)
+            db.commit()
+        return {
+            "reply": f"You are sending too fast. Try again in {max(1, int(inbound_retry or 1))} seconds.",
+            "retry_after_seconds": int(inbound_retry or 1),
+        }
+
+    cleaned_text = re.sub(r"[\u200B-\u200D\uFEFF]", "", text).strip()
+    code_match = re.match(
+        r"^(?:CODE[\s:\-]*)?([A-Z0-9]{8})$",
+        cleaned_text.upper(),
+    )
+    if code_match:
+        code = code_match.group(1)
+        user = db.exec(select(User).where(User.whatsapp_secret == code)).first()
+        if user:
+            if user.whatsapp_number and user.whatsapp_number != normalized_number and not wa_abuse.can_relink_user_today(user.id):
+                return {"reply": "Phone change limit reached for today. Try again tomorrow."}
+            if user.whatsapp_number and user.whatsapp_number != normalized_number:
+                wa_abuse.mark_relink_change(user.id)
+            user.whatsapp_number = normalized_number
+            db.add(user)
+            db.commit()
+            wa_abuse.clear_code_attempts(normalized_number)
+            return {"reply": "Verification successful. You can now send your math problems."}
+        invalid = wa_abuse.register_invalid_code_attempt(normalized_number)
+        if invalid.get("lock_applied"):
+            return {
+                "reply": "Too many invalid verification attempts. Try again in 5 minutes.",
+                "retry_after_seconds": 300,
+            }
+        return {"reply": "Invalid verification code. Please check your code and try again."}
+
     if not user:
-        # User not linked - ask for verification code
-        return {
-            "reply": "👋 Welcome to uask.ai Math Tutor!\n\nTo use this service, please send me your WhatsApp verification code.\n\nYou can find your code in:\nSettings → Preferences → WhatsApp Code\n\nFormat: CODE your-code-here"
-        }
-    
-    # Check if user has active subscription status
+        return {"reply": "Welcome. Send your WhatsApp verification code as: CODE XXXXXXXX"}
+
+    if user.whatsapp_enabled is False:
+        return {"reply": "WhatsApp is disabled for your account. Re-enable it in preferences to continue."}
+
+    enforce_rate_limit(user.id, normalized_number)
+    if queue_is_overloaded():
+        increment_metric("busy_reject")
+        wa_abuse.note_busy_drop()
+        wa_abuse.register_offense(user.id, normalized_number, "busy")
+        return {"reply": "Service is busy right now. Please try again shortly."}
+
     if user.subscription_status != "active":
-        return {
-            "reply": "⚠️ Your account is not active. Please check your subscription at uask.ai"
-        }
-    
-    # Get or create subscription for the user
+        return {"reply": "Your account is not active. Please check your subscription at uask.ai"}
+
     try:
-        subscription = subscription_service.get_or_create_subscription(db, user)
+        subscription_service.get_or_create_subscription(db, user)
     except Exception as e:
         print(f"[WhatsApp] Error getting subscription: {e}")
-        return {
-            "reply": "⚠️ There was an error checking your subscription. Please try again or visit uask.ai"
-        }
-    
-    # Handle OCR confirmation state if present
+        return {"reply": "There was an error checking your subscription. Please try again or visit uask.ai"}
+
     ocr_state = get_ocr_state(from_number)
     if ocr_state and ocr_state.get("state") == "OCR_PENDING_CONFIRMATION":
         normalized = text.strip()
         upper = normalized.upper()
 
+        if upper == "YES":
+            return {"reply": "Thanks. Please send your math question now."}
+
         if upper == "1":
+            flags = wa_abuse.circuit_flags()
+            if flags.get("disable_solve"):
+                wa_abuse.note_circuit_drop()
+                return {"reply": "Solving is temporarily paused. Please try again later."}
+            ok_solve_rate, retry_solve, _ = wa_abuse.check_solve_rate_limits(user.id, normalized_number)
+            if not ok_solve_rate:
+                offense = wa_abuse.register_offense(user.id, normalized_number, "rate_limit")
+                if offense.get("disable_recommended"):
+                    user.whatsapp_enabled = False
+                    db.add(user)
+                    db.commit()
+                return {
+                    "reply": f"You are sending too fast. Try again in {max(1, int(retry_solve or 1))} seconds.",
+                    "retry_after_seconds": int(retry_solve or 1),
+                }
+            ok_quota, reset_in = wa_abuse.check_and_consume_quota(user.id, "solve", amount=1)
+            if not ok_quota:
+                offense = wa_abuse.register_offense(user.id, normalized_number, "quota")
+                if offense.get("disable_recommended"):
+                    user.whatsapp_enabled = False
+                    db.add(user)
+                    db.commit()
+                return {
+                    "reply": "Daily WhatsApp limit reached. Use the app or wait until reset.",
+                    "retry_after_seconds": int(reset_in or 60),
+                }
             clear_ocr_state(from_number)
             extracted = ocr_state.get("extracted_text", "")
-            celery_app.send_task("whatsapp_solve", args=[user.id, from_number, extracted, ocr_state.get("upload_id"), message_id])
+            abuse_eval = wa_abuse.evaluate_abuse(user.id, extracted, has_media=False)
+            if abuse_eval.get("require_confirmation"):
+                wa_abuse.note_confirm_drop()
+                return {"reply": "High activity detected. Reply YES to continue.", "retry_after_seconds": 0}
+            if abuse_eval.get("lock"):
+                offense = wa_abuse.register_offense(user.id, normalized_number, "abuse")
+                if offense.get("disable_recommended"):
+                    user.whatsapp_enabled = False
+                    db.add(user)
+                    db.commit()
+                return {"reply": "Activity temporarily restricted. Please try again later.", "retry_after_seconds": 300}
+            celery_app.send_task(
+                "whatsapp_solve",
+                args=[user.id, from_number, extracted, ocr_state.get("upload_id"), message_id, request_id],
+                queue="whatsapp",
+                countdown=10 if abuse_eval.get("slow_lane") else 0,
+            )
+            increment_metric("enqueue_success")
+            wa_abuse.note_enqueued()
             return {"reply": "Got it! Solving now..."}
         if upper == "2":
             clear_ocr_state(from_number)
@@ -16608,8 +16723,52 @@ async def handle_whatsapp_message(
             edited = normalized[5:].strip()
             if not edited:
                 return {"reply": "Please provide your correction after `EDIT:`."}
+            flags = wa_abuse.circuit_flags()
+            if flags.get("disable_solve"):
+                wa_abuse.note_circuit_drop()
+                return {"reply": "Solving is temporarily paused. Please try again later."}
+            ok_solve_rate, retry_solve, _ = wa_abuse.check_solve_rate_limits(user.id, normalized_number)
+            if not ok_solve_rate:
+                offense = wa_abuse.register_offense(user.id, normalized_number, "rate_limit")
+                if offense.get("disable_recommended"):
+                    user.whatsapp_enabled = False
+                    db.add(user)
+                    db.commit()
+                return {
+                    "reply": f"You are sending too fast. Try again in {max(1, int(retry_solve or 1))} seconds.",
+                    "retry_after_seconds": int(retry_solve or 1),
+                }
+            ok_quota, reset_in = wa_abuse.check_and_consume_quota(user.id, "solve", amount=1)
+            if not ok_quota:
+                offense = wa_abuse.register_offense(user.id, normalized_number, "quota")
+                if offense.get("disable_recommended"):
+                    user.whatsapp_enabled = False
+                    db.add(user)
+                    db.commit()
+                return {
+                    "reply": "Daily WhatsApp limit reached. Use the app or wait until reset.",
+                    "retry_after_seconds": int(reset_in or 60),
+                }
             clear_ocr_state(from_number)
-            celery_app.send_task("whatsapp_solve", args=[user.id, from_number, edited, ocr_state.get("upload_id"), message_id])
+            abuse_eval = wa_abuse.evaluate_abuse(user.id, edited, has_media=False)
+            if abuse_eval.get("require_confirmation"):
+                wa_abuse.note_confirm_drop()
+                return {"reply": "High activity detected. Reply YES to continue.", "retry_after_seconds": 0}
+            if abuse_eval.get("lock"):
+                offense = wa_abuse.register_offense(user.id, normalized_number, "abuse")
+                if offense.get("disable_recommended"):
+                    user.whatsapp_enabled = False
+                    db.add(user)
+                    db.commit()
+                return {"reply": "Activity temporarily restricted. Please try again later.", "retry_after_seconds": 300}
+            celery_app.send_task(
+                "whatsapp_solve",
+                args=[user.id, from_number, edited, ocr_state.get("upload_id"), message_id, request_id],
+                queue="whatsapp",
+                countdown=10 if abuse_eval.get("slow_lane") else 0,
+            )
+            increment_metric("enqueue_success")
+            wa_abuse.note_enqueued()
             return {"reply": "Thanks! Solving your corrected question now..."}
         if upper == "CANCEL":
             clear_ocr_state(from_number)
@@ -16622,84 +16781,129 @@ async def handle_whatsapp_message(
     if whatsapp_latex_enabled and text and handle_navigation(from_number, text):
         return {"reply": ""}
 
-    # If image upload_id is provided and OCR is enabled, enqueue OCR extraction
     if upload_id and whatsapp_ocr_enabled:
-        celery_app.send_task("whatsapp_ocr_extract", args=[upload_id, user.id, from_number, message_id])
+        flags = wa_abuse.circuit_flags()
+        if flags.get("disable_media"):
+            wa_abuse.note_circuit_drop()
+            return {"reply": "Image solving is temporarily paused. Please send text or try later."}
+        if wa_abuse.ocr_queue_overloaded():
+            wa_abuse.note_busy_drop()
+            return {"reply": "Image queue is busy right now. Please try again shortly."}
+        ok_ocr_rate, retry_ocr, _ = wa_abuse.check_ocr_rate_limits(user.id, normalized_number)
+        if not ok_ocr_rate:
+            offense = wa_abuse.register_offense(user.id, normalized_number, "rate_limit")
+            if offense.get("disable_recommended"):
+                user.whatsapp_enabled = False
+                db.add(user)
+                db.commit()
+            return {
+                "reply": f"You are sending too fast. Try again in {max(1, int(retry_ocr or 1))} seconds.",
+                "retry_after_seconds": int(retry_ocr or 1),
+            }
+        ok_quota, reset_in = wa_abuse.check_and_consume_quota(user.id, "ocr", amount=1)
+        if not ok_quota:
+            offense = wa_abuse.register_offense(user.id, normalized_number, "quota")
+            if offense.get("disable_recommended"):
+                user.whatsapp_enabled = False
+                db.add(user)
+                db.commit()
+            return {
+                "reply": "Daily WhatsApp limit reached. Use the app or wait until reset.",
+                "retry_after_seconds": int(reset_in or 60),
+            }
+        abuse_eval = wa_abuse.evaluate_abuse(user.id, text, has_media=True)
+        if abuse_eval.get("require_confirmation"):
+            wa_abuse.note_confirm_drop()
+            return {"reply": "High activity detected. Reply YES to continue.", "retry_after_seconds": 0}
+        if abuse_eval.get("lock"):
+            offense = wa_abuse.register_offense(user.id, normalized_number, "abuse")
+            if offense.get("disable_recommended"):
+                user.whatsapp_enabled = False
+                db.add(user)
+                db.commit()
+            return {"reply": "Activity temporarily restricted. Please try again later.", "retry_after_seconds": 300}
+        try:
+            celery_app.send_task(
+                "whatsapp_ocr_extract",
+                args=[upload_id, user.id, from_number, message_id, request_id],
+                queue="whatsapp",
+                countdown=12 if abuse_eval.get("slow_lane") else 0,
+            )
+            increment_metric("enqueue_success")
+            wa_abuse.note_enqueued()
+        except Exception as exc:
+            increment_metric("enqueue_failure")
+            logger.exception("wa_enqueue_ocr_failed request_id=%s error=%s", request_id, str(exc))
+            return {"reply": "Service is temporarily unavailable. Please try again."}
         return {"reply": "Received your image. Reading it now..."}
 
-    # If message has an image, we need to process it with OCR
-    problem_text = text
-    if has_image:
-        # In a real implementation, we would:
-        # 1. Download the image from WhatsApp
-        # 2. Process it with OCR service
-        # 3. Extract the math problem
-        # For now, we'll acknowledge the image and ask for text
-        if not text:
-            return {
-                "reply": "📸 I see you sent an image! Unfortunately, I'm still learning to read images from WhatsApp.\n\nFor now, please:\n1. Type out your math problem, or\n2. Use the web app at uask.ai for full photo support\n\nI'll be able to read photos soon! 🔜"
-            }
-        problem_text = f"[Image received] {text}"
-    
-    # Process the math problem
-    try:
-        # Get WhatsApp-specific prompt
-        from app.utils import get_active_prompt
-        system_prompt = get_active_prompt("whatsapp-solver", db)
-        
-        if not system_prompt:
-            # Fallback prompt
-            system_prompt = """You are a WhatsApp math tutor. Solve the problem step-by-step.
-Keep responses concise and mobile-friendly. Use simple formatting.
-Format: Problem → Steps → Final Answer"""
-        
-        # Use solver service
-        result = await solver_service.solve_problem(problem_text, "", db)
-        
-        # Format response for WhatsApp
-        reply = "*Problem:* " + text + "\n\n"
-        
-        # Extract solution data (solver returns nested structure)
-        solution = result.get("solution", {})
-        steps = solution.get("steps", [])
-        final_answer = solution.get("final_answer", "")
-        
-        if steps:
-            reply += "*Solution:*\n"
-            for i, step in enumerate(steps, 1):
-                title = step.get("title", f"Step {i}")
-                reply += f"\n*{i}. {title}*\n"
-                explanation = step.get("explanation", "")
-                if explanation:
-                    # Truncate long explanations for WhatsApp
-                    if len(explanation) > 200:
-                        explanation = explanation[:197] + "..."
-                    reply += explanation + "\n"
-        
-        if final_answer:
-            reply += f"\n✅ *Answer:* {final_answer}"
-        
-        # Add helpful footer
-        reply += "\n\n💡 _Need more help? Visit uask.ai_"
-        
-        # Log usage
-        usage_log = UsageLog(
-            user_id=user.id,
-            action_type="whatsapp_solve",
-            tokens_used=len(problem_text.split()) + len(reply.split())
-        )
-        db.add(usage_log)
-        db.commit()
-        
-        send_whatsapp_logo(from_number)
-        return {"reply": reply}
-        
-    except Exception as e:
-        print(f"[WhatsApp] Error processing message: {e}")
-        return {
-            "reply": "❌ Sorry, I encountered an error processing your problem. Please try again or contact support at uask.ai"
-        }
+    if has_image and not text:
+        return {"reply": "Image received without text. Please add a caption or resend clearly."}
 
+    if not text:
+        return {"reply": "Please send a math question to solve."}
+
+    flags = wa_abuse.circuit_flags()
+    if flags.get("disable_solve"):
+        wa_abuse.note_circuit_drop()
+        return {"reply": "Solving is temporarily paused. Please try again later."}
+    ok_solve_rate, retry_solve, _ = wa_abuse.check_solve_rate_limits(user.id, normalized_number)
+    if not ok_solve_rate:
+        offense = wa_abuse.register_offense(user.id, normalized_number, "rate_limit")
+        if offense.get("disable_recommended"):
+            user.whatsapp_enabled = False
+            db.add(user)
+            db.commit()
+        return {
+            "reply": f"You are sending too fast. Try again in {max(1, int(retry_solve or 1))} seconds.",
+            "retry_after_seconds": int(retry_solve or 1),
+        }
+    ok_quota, reset_in = wa_abuse.check_and_consume_quota(user.id, "solve", amount=1)
+    if not ok_quota:
+        offense = wa_abuse.register_offense(user.id, normalized_number, "quota")
+        if offense.get("disable_recommended"):
+            user.whatsapp_enabled = False
+            db.add(user)
+            db.commit()
+        return {
+            "reply": "Daily WhatsApp limit reached. Use the app or wait until reset.",
+            "retry_after_seconds": int(reset_in or 60),
+        }
+    abuse_eval = wa_abuse.evaluate_abuse(user.id, text, has_media=bool(upload_id or has_image))
+    if abuse_eval.get("require_confirmation"):
+        wa_abuse.note_confirm_drop()
+        return {"reply": "High activity detected. Reply YES to continue.", "retry_after_seconds": 0}
+    if abuse_eval.get("lock"):
+        offense = wa_abuse.register_offense(user.id, normalized_number, "abuse")
+        if offense.get("disable_recommended"):
+            user.whatsapp_enabled = False
+            db.add(user)
+            db.commit()
+        return {"reply": "Activity temporarily restricted. Please try again later.", "retry_after_seconds": 300}
+    if text.strip().upper() == "YES":
+        return {"reply": "Thanks. Please send your math question now."}
+
+    try:
+        celery_app.send_task(
+            "whatsapp_solve",
+            args=[user.id, from_number, text, upload_id, message_id, request_id],
+            queue="whatsapp",
+            countdown=10 if abuse_eval.get("slow_lane") else 0,
+        )
+        increment_metric("enqueue_success")
+        wa_abuse.note_enqueued()
+        logger.info(
+            "wa_enqueue_success request_id=%s user_id=%s phone=%s message_id=%s",
+            request_id,
+            user.id,
+            normalized_number,
+            message_id,
+        )
+        return {"reply": "Processing your problem now. I will reply shortly."}
+    except Exception as exc:
+        increment_metric("enqueue_failure")
+        logger.exception("wa_enqueue_failed request_id=%s error=%s", request_id, str(exc))
+        return {"reply": "Service is temporarily unavailable. Please try again shortly."}
 @api_router.post("/solve/clarify", response_model=SolveResponse)
 async def solve_clarify(
     request: Request,

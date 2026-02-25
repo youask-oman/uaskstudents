@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
-const FALLBACK_BACKEND_URL = process.env.NEXT_PUBLIC_API_FALLBACK_URL || process.env.API_BACKEND_BASE_URL || `http://orchestrator:${process.env.API_BACKEND_PORT || "9000"}`;
-const INTERNAL_KEY = process.env.WHATSAPP_INTERNAL_KEY || "";
+import { BACKEND_URL, FALLBACK_BACKEND_URL, requireAdminAuth } from "../../_proxy";
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -12,15 +9,17 @@ export async function GET(request: Request) {
     const qs = new URLSearchParams({ limit });
     if (phone) qs.set("phone", phone);
     if (direction) qs.set("direction", direction);
+    const auth = requireAdminAuth(request);
+    if (auth instanceof NextResponse) return auth;
     const urls = [BACKEND_URL, FALLBACK_BACKEND_URL].filter(Boolean);
 
     let lastError: unknown = null;
     for (const baseUrl of urls) {
         try {
-            const response = await fetch(`${baseUrl}/api/v1/admin/whatsapp/monitor/export?${qs.toString()}`, {
+            const response = await fetch(`${baseUrl}/api/admin/whatsapp/monitor/export?${qs.toString()}`, {
                 method: "GET",
                 headers: {
-                    ...(INTERNAL_KEY ? { "X-UASK-INTERNAL-KEY": INTERNAL_KEY } : {}),
+                    Authorization: auth,
                 },
             });
             const blob = await response.blob();

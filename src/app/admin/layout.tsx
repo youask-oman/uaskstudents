@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import navManifest from "../../../admin_nav_manifest.json";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import AdminPageIntro from "@/components/admin/AdminPageIntro";
 
 type AdminProfile = {
     name: string;
@@ -141,6 +142,7 @@ export default function AdminLayout({
 
                 {/* Main Content Shell */}
                 <main className="flex-1 flex flex-col overflow-y-auto w-full">
+                    <AdminPageIntro />
                     {children}
                 </main>
             </div>

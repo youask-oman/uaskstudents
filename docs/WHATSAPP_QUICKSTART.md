@@ -1,150 +1,60 @@
-# WhatsApp Bot Integration - Quick Start
+# WhatsApp Integration Quickstart (Hardened)
 
-## ✅ What's Been Completed
+## Required env
+- `WHATSAPP_SIGNING_SECRET` (required; shared between Node bridge and FastAPI)
+- `WHATSAPP_INTERNAL_KEY` (still used for internal send/media server auth)
+- `WHATSAPP_SIGNATURE_MAX_DRIFT_SECONDS` (default `300`)
+- `WHATSAPP_RL_USER_RPS`, `WHATSAPP_RL_USER_BURST`
+- `WHATSAPP_RL_PHONE_RPS`, `WHATSAPP_RL_PHONE_BURST`
+- `WHATSAPP_MAX_TEXT_CHARS` (default `4000`)
+- `WHATSAPP_MAX_MEDIA_COUNT` (default `1`)
+- `WHATSAPP_MAX_METADATA_BYTES` (default `65536`)
+- `WHATSAPP_MAX_QUEUE_DEPTH` (default `1000`)
+- `WHATSAPP_QUOTA_SOLVES_PER_DAY`, `WHATSAPP_QUOTA_OCR_PER_DAY`, `WHATSAPP_QUOTA_SOLVES_PER_10M`
+- `WHATSAPP_ABUSE_SCORE_THRESHOLD_WARN`, `WHATSAPP_ABUSE_SCORE_THRESHOLD_LOCK`
+- `WHATSAPP_LOCK_5M_THRESHOLD`, `WHATSAPP_LOCK_1H_THRESHOLD`, `WHATSAPP_DISABLE_THRESHOLD`
+- `WHATSAPP_MAX_INVALID_CODE_ATTEMPTS_10M`, `WHATSAPP_MAX_PHONE_CHANGES_PER_DAY`
+- `WHATSAPP_RL_SOLVE_USER_RPS`, `WHATSAPP_RL_SOLVE_USER_BURST`
+- `WHATSAPP_RL_OCR_USER_RPS`, `WHATSAPP_RL_OCR_USER_BURST`
+- `WHATSAPP_RL_GLOBAL_INBOUND_RPS`, `WHATSAPP_RL_GLOBAL_INBOUND_BURST`
+- `WHATSAPP_RL_GLOBAL_SOLVE_RPS`, `WHATSAPP_RL_GLOBAL_SOLVE_BURST`
+- `WHATSAPP_RL_GLOBAL_OCR_RPS`, `WHATSAPP_RL_GLOBAL_OCR_BURST`
+- `WHATSAPP_RL_IP_RPS`, `WHATSAPP_RL_IP_BURST` (used only when client IP is available)
+- `WHATSAPP_MAX_OCR_QUEUE_DEPTH`
 
-### 1. Frontend Components
-- **Admin Panel Page**: `/admin/whatsapp-bot`
-  - QR code display for WhatsApp connection
-  - Connection status monitoring
-  - Statistics dashboard
-  - Connect/disconnect controls
-  
-- **Student Settings**: `/profile` → Preferences Tab
-  - WhatsApp secret code display (hidden by default)
-  - Eye icon to reveal code
-  - Copy-to-clipboard button
-  - Enable/disable toggle
-  - Connection instructions
+## What changed
+- Inbound `/api/v1/whatsapp/message` now requires HMAC signature + timestamp + nonce replay protection.
+- Inbound solve path is queue-only (no synchronous solve/OCR in API request path).
+- Ingress adds dedup, token-bucket rate limiting, payload caps, and queue-depth backpressure.
+- Ingress now adds anti-abuse controls: quotas, abuse score + decay, lock escalation, and confirmation gates.
+- Admin has abuse controls in `/admin/whatsapp-monitor`: circuit toggles, force/clear lock, offender list, and audit trail.
+- Legacy `/api/v1/admin/whatsapp/*` routes are now admin-protected.
+- Canonical admin namespace is `/api/admin/whatsapp/*`.
+- Profile response no longer exposes `whatsapp_secret`; profile/preferences are auth + self-only.
 
-- **Navigation**: WhatsApp Bot added to admin sidebar
-
-### 2. Backend Services
-- **WhatsApp Service**: `backend/app/services/whatsapp/whatsapp_service.py`
-  - Baileys integration via Node.js subprocess
-  - QR code generation
-  - Connection management
-  - Message event handling
-  
-- **API Endpoints**: `backend/app/api.py`
-  - `GET /api/v1/admin/whatsapp/status` - Get bot status
-  - `POST /api/v1/admin/whatsapp/initialize` - Start bot
-  - `POST /api/v1/admin/whatsapp/disconnect` - Stop bot
-  - `POST /api/v1/whatsapp/message` - Handle messages
-
-- **User Model Updates**: `backend/app/models.py`
-  - `whatsapp_number` - Verified phone number
-  - `whatsapp_secret` - 8-character verification code
-  - `whatsapp_enabled` - Toggle bot access
-
-### 3. Database Setup
-- ✅ WhatsApp columns added to user table (512 users updated)
-- ✅ WhatsApp-specific prompt template created in database
-- ✅ Unique verification codes generated for all existing users
-- ✅ New users automatically get codes on signup
-
-### 4. Next.js API Routes
-- `/api/admin/whatsapp/status` - Proxy to backend
-- `/api/admin/whatsapp/initialize` - Proxy to backend
-- `/api/admin/whatsapp/disconnect` - Proxy to backend
-
-### 5. Documentation
-- `WHATSAPP_BOT_SETUP.md` - Complete setup and usage guide
-- Inline code documentation
-- API documentation
-
-## 🚀 Next Steps to Go Live
-
-### 1. Install Node.js in Docker Container
-The WhatsApp service needs Node.js to run Baileys. Add to your Dockerfile:
-
-```dockerfile
-# In backend/Dockerfile
-RUN apt-get update && apt-get install -y nodejs npm
-```
-
-Then rebuild:
+## Local run
 ```bash
-docker compose build orchestrator
-docker compose up -d orchestrator
+docker compose up -d redis orchestrator worker
 ```
 
-### 2. Test the Admin Panel
-1. Navigate to `http://localhost:3000/admin/whatsapp-bot`
-2. Click "Initialize Connection"
-3. Scan the QR code with your WhatsApp app
-4. Verify connection status shows "Connected"
+## Security smoke checks
+```bash
+# should fail (missing signature)
+curl -i -X POST http://127.0.0.1:9000/api/v1/whatsapp/message -H "content-type: application/json" -d "{}"
 
-### 3. Test Student Flow
-1. Go to Settings → Preferences
-2. View your WhatsApp code (click eye icon)
-3. Send to the bot: `CODE YOUR-CODE-HERE`
-4. Send a test math problem
-5. Verify you receive a solution
+# admin endpoint should fail without bearer
+curl -i http://127.0.0.1:9000/api/admin/whatsapp/status
+```
 
-### 4. Production Considerations
+## Targeted tests
+```bash
+pytest backend/tests/test_whatsapp_security.py -q
+pytest backend/tests/test_whatsapp_admin.py -q
+pytest backend/tests/test_whatsapp_ingress_protections.py -q
+pytest backend/tests/test_whatsapp_queue.py -q
+```
 
-#### Security
-- [ ] Add rate limiting to prevent spam
-- [ ] Implement message queue for high volume
-- [ ] Add webhook authentication
-- [ ] Monitor for abuse patterns
-
-#### Reliability
-- [ ] Set up auto-reconnect on WhatsApp disconnection
-- [ ] Add health checks for Node.js process
-- [ ] Implement retry logic for failed messages
-- [ ] Set up monitoring and alerts
-
-#### Scaling
-- [ ] Consider using WhatsApp Business API for production scale
-- [ ] Implement message queue (Redis/RabbitMQ)
-- [ ] Add load balancing for multiple instances
-- [ ] Set up separate worker for message processing
-
-#### Features
-- [ ] Add image OCR support (integrate with vision service)
-- [ ] Support follow-up questions (conversation context)
-- [ ] Add voice message support
-- [ ] Implement group chat support
-- [ ] Add analytics dashboard
-
-## 📝 Testing Checklist
-
-- [ ] Admin can access WhatsApp Bot page
-- [ ] QR code generates successfully
-- [ ] WhatsApp connection works
-- [ ] Student can view verification code in settings
-- [ ] Verification code works correctly
-- [ ] Bot responds to text messages
-- [ ] Bot checks subscription status
-- [ ] Responses are mobile-optimized
-- [ ] Usage is tracked correctly
-- [ ] Bot reconnects after disconnection
-
-## 🐛 Known Limitations
-
-1. **Image Support**: Currently shows placeholder message. Full OCR integration needed.
-2. **Multi-turn Chat**: Each message is independent. No conversation context yet.
-3. **Group Chats**: Not supported yet. Only 1-on-1 messages.
-4. **Voice Messages**: Not supported yet.
-5. **Node.js Process**: Managed by Python subprocess. Consider dedicated service for production.
-
-## 📞 Support & Resources
-
-- **Baileys Library**: https://github.com/WhiskeySockets/Baileys
-- **WhatsApp Business API**: https://developers.facebook.com/docs/whatsapp
-- **Setup Guide**: See `WHATSAPP_BOT_SETUP.md`
-- **Admin Panel**: http://localhost:3000/admin/whatsapp-bot
-- **Student Settings**: http://localhost:3000/profile
-
-## 💡 Tips
-
-1. Keep the bot phone connected and don't log out manually
-2. QR codes expire quickly - regenerate if needed
-3. Only one device can be connected at a time
-4. Test with a non-admin account first
-5. Monitor backend logs for debugging: `docker compose logs orchestrator -f`
-
----
-
-**Status**: ✅ Backend ready, ✅ Frontend ready, ⏳ Awaiting Node.js installation and testing
+## 100-concurrency local load
+```bash
+python tools/loadtest_whatsapp_inbound.py --secret "$WHATSAPP_SIGNING_SECRET" --total 100 --concurrency 100
+```

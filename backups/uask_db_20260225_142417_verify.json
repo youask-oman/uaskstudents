@@ -1,0 +1,366 @@
+﻿{
+    "generated_at":  "2026-02-25T22:26:00.5026484Z",
+    "files":  {
+                  "dump":  {
+                               "path":  "d:\\uaskstudents\\backups\\uask_db_20260225_142417.dump",
+                               "bytes":  13037119,
+                               "sha256":  "4C32F400CB69EB64E00659CE19983DAB6D1EE1682051EFDF4C58440F727E0635"
+                           },
+                  "sql":  {
+                              "path":  "d:\\uaskstudents\\backups\\uask_db_20260225_142417.sql",
+                              "bytes":  88164770,
+                              "sha256":  "6937872D276B972BB6AD78C66C0E1435D80BB91A7D1C3EAA947E7472AA302104"
+                          },
+                  "schema_sql":  {
+                                     "path":  "d:\\uaskstudents\\backups\\uask_db_20260225_142417_schema.sql",
+                                     "bytes":  437556,
+                                     "sha256":  "045ECDF948772680AAC33A76A5C1A84026AD6E939FABE0D2678C83BEC8215E35"
+                                 }
+              },
+    "pg_restore_list_entries":  995,
+    "table_counts_estimate":  {
+                                  "value":  [
+                                                {
+                                                    "table":  "adminauditlog",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "adminnote",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "alembic_version",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "attemptevent",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "billingledger",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "canonicalproblem",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "canonicalsolution",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "chateditcopy",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "chateditcopyv2",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "chateditnotev2",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "chatmessage",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "chatnote",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "chatsession",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "credit_hold_allocations",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "credit_holds",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "credit_lots",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "credit_packs",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "credit_transfers",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "credithold",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "creditlot",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "creditlotconsumption",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "creditprogramdefinition",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "creditprogramenrollment",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "creditprogramgrantlog",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "crop",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "devicesignuplog",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "followupchatturn",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "invoice",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "invoicelineitem",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "invoicesequence",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "json_schemas",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "legal_acceptances",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "legal_documents",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "llmusageledger",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "notifications",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrartifact",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrauditevent",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrcache",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrchoice",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrconfirmation",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrextractioncache",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrfigure",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrjob",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "ocrquestion",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "payment",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "plan",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "promocode",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "prompt_bindings",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "prompt_templates",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "providermodelpricing",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "providerpricingauditevent",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "question_identity_cache",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "reconciliationfinding",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "reconciliationrecord",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "requestevent",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "school",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "schoolimportrun",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "seed_registry",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "solution_shares",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "solve_debug_blob",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "solvedebugblob",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "solveroutputattempt",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "solvesession",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "stripeevent",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "stripepricemap",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "subscription",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "subscriptionbillinglink",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "subscriptionperiod",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "systemconfig",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "systemconfigversion",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "systemerrorentry",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "topuporder",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "topupproduct",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "upload",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "usage_ledger",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "usageledger",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "usagelog",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "user",
+                                                    "rows_estimate":  1
+                                                },
+                                                {
+                                                    "table":  "userquotaoverride",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "usersavedsolution",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "voiceartifact",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "voiceaudio",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "voiceconfirmation",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "voicejob",
+                                                    "rows_estimate":  0
+                                                },
+                                                {
+                                                    "table":  "voicesession",
+                                                    "rows_estimate":  0
+                                                }
+                                            ],
+                                  "Count":  85
+                              }
+}
