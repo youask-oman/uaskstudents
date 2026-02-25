@@ -23,6 +23,8 @@ type SchemaEntry = {
 type OcrConfig = {
     local_engine_enabled: boolean;
     openai_engine_enabled: boolean;
+    glm_ocr_engine_enabled: boolean;
+    glm_ocr_model: string;
     openai_model: string;
     openai_system_prompt_key: string;
     openai_schema_key: string;
@@ -31,6 +33,7 @@ type OcrConfig = {
     rate_limit_extract_per_min: number;
     local_ocr_credit: number;
     openai_ocr_credit: number;
+    glm_ocr_credit: number;
     solve_credit: number;
 };
 
@@ -108,11 +111,11 @@ export default function AdminOcrConfigurationPage() {
     const validPromptKeys = useMemo(() => new Set(prompts.map((p) => p.key)), [prompts]);
     const validSchemaKeys = useMemo(() => new Set(schemas.map((s) => s.key)), [schemas]);
     const promptKeyValid = useMemo(
-        () => Boolean(config?.openai_system_prompt_key) && validPromptKeys.has(config?.openai_system_prompt_key || ""),
+        () => !config?.openai_engine_enabled || (Boolean(config?.openai_system_prompt_key) && validPromptKeys.has(config?.openai_system_prompt_key || "")),
         [config, validPromptKeys]
     );
     const schemaKeyValid = useMemo(
-        () => Boolean(config?.openai_schema_key) && validSchemaKeys.has(config?.openai_schema_key || ""),
+        () => !config?.openai_engine_enabled || (Boolean(config?.openai_schema_key) && validSchemaKeys.has(config?.openai_schema_key || "")),
         [config, validSchemaKeys]
     );
     const canSave = useMemo(
@@ -237,6 +240,22 @@ export default function AdminOcrConfigurationPage() {
                             onChange={(e) => updateField('openai_engine_enabled', e.target.checked)}
                         />
                     </label>
+                    <label className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">GLM OCR (Ollama) Enabled</span>
+                        <input
+                            type="checkbox"
+                            checked={config.glm_ocr_engine_enabled}
+                            onChange={(e) => updateField('glm_ocr_engine_enabled', e.target.checked)}
+                        />
+                    </label>
+                    <div className="space-y-2">
+                        <label className="text-sm text-slate-600">GLM OCR Model</label>
+                        <input
+                            className="w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                            value={config.glm_ocr_model}
+                            onChange={(e) => updateField('glm_ocr_model', e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm space-y-4">
@@ -299,6 +318,16 @@ export default function AdminOcrConfigurationPage() {
                             className="w-full rounded border border-slate-200 px-3 py-2 text-sm"
                             value={config.openai_ocr_credit}
                             onChange={(e) => updateField('openai_ocr_credit', Number(e.target.value))}
+                        />
+                    </label>
+                    <label className="space-y-1 block">
+                        <span className="text-sm text-slate-600">GLM OCR Credits</span>
+                        <input
+                            type="number"
+                            min={1}
+                            className="w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                            value={config.glm_ocr_credit}
+                            onChange={(e) => updateField('glm_ocr_credit', Number(e.target.value))}
                         />
                     </label>
                     <label className="space-y-1 block">

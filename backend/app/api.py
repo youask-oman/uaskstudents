@@ -109,6 +109,7 @@ from app.services.superadmin_policy import is_protected_superadmin_user
 from app.services.audit_log_service import audit_log_service
 from app.services.share_service import share_service
 from app.services.credit_transfer_config import load_credit_transfer_config
+from app.services.glmocr_direct import parse_image_with_ollama_generate
 from app.services.prompt_binding_policy import (
     ALLOWED_PROMPT_IDS,
     ALLOWED_SCHEMA_IDS,
@@ -2088,6 +2089,7 @@ class OcrExtractResponse(BaseModel):
 class OcrEngineAvailabilityResponse(BaseModel):
     local_engine_enabled: bool
     openai_engine_enabled: bool
+    glm_ocr_engine_enabled: bool
     default_engine: str
 
 
@@ -2388,10 +2390,15 @@ async def get_token_policy_endpoint(session: Session = Depends(get_session)):
 @api_router.get("/ocr/engines", response_model=OcrEngineAvailabilityResponse)
 async def get_ocr_engines_endpoint(session: Session = Depends(get_session)):
     runtime_cfg = get_active_ocr_config(session)
-    default_engine = "pix2text" if runtime_cfg.local_engine_enabled else ("openai" if runtime_cfg.openai_engine_enabled else "pix2text")
+    default_engine = (
+        "glm_ocr"
+        if runtime_cfg.glm_ocr_engine_enabled
+        else ("pix2text" if runtime_cfg.local_engine_enabled else ("openai" if runtime_cfg.openai_engine_enabled else "pix2text"))
+    )
     return OcrEngineAvailabilityResponse(
         local_engine_enabled=bool(runtime_cfg.local_engine_enabled),
         openai_engine_enabled=bool(runtime_cfg.openai_engine_enabled),
+        glm_ocr_engine_enabled=bool(runtime_cfg.glm_ocr_engine_enabled),
         default_engine=default_engine,
     )
 
@@ -3197,6 +3204,7 @@ async def _call_extract_questions(
         supports_image = True
 
         async def extract(self, vision_input: VisionInput, options: VisionOptions) -> VisionExtractionResult:
+            page_num = int(getattr(vision_input, "page_number", 0) or 0)
             import tempfile
 
             tmp_path = None
@@ -3228,6 +3236,72 @@ async def _call_extract_questions(
             finally:
                 if tmp_path and os.path.exists(tmp_path):
                     os.unlink(tmp_path)
+
+    class GlmOcrProvider(VisionOcrProvider):
+        name = "glm_ocr"
+        supports_pdf = True
+        supports_image = True
+
+        async def extract(self, vision_input: VisionInput, options: VisionOptions) -> VisionExtractionResult:
+            page_num = int(getattr(vision_input, "page_number", 0) or 0)
+            request_id = str(getattr(vision_input, "request_id", "") or str(uuid.uuid4()))
+            parsed = await parse_image_with_ollama_generate(
+                vision_input.images[0],
+                request_id=request_id,
+                mime_type=vision_input.mime_type or "image/jpeg",
+                filename=f"p{page_num}.jpg",
+            )
+            markdown = str(parsed.get("markdown_result") or "").strip()
+            json_result = parsed.get("json_result") if isinstance(parsed.get("json_result"), dict) else {}
+
+            questions: List[Dict[str, Any]] = []
+            raw_questions = json_result.get("questions") if isinstance(json_result.get("questions"), list) else []
+            for idx, item in enumerate(raw_questions):
+                if not isinstance(item, dict):
+                    continue
+                text = str(item.get("text") or item.get("question_text") or "").strip()
+                if not text:
+                    continue
+                questions.append(
+                    {
+                        "id": str(item.get("id") or f"p{page_num}-q{idx+1}"),
+                        "page": int(item.get("page") or page_num),
+                        "text": text,
+                        "latex": str(item.get("latex") or "").strip() or (text if _looks_like_latex_math(text) else None),
+                        "confidence": item.get("confidence") if isinstance(item.get("confidence"), (int, float)) else None,
+                        "type": str(item.get("type") or "other"),
+                    }
+                )
+
+            if not questions and markdown:
+                questions = [
+                    {
+                        "id": f"p{page_num}-q1",
+                        "page": page_num,
+                        "text": markdown,
+                        "latex": markdown if _looks_like_latex_math(markdown) else None,
+                        "confidence": None,
+                        "type": "equation",
+                    }
+                ]
+
+            payload = {
+                "ok": True,
+                "error": None,
+                "is_math_page": bool(questions),
+                "notes": [] if questions else ["No math questions detected."],
+                "questions": questions,
+            }
+            extracted_text = "\n".join((q.get("text") or "") for q in questions).strip()
+            return VisionExtractionResult(
+                provider="glm_ocr",
+                model=runtime_cfg.glm_ocr_model,
+                extracted_text=extracted_text,
+                payload=payload,
+                blocks=questions,
+                confidence=None,
+                token_usage={"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0},
+            )
 
     class OpenAIVisionProvider(VisionOcrProvider):
         name = "openai"
@@ -3369,9 +3443,12 @@ async def _call_extract_questions(
 
     providers: Dict[str, VisionOcrProvider] = {
         "pix2txt": Pix2TextProvider(),
+        "glm_ocr": GlmOcrProvider(),
         "openai": OpenAIVisionProvider(),
     }
     enabled_providers: List[str] = []
+    if runtime_cfg.glm_ocr_engine_enabled:
+        enabled_providers.append("glm_ocr")
     if runtime_cfg.local_engine_enabled:
         enabled_providers.append("pix2txt")
     if runtime_cfg.openai_engine_enabled and os.getenv("OPENAI_API_KEY"):
@@ -4059,12 +4136,14 @@ async def ocr_extract(
     runtime_cfg = get_active_ocr_config(session)
 
     engine_choice = (engine or "pix2text").lower().strip()
-    if engine_choice not in {"pix2text", "openai"}:
-        raise HTTPException(status_code=400, detail="Invalid engine. Use pix2text or openai.")
+    if engine_choice not in {"pix2text", "openai", "glm_ocr"}:
+        raise HTTPException(status_code=400, detail="Invalid engine. Use pix2text, openai, or glm_ocr.")
     if engine_choice == "pix2text" and not runtime_cfg.local_engine_enabled:
         raise HTTPException(status_code=422, detail="Pix2Text OCR engine is disabled")
     if engine_choice == "openai" and not runtime_cfg.openai_engine_enabled:
         raise HTTPException(status_code=422, detail="OpenAI OCR engine is disabled")
+    if engine_choice == "glm_ocr" and not runtime_cfg.glm_ocr_engine_enabled:
+        raise HTTPException(status_code=422, detail="GLM OCR engine is disabled")
 
     raw = await file.read()
     if not raw:
@@ -4178,7 +4257,12 @@ async def ocr_extract(
     session.commit()
 
     # Apply hold
-    hold_amount = Decimal(str(runtime_cfg.local_ocr_credit)) if engine_choice == "pix2text" else Decimal(str(runtime_cfg.openai_ocr_credit))
+    if engine_choice == "pix2text":
+        hold_amount = Decimal(str(runtime_cfg.local_ocr_credit))
+    elif engine_choice == "glm_ocr":
+        hold_amount = Decimal(str(runtime_cfg.glm_ocr_credit))
+    else:
+        hold_amount = Decimal(str(runtime_cfg.openai_ocr_credit))
     hold_request_id = f"ocr:{user_id}:{engine_choice}:{image_fingerprint}:{crop_signature}:{getattr(prompt_entry, 'prompt_id', 'local')}:{getattr(schema_entry, 'schema_id', 'local')}"
     try:
         hold_result = billing_ledger_service_v2.create_hold(
@@ -4215,7 +4299,7 @@ async def ocr_extract(
             session=session,
             image_bytes=crop_bytes,
             max_output_tokens=max_extract_tokens,
-            engine_choice="openai" if engine_choice == "openai" else "pix2txt",
+            engine_choice=("openai" if engine_choice == "openai" else ("glm_ocr" if engine_choice == "glm_ocr" else "pix2txt")),
             crop_meta={
                 "request_id": hold_request_id,
                 "page_number": 0,

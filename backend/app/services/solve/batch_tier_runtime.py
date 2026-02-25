@@ -816,6 +816,21 @@ def _is_managed_prompt_unavailable_error(exc: Exception) -> bool:
     return bool((prompt_unavailable and (status_code in {0, 400, 404})) or prompt_variable_hard_fail)
 
 
+def _is_missing_prompt_variables_error(exc: Exception) -> bool:
+    text = str(exc or "").lower()
+    if isinstance(exc, LLMProviderError):
+        details = exc.details if isinstance(exc.details, dict) else {}
+        detail_msg = str(details.get("message") or "").lower()
+        provider_details = details.get("provider_details")
+        provider_msg = (
+            str(provider_details.get("message") or "").lower()
+            if isinstance(provider_details, dict)
+            else ""
+        )
+        text = f"{text}\n{detail_msg}\n{provider_msg}"
+    return "missing prompt variables" in text or "prompt_variable_missing" in text
+
+
 def _capture_openai_raw_and_stop(
     *,
     runtime_request_id: str,
@@ -3355,6 +3370,57 @@ async def execute_batch_solve(
                 managed_prompt_runtime_active = False
                 try:
                     response = await _call_provider(request_id_suffix="-binding-fallback")
+                    if bool((trusted_context or {}).get("capture_openai_raw_only")):
+                        _capture_openai_raw_and_stop(
+                            runtime_request_id=runtime_request_id,
+                            provider_response=response,
+                        )
+                    payload, response, repair_attempted = await _parse_validate_response(response)
+                    last_provider_error = None
+                    break
+                except (LLMProviderError, BatchSolveError) as retry_exc:
+                    exc = retry_exc
+
+            # Runtime self-heal: if managed prompt variables are missing/ignored by the provider call,
+            # rebuild canonical vars and retry once with explicit runtime defaults.
+            if (
+                isinstance(exc, LLMProviderError)
+                and provider_name == "openai"
+                and managed_prompt_runtime_active
+                and _is_missing_prompt_variables_error(exc)
+            ):
+                logger.warning(
+                    "managed_prompt_missing_vars_retry request_id=%s attempt_id=%s tier=%s prompt_id=%s",
+                    runtime_request_id,
+                    runtime_attempt_id,
+                    external_tier,
+                    managed_prompt_id,
+                )
+                if external_tier == "SHORT_STEPS":
+                    managed_prompt_variables = _build_free_batch_prompt_variables(
+                        runtime_request_id=runtime_request_id,
+                        runtime_attempt_id=runtime_attempt_id,
+                        runtime_mode=runtime_mode,
+                        runtime_graph=runtime_graph,
+                        runtime_domain=runtime_domain,
+                        runtime_lang=runtime_lang,
+                        normalized_questions=normalized_questions,
+                    )
+                else:
+                    managed_prompt_variables = _build_managed_prompt_variables(
+                        {},
+                        runtime_request_id=runtime_request_id,
+                        runtime_attempt_id=runtime_attempt_id,
+                        external_tier=external_tier,
+                        runtime_mode=runtime_mode,
+                        runtime_graph=runtime_graph,
+                        runtime_domain=runtime_domain,
+                        runtime_lang=runtime_lang,
+                        max_questions_allowed=max_questions_allowed,
+                        normalized_questions=normalized_questions,
+                    )
+                try:
+                    response = await _call_provider(request_id_suffix="-vars-repair")
                     if bool((trusted_context or {}).get("capture_openai_raw_only")):
                         _capture_openai_raw_and_stop(
                             runtime_request_id=runtime_request_id,

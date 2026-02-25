@@ -68,7 +68,7 @@ type SolveResult = {
     credits_refunded?: number;
 };
 
-type EngineChoice = "pix2text";
+type EngineChoice = "pix2text" | "glm_ocr";
 
 type EngineStat = {
     latencyMs?: number;
@@ -77,9 +77,10 @@ type EngineStat = {
     updatedAt?: number;
 };
 
-const ENGINE_OPTIONS: EngineChoice[] = ["pix2text"];
+const ENGINE_OPTIONS: EngineChoice[] = ["glm_ocr", "pix2text"];
 const ENGINE_LABELS: Record<EngineChoice, string> = {
     pix2text: "Pix2Text",
+    glm_ocr: "GLM OCR",
 };
 const FALLBACK_API_BASE = process.env.NEXT_PUBLIC_API_FALLBACK_URL || "";
 
@@ -167,9 +168,10 @@ export default function SnapSolveV2({ onUseText, onSolveText, tier = "SHORT_STEP
         ocr_engine: "snap_v2",
     });
 
-    const [ocrEngineChoice, setOcrEngineChoice] = React.useState<EngineChoice>("pix2text");
+    const [ocrEngineChoice, setOcrEngineChoice] = React.useState<EngineChoice>("glm_ocr");
     const [engineStats, setEngineStats] = React.useState<Record<EngineChoice, EngineStat>>({
         pix2text: {},
+        glm_ocr: {},
     });
 
     // Voice & Selection State
@@ -451,7 +453,7 @@ export default function SnapSolveV2({ onUseText, onSolveText, tier = "SHORT_STEP
             ocr_source: "image",
             ocr_engine: "snap_v2",
         });
-        setEngineStats({ pix2text: {} });
+        setEngineStats({ pix2text: {}, glm_ocr: {} });
         if (abortRef.current) {
             abortRef.current.abort();
             abortRef.current = null;

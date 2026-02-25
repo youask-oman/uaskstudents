@@ -28,6 +28,8 @@ router = APIRouter(prefix="/api/admin/ocr-configuration", tags=["admin", "ocr"])
 class OcrConfigPayload(BaseModel):
     local_engine_enabled: bool = True
     openai_engine_enabled: bool = True
+    glm_ocr_engine_enabled: bool = True
+    glm_ocr_model: str = Field(default="glm-ocr:latest")
     openai_model: str = Field(default="gpt-5-mini")
     openai_system_prompt_key: str = Field(default="openai_ocr_system_prompt_v1.txt")
     openai_schema_key: str = Field(default="openai_image_extract_v1.schema.json")
@@ -36,6 +38,7 @@ class OcrConfigPayload(BaseModel):
     rate_limit_extract_per_min: int = Field(default=10, ge=1)
     local_ocr_credit: int = Field(default=2, ge=1)
     openai_ocr_credit: int = Field(default=3, ge=1)
+    glm_ocr_credit: int = Field(default=2, ge=1)
     solve_credit: int = Field(default=3, ge=1)
 
 
@@ -43,6 +46,8 @@ class OcrConfigUpdateRequest(BaseModel):
     reason: str = Field(min_length=3)
     local_engine_enabled: Optional[bool] = None
     openai_engine_enabled: Optional[bool] = None
+    glm_ocr_engine_enabled: Optional[bool] = None
+    glm_ocr_model: Optional[str] = None
     openai_model: Optional[str] = None
     openai_system_prompt_key: Optional[str] = None
     openai_schema_key: Optional[str] = None
@@ -51,6 +56,7 @@ class OcrConfigUpdateRequest(BaseModel):
     rate_limit_extract_per_min: Optional[int] = Field(default=None, ge=1)
     local_ocr_credit: Optional[int] = Field(default=None, ge=1)
     openai_ocr_credit: Optional[int] = Field(default=None, ge=1)
+    glm_ocr_credit: Optional[int] = Field(default=None, ge=1)
     solve_credit: Optional[int] = Field(default=None, ge=1)
 
 
@@ -62,6 +68,8 @@ def _config_to_payload(config: OcrRuntimeConfig) -> OcrConfigPayload:
     return OcrConfigPayload(
         local_engine_enabled=config.local_engine_enabled,
         openai_engine_enabled=config.openai_engine_enabled,
+        glm_ocr_engine_enabled=config.glm_ocr_engine_enabled,
+        glm_ocr_model=config.glm_ocr_model,
         openai_model=config.resolved_openai_model(),
         openai_system_prompt_key=config.openai_system_prompt_key,
         openai_schema_key=config.openai_schema_key,
@@ -70,25 +78,31 @@ def _config_to_payload(config: OcrRuntimeConfig) -> OcrConfigPayload:
         rate_limit_extract_per_min=config.rate_limit_extract_per_min,
         local_ocr_credit=config.local_ocr_credit,
         openai_ocr_credit=config.openai_ocr_credit,
+        glm_ocr_credit=config.glm_ocr_credit,
         solve_credit=config.solve_credit,
     )
 
 
 def _validate_config(session: Session, payload: OcrConfigPayload) -> Dict[str, Any]:
-    if not (payload.local_engine_enabled or payload.openai_engine_enabled):
+    if not (payload.local_engine_enabled or payload.openai_engine_enabled or payload.glm_ocr_engine_enabled):
         raise HTTPException(status_code=422, detail="At least one OCR engine must be enabled")
     if payload.openai_engine_enabled and not payload.openai_model:
         raise HTTPException(status_code=422, detail="openai_model is required when OpenAI OCR is enabled")
+    if payload.glm_ocr_engine_enabled and not str(payload.glm_ocr_model or "").strip():
+        raise HTTPException(status_code=422, detail="glm_ocr_model is required when GLM OCR is enabled")
 
-    prompt_key = (payload.openai_system_prompt_key or "").strip()
-    schema_key = (payload.openai_schema_key or "").strip()
-    prompt_entry = resolve_prompt_entry(session, prompt_key)
-    if not prompt_entry:
-        raise HTTPException(status_code=422, detail="Invalid openai_system_prompt_key")
+    prompt_entry = None
+    schema_entry = None
+    if payload.openai_engine_enabled:
+        prompt_key = (payload.openai_system_prompt_key or "").strip()
+        schema_key = (payload.openai_schema_key or "").strip()
+        prompt_entry = resolve_prompt_entry(session, prompt_key)
+        if not prompt_entry:
+            raise HTTPException(status_code=422, detail="Invalid openai_system_prompt_key")
 
-    schema_entry = resolve_schema_entry(session, schema_key)
-    if not schema_entry:
-        raise HTTPException(status_code=422, detail="Invalid openai_schema_key")
+        schema_entry = resolve_schema_entry(session, schema_key)
+        if not schema_entry:
+            raise HTTPException(status_code=422, detail="Invalid openai_schema_key")
 
     return {
         "prompt_entry": prompt_entry,

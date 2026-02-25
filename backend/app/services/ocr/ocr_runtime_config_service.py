@@ -17,6 +17,8 @@ OCR_CONFIG_TYPE = "ocr_configuration"
 class OcrRuntimeConfig:
     local_engine_enabled: bool = True
     openai_engine_enabled: bool = True
+    glm_ocr_engine_enabled: bool = True
+    glm_ocr_model: str = "glm-ocr:latest"
     openai_model: str = ""
     openai_system_prompt_key: str = "openai_ocr_system_prompt_v1.txt"
     openai_schema_key: str = "openai_image_extract_v1.schema.json"
@@ -25,6 +27,7 @@ class OcrRuntimeConfig:
     rate_limit_extract_per_min: int = 10
     local_ocr_credit: int = 2
     openai_ocr_credit: int = 3
+    glm_ocr_credit: int = 2
     solve_credit: int = 3
 
     def resolved_openai_model(self) -> str:
@@ -53,6 +56,8 @@ def _merge_config(raw: Dict[str, Any]) -> OcrRuntimeConfig:
         return cfg
     cfg.local_engine_enabled = _coerce_bool(raw.get("local_engine_enabled"), cfg.local_engine_enabled)
     cfg.openai_engine_enabled = _coerce_bool(raw.get("openai_engine_enabled"), cfg.openai_engine_enabled)
+    cfg.glm_ocr_engine_enabled = _coerce_bool(raw.get("glm_ocr_engine_enabled"), cfg.glm_ocr_engine_enabled)
+    cfg.glm_ocr_model = str(raw.get("glm_ocr_model") or cfg.glm_ocr_model)
     cfg.openai_model = str(raw.get("openai_model") or cfg.openai_model)
     cfg.openai_system_prompt_key = str(raw.get("openai_system_prompt_key") or cfg.openai_system_prompt_key)
     cfg.openai_schema_key = str(raw.get("openai_schema_key") or cfg.openai_schema_key)
@@ -61,6 +66,7 @@ def _merge_config(raw: Dict[str, Any]) -> OcrRuntimeConfig:
     cfg.rate_limit_extract_per_min = _coerce_int(raw.get("rate_limit_extract_per_min"), cfg.rate_limit_extract_per_min)
     cfg.local_ocr_credit = _coerce_int(raw.get("local_ocr_credit"), cfg.local_ocr_credit)
     cfg.openai_ocr_credit = _coerce_int(raw.get("openai_ocr_credit"), cfg.openai_ocr_credit)
+    cfg.glm_ocr_credit = _coerce_int(raw.get("glm_ocr_credit"), cfg.glm_ocr_credit)
     cfg.solve_credit = _coerce_int(raw.get("solve_credit"), cfg.solve_credit)
     return cfg
 

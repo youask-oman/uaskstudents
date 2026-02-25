@@ -67,11 +67,12 @@ type SolvedQuestion = {
     error?: string;
 };
 
-type ImageExtractEngine = "auto" | "pix2text" | "openai";
+type ImageExtractEngine = "auto" | "pix2text" | "openai" | "glm_ocr";
 type OcrEngineAvailability = {
     local_engine_enabled: boolean;
     openai_engine_enabled: boolean;
-    default_engine: "pix2text" | "openai";
+    glm_ocr_engine_enabled: boolean;
+    default_engine: "pix2text" | "openai" | "glm_ocr";
 };
 
 const ACCEPTED_UPLOAD = "image/png,image/jpeg,image/webp,application/pdf";
@@ -120,10 +121,13 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const [ocrAttemptId, setOcrAttemptId] = React.useState<string | null>(null);
     const [ocrEngineUsed, setOcrEngineUsed] = React.useState<string | null>(null);
     const [ocrReviewed, setOcrReviewed] = React.useState(false);
+    const [extractProgressPct, setExtractProgressPct] = React.useState(0);
+    const [pdfExtractProgress, setPdfExtractProgress] = React.useState<{ current: number; total: number; mode: "crop" | "page" | "document" } | null>(null);
     const [ocrEngineAvailability, setOcrEngineAvailability] = React.useState<OcrEngineAvailability>({
         local_engine_enabled: true,
         openai_engine_enabled: true,
-        default_engine: "pix2text",
+        glm_ocr_engine_enabled: true,
+        default_engine: "glm_ocr",
     });
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
     const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -157,8 +161,36 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             .replace(/×/g, "\\times ")
             .replace(/ratio\s+AB:\s*\\?\(\{\\bf\s*B\s*C\}\s*,?\\?\)\s*is:/gi, "ratio \\(\\mathbf{AB}:\\mathbf{BC}\\) is:")
             .replace(/ratio\s+AB:\s*BC\s*,?\s*is:/gi, "ratio \\(\\mathbf{AB}:\\mathbf{BC}\\) is:")
+            .replace(/^\s*(\d{1,3})\.\s+\1\.\s+/gm, "$1. ")
             .trim();
     }, []);
+    const splitNumberedQuestions = React.useCallback((text: string, idPrefix: string): ExtractedQuestion[] => {
+        const normalized = normalizeExtractText(text || "")
+            .replace(/\r\n?/g, "\n")
+            // Some OCR outputs flatten " ... D 5040 2. Next question" onto one line.
+            .replace(/([^\n])\s+(\d{1,3}[.)]\s+[A-Z])/g, "$1\n$2");
+        if (!normalized) return [];
+
+        const markerRegex = /^\s*(\d{1,3})[.)]\s+/gm;
+        const markers = Array.from(normalized.matchAll(markerRegex));
+        if (markers.length < 2) return [];
+
+        const chunks: ExtractedQuestion[] = [];
+        for (let i = 0; i < markers.length; i += 1) {
+            const start = markers[i].index ?? 0;
+            const end = i + 1 < markers.length ? (markers[i + 1].index ?? normalized.length) : normalized.length;
+            const chunk = normalizeExtractText(normalized.slice(start, end).trim());
+            if (!chunk || chunk.length < 10) continue;
+            const n = markers[i][1];
+            chunks.push({
+                id: `${idPrefix}-q${n}`,
+                text: chunk,
+                latex: chunk,
+                page: 0,
+            });
+        }
+        return chunks.length >= 2 ? chunks : [];
+    }, [normalizeExtractText]);
     const normalizeLatexForReview = React.useCallback((value: string): string => {
         if (!value) return "";
         return normalizeExtractText(value)
@@ -183,7 +215,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     React.useEffect(() => {
         if (typeof window === "undefined") return;
         const saved = localStorage.getItem("snapsolve_ocr_engine");
-        if (saved === "auto" || saved === "pix2text" || saved === "openai") {
+        if (saved === "auto" || saved === "pix2text" || saved === "openai" || saved === "glm_ocr") {
             setImageExtractEngine(saved);
         }
     }, []);
@@ -195,11 +227,18 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 if (!res.ok) return;
                 const data = (await res.json()) as Partial<OcrEngineAvailability>;
                 if (!alive) return;
-                if (typeof data.local_engine_enabled !== "boolean" || typeof data.openai_engine_enabled !== "boolean") return;
+                if (
+                    typeof data.local_engine_enabled !== "boolean"
+                    || typeof data.openai_engine_enabled !== "boolean"
+                    || typeof data.glm_ocr_engine_enabled !== "boolean"
+                ) return;
                 setOcrEngineAvailability({
                     local_engine_enabled: data.local_engine_enabled,
                     openai_engine_enabled: data.openai_engine_enabled,
-                    default_engine: data.default_engine === "openai" ? "openai" : "pix2text",
+                    glm_ocr_engine_enabled: data.glm_ocr_engine_enabled,
+                    default_engine: data.default_engine === "openai"
+                        ? "openai"
+                        : (data.default_engine === "glm_ocr" ? "glm_ocr" : "pix2text"),
                 });
             } catch {
                 // Keep defaults if endpoint is unavailable.
@@ -212,37 +251,84 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     }, []);
     React.useEffect(() => {
         const allows = (engine: ImageExtractEngine) => {
-            if (engine === "auto") return ocrEngineAvailability.local_engine_enabled || ocrEngineAvailability.openai_engine_enabled;
+            if (engine === "auto") return ocrEngineAvailability.glm_ocr_engine_enabled || ocrEngineAvailability.local_engine_enabled || ocrEngineAvailability.openai_engine_enabled;
             if (engine === "pix2text") return ocrEngineAvailability.local_engine_enabled;
             if (engine === "openai") return ocrEngineAvailability.openai_engine_enabled;
+            if (engine === "glm_ocr") return ocrEngineAvailability.glm_ocr_engine_enabled;
             return false;
         };
         if (allows(imageExtractEngine)) return;
-        const fallback: ImageExtractEngine = ocrEngineAvailability.local_engine_enabled
-            ? "auto"
-            : (ocrEngineAvailability.openai_engine_enabled ? "openai" : "auto");
+        const fallback: ImageExtractEngine =
+            ocrEngineAvailability.glm_ocr_engine_enabled
+                ? "auto"
+                : (ocrEngineAvailability.local_engine_enabled
+                    ? "auto"
+                    : (ocrEngineAvailability.openai_engine_enabled ? "openai" : "auto"));
         setImageExtractEngine(fallback);
         if (typeof window !== "undefined") {
             localStorage.setItem("snapsolve_ocr_engine", fallback);
         }
     }, [imageExtractEngine, ocrEngineAvailability]);
-    const imageExtractedText = React.useMemo(
-        () => imageExtractedQuestions.map((q, index) => `${index + 1}. ${normalizeExtractText(q.text || "")}`).filter(Boolean).join("\n\n"),
-        [imageExtractedQuestions, normalizeExtractText]
+    React.useEffect(() => {
+        const active = imageExtracting || extracting;
+        if (active) {
+            const isMultiPagePdf =
+                Boolean(pdfExtractProgress)
+                && pdfExtractProgress?.mode === "document"
+                && (pdfExtractProgress?.total || 0) > 1;
+            if (isMultiPagePdf && pdfExtractProgress) {
+                const total = Math.max(1, pdfExtractProgress.total);
+                const current = Math.max(0, Math.min(pdfExtractProgress.current, total));
+                const floor = Math.floor((current / total) * 100);
+                const target = Math.min(
+                    98,
+                    Math.floor(((Math.min(current + 0.85, total)) / total) * 100),
+                );
+                setExtractProgressPct((prev) => {
+                    const seeded = prev < floor ? floor : prev;
+                    if (seeded >= target) return seeded;
+                    return Math.min(target, seeded + (seeded < 40 ? 6 : 3));
+                });
+                const interval = window.setInterval(() => {
+                    setExtractProgressPct((prev) => {
+                        const seeded = prev < floor ? floor : prev;
+                        if (seeded >= target) return seeded;
+                        return Math.min(target, seeded + (seeded < 40 ? 4 : 2));
+                    });
+                }, 350);
+                return () => window.clearInterval(interval);
+            }
+            setExtractProgressPct((prev) => (prev > 5 ? prev : 6));
+            const interval = window.setInterval(() => {
+                setExtractProgressPct((prev) => {
+                    if (prev >= 92) return prev;
+                    const step = prev < 30 ? 9 : (prev < 70 ? 5 : 2);
+                    return Math.min(92, prev + step);
+                });
+            }, 450);
+            return () => window.clearInterval(interval);
+        }
+        if (extractProgressPct <= 0) return;
+        setExtractProgressPct(100);
+        const reset = window.setTimeout(() => {
+            setExtractProgressPct(0);
+            setPdfExtractProgress(null);
+        }, 700);
+        return () => window.clearTimeout(reset);
+    }, [imageExtracting, extracting, extractProgressPct, pdfExtractProgress]);
+    const extractedPreviewQuestions = React.useMemo(
+        () => (isPdfMode ? extractedQuestions : imageExtractedQuestions),
+        [isPdfMode, extractedQuestions, imageExtractedQuestions],
     );
-    const formatQuestionsForPrompt = React.useCallback(
-        (questions: ExtractedQuestion[]): string =>
-            questions
-                .map((q, index) => {
-                    const text = normalizeExtractText(q.text || "");
-                    return text ? `${index + 1}) ${text}` : "";
-                })
-                .filter(Boolean)
-                .join("\n\n"),
-        [normalizeExtractText]
+    const extractedPreviewText = React.useMemo(
+        () => extractedPreviewQuestions
+            .map((q, index) => `${index + 1}. ${normalizeExtractText(q.text || "")}`)
+            .filter(Boolean)
+            .join("\n\n"),
+        [extractedPreviewQuestions, normalizeExtractText],
     );
-    const imageLatexReviewText = React.useMemo(
-        () => imageExtractedQuestions
+    const extractedPreviewLatex = React.useMemo(
+        () => extractedPreviewQuestions
             .map((q, index) => {
                 const source = q.latex || q.text || "";
                 const normalized = normalizeLatexForReview(source);
@@ -250,7 +336,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             })
             .filter(Boolean)
             .join("\n\n"),
-        [imageExtractedQuestions, normalizeLatexForReview]
+        [extractedPreviewQuestions, normalizeLatexForReview],
     );
 
     React.useEffect(() => {
@@ -385,7 +471,11 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 const isCropMode = Boolean(imageCrop && imageRender);
                 const engineChoice =
                     imageExtractEngine === "auto"
-                        ? (ocrEngineAvailability.local_engine_enabled ? "pix2text" : (ocrEngineAvailability.openai_engine_enabled ? "openai" : "pix2text"))
+                        ? (
+                            ocrEngineAvailability.default_engine === "glm_ocr"
+                                ? "glm_ocr"
+                                : (ocrEngineAvailability.default_engine === "openai" ? "openai" : "pix2text")
+                        )
                         : imageExtractEngine;
                 form.append("engine", engineChoice);
                 if (isCropMode && imageCrop && imageRender) {
@@ -422,26 +512,40 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         };
                     })
                     .filter((q): q is ExtractedQuestion => q !== null);
+                const attemptId = payload.ocr_attempt_id || "ocr";
+                const splitFromStructured = parsedQuestions.length === 1
+                    ? splitNumberedQuestions(parsedQuestions[0].text || "", attemptId)
+                    : [];
+                const splitFromRaw = (!splitFromStructured.length && extractedText)
+                    ? splitNumberedQuestions(extractedText, attemptId)
+                    : [];
 
-                const nextQuestions = parsedQuestions.length
-                    ? parsedQuestions
-                    : (extractedText
-                        ? [{
-                            id: payload.ocr_attempt_id || "ocr",
-                            text: extractedText,
-                            latex: extractedText,
-                        } as ExtractedQuestion]
-                        : []);
+                const nextQuestions = splitFromStructured.length
+                    ? splitFromStructured
+                    : (splitFromRaw.length
+                        ? splitFromRaw
+                        : (parsedQuestions.length
+                            ? parsedQuestions
+                            : (extractedText
+                                ? [{
+                                    id: attemptId,
+                                    text: extractedText,
+                                    latex: extractedText,
+                                } as ExtractedQuestion]
+                                : [])));
                 setImageExtractedQuestions(nextQuestions);
                 setExtractedQuestions(nextQuestions);
                 setSelectedQuestionIds(new Set(nextQuestions.map((q) => q.id)));
                 setSolvedQuestions([]);
-                setQuestionText(nextQuestions.length ? formatQuestionsForPrompt(nextQuestions) : extractedText);
+                // Keep the optional free-text field empty after OCR extraction.
+                setQuestionText("");
                 setOcrAttemptId(payload.ocr_attempt_id || null);
                 setOcrEngineUsed(engineChoice);
                 // billing hold info is surfaced via note for now
                 if (imageExtractEngine === "auto") {
-                    const autoEngine = ocrEngineAvailability.local_engine_enabled ? "Pix2Text" : "OpenAI";
+                    const autoEngine = ocrEngineAvailability.default_engine === "glm_ocr"
+                        ? "GLM OCR"
+                        : (ocrEngineAvailability.default_engine === "openai" ? "OpenAI" : "Pix2Text");
                     setImageExtractNote(`Auto uses ${autoEngine}.`);
                 } else if (payload.billing?.hold_applied) {
                     setImageExtractNote(`OCR hold applied: ${payload.billing.hold_amount ?? 0} credits`);
@@ -452,7 +556,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 setImageExtracting(false);
             }
         },
-        [extractErrorMessage, formatQuestionsForPrompt, getUserId, imageCrop, imageExtractEngine, imageRender, normalizeExtractText, ocrEngineAvailability]
+        [extractErrorMessage, getUserId, imageCrop, imageExtractEngine, imageRender, normalizeExtractText, ocrEngineAvailability, splitNumberedQuestions]
     );
 
     React.useEffect(() => {
@@ -823,30 +927,76 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             return;
         }
         setExtracting(true);
+        setPdfExtractProgress({
+            current: 0,
+            total: mode === "document" ? Math.max(1, pdfSession.pageCount) : 1,
+            mode,
+        });
         setError(null);
         setSolvedQuestions([]);
         try {
-            const payload = {
-                pdf_id: pdfSession.pdfId,
-                mode,
-                page_index: mode === "document" ? null : pdfPage - 1,
-                crop: mode === "crop" ? pdfCrop : null,
-                image_render: mode === "crop" || mode === "page" ? pdfRender : null,
-                question_text: questionText || null,
-                engine_choice: "pix2text",
+            const resolvedPdfEngine =
+                imageExtractEngine === "auto"
+                    ? (
+                        ocrEngineAvailability.default_engine === "glm_ocr"
+                            ? "glm_ocr"
+                            : (ocrEngineAvailability.default_engine === "openai" ? "openai" : "pix2text")
+                    )
+                    : imageExtractEngine;
+            const postExtract = async (payload: Record<string, unknown>): Promise<PdfExtractResponse> => {
+                const res = await fetch("/api/v1/snap-solve/pdf/extract", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = (await res.json()) as PdfExtractResponse;
+                if (!res.ok) throw new Error(extractErrorMessage(data, "Extraction failed."));
+                return data;
             };
-            const res = await fetch("/api/v1/snap-solve/pdf/extract", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            const data = (await res.json()) as PdfExtractResponse;
-            if (!res.ok) throw new Error(extractErrorMessage(data, "Extraction failed."));
-            const questions = data.extracted_questions || [];
+
+            let questions: ExtractedQuestion[] = [];
+            if (mode === "document") {
+                const merged: ExtractedQuestion[] = [];
+                const totalPages = Math.max(1, pdfSession.pageCount);
+                for (let pageIndex = 0; pageIndex < totalPages; pageIndex += 1) {
+                    setPdfExtractProgress({ current: pageIndex, total: totalPages, mode });
+                    const data = await postExtract({
+                        pdf_id: pdfSession.pdfId,
+                        mode: "page",
+                        page_index: pageIndex,
+                        crop: null,
+                        image_render: null,
+                        question_text: questionText || null,
+                        engine_choice: resolvedPdfEngine,
+                    });
+                    const pageQuestions = (data.extracted_questions || []).map((q, idx) => ({
+                        ...q,
+                        id: q.id || `p${pageIndex}-q${idx + 1}`,
+                        page: typeof q.page === "number" ? q.page : pageIndex,
+                    }));
+                    merged.push(...pageQuestions);
+                    setPdfExtractProgress({ current: pageIndex + 1, total: totalPages, mode });
+                }
+                questions = merged;
+            } else {
+                const data = await postExtract({
+                    pdf_id: pdfSession.pdfId,
+                    mode,
+                    page_index: pdfPage - 1,
+                    crop: mode === "crop" ? pdfCrop : null,
+                    image_render: mode === "crop" || mode === "page" ? pdfRender : null,
+                    question_text: questionText || null,
+                    engine_choice: resolvedPdfEngine,
+                });
+                questions = data.extracted_questions || [];
+                setPdfExtractProgress({ current: 1, total: 1, mode });
+            }
             setExtractedQuestions(questions);
             setSelectedQuestionIds(new Set(questions.map((q) => q.id)));
             if (!questions.length) {
-                const warning = Array.isArray(data.meta?.warnings) ? data.meta.warnings[0] : null;
+                const warning = mode === "crop"
+                    ? "No questions detected in this crop. Try a larger crop or use Extract This Page."
+                    : "No questions detected in selected PDF pages.";
                 setError(warning || "No questions detected in this crop. Try a larger crop or use Extract This Page.");
             }
         } catch (e) {
@@ -1060,11 +1210,16 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         }}
                                         className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-100"
                                     >
-                                        {(ocrEngineAvailability.local_engine_enabled || ocrEngineAvailability.openai_engine_enabled) && (
+                                        {(ocrEngineAvailability.local_engine_enabled || ocrEngineAvailability.openai_engine_enabled || ocrEngineAvailability.glm_ocr_engine_enabled) && (
                                             <option value="auto">
-                                                Auto ({ocrEngineAvailability.local_engine_enabled ? "Pix2Text default" : "OpenAI default"})
+                                                Auto ({
+                                                    ocrEngineAvailability.default_engine === "glm_ocr"
+                                                        ? "GLM OCR default"
+                                                        : (ocrEngineAvailability.default_engine === "openai" ? "OpenAI default" : "Pix2Text default")
+                                                })
                                             </option>
                                         )}
+                                        {ocrEngineAvailability.glm_ocr_engine_enabled && <option value="glm_ocr">GLM OCR (Ollama)</option>}
                                         {ocrEngineAvailability.local_engine_enabled && <option value="pix2text">Pix2Text (local)</option>}
                                         {ocrEngineAvailability.openai_engine_enabled && <option value="openai">OpenAI (gpt-5-mini)</option>}
                                     </select>
@@ -1077,6 +1232,20 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         {imageExtracting ? "Extracting..." : "Extract"}
                                     </button>
                                     {imageExtractNote && <span className="text-xs text-emerald-300">{imageExtractNote}</span>}
+                                </div>
+                            )}
+                            {extractProgressPct > 0 && (
+                                <div className="mt-3 rounded-md border border-slate-700 bg-slate-900 p-2">
+                                    <div className="mb-1 flex items-center justify-between text-[11px] text-slate-300">
+                                        <span>{imageExtracting ? "Extracting..." : "Finalizing..."}</span>
+                                        <span>{extractProgressPct}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full overflow-hidden rounded bg-slate-700">
+                                        <div
+                                            className="h-full rounded bg-cyan-400 transition-all duration-300"
+                                            style={{ width: `${extractProgressPct}%` }}
+                                        />
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1104,22 +1273,59 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                             </div>
                             {pdfLoading && <div className="text-xs text-slate-400">Rendering page...</div>}
                             {pdfPageImage && (
-                                <PdfCropViewer
-                                    imageUrl={pdfPageImage.url}
-                                    pageLabel={`Page ${pdfPage} / ${pdfSession.pageCount}`}
-                                    onCropChange={(crop, render) => {
-                                        setPdfCrop(crop);
-                                        setPdfRender({ ...render, scale: pdfScale });
-                                    }}
-                                />
+                                <div className="relative">
+                                    <PdfCropViewer
+                                        imageUrl={pdfPageImage.url}
+                                        pageLabel={`Page ${pdfPage} / ${pdfSession.pageCount}`}
+                                        onCropChange={(crop, render) => {
+                                            setPdfCrop(crop);
+                                            setPdfRender({ ...render, scale: pdfScale });
+                                        }}
+                                    />
+                                    {extracting && (
+                                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-lg bg-slate-950/45 backdrop-blur-[2px]">
+                                            <div className="text-xs font-semibold text-slate-100">
+                                                {pdfExtractProgress?.mode === "document"
+                                                    ? `Extracting page ${Math.min(pdfExtractProgress.total, pdfExtractProgress.current + 1)} of ${pdfExtractProgress.total}`
+                                                    : "Extracting PDF content..."}
+                                            </div>
+                                            <div className="w-56 overflow-hidden rounded bg-slate-700">
+                                                <div
+                                                    className="h-1.5 rounded bg-cyan-400 transition-all duration-300"
+                                                    style={{ width: `${extractProgressPct}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                             <div className="flex flex-wrap items-center gap-2">
                                 <button type="button" onClick={() => void runPdfExtract("crop")} disabled={extracting || !pdfCrop} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Extract Crop</button>
                                 <button type="button" onClick={() => void runPdfExtract("page")} disabled={extracting} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Extract This Page</button>
                                 {PDF_DOCUMENT_ENABLED && (
-                                    <button type="button" onClick={() => void runPdfExtract("document")} disabled={extracting} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Extract Entire PDF</button>
+                                    <button type="button" onClick={() => void runPdfExtract("document")} disabled={extracting} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Extract Entire PDF (page-by-page)</button>
                                 )}
                             </div>
+                            {extractProgressPct > 0 && (
+                                <div className="rounded-md border border-slate-700 bg-slate-900 p-2">
+                                    <div className="mb-1 flex items-center justify-between text-[11px] text-slate-300">
+                                        <span>
+                                            {extracting
+                                                ? (pdfExtractProgress?.mode === "document"
+                                                    ? `Extracting pages ${Math.min(pdfExtractProgress.total, pdfExtractProgress.current + 1)} / ${pdfExtractProgress.total}`
+                                                    : "Extracting...")
+                                                : "Finalizing..."}
+                                        </span>
+                                        <span>{extractProgressPct}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full overflow-hidden rounded bg-slate-700">
+                                        <div
+                                            className="h-full rounded bg-cyan-400 transition-all duration-300"
+                                            style={{ width: `${extractProgressPct}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1135,24 +1341,26 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 </div>
             )}
 
-            {activeSubTab === "upload" && uploadedFile?.type.startsWith("image/") && (imageExtracting || imageExtractedQuestions.length > 0) && (
+            {activeSubTab === "upload" && uploadedFile && (uploadedFile.type.startsWith("image/") || isPdfMode) && ((imageExtracting || extracting) || extractedPreviewQuestions.length > 0) && (
                 <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                     <div className="mb-2 text-sm font-bold">Extracted Text</div>
-                    {imageExtracting ? (
-                        <div className="text-xs text-slate-500">Extracting text from image...</div>
+                    {(imageExtracting || extracting) ? (
+                        <div className="text-xs text-slate-500">
+                            {isPdfMode ? "Extracting text from PDF..." : "Extracting text from image..."}
+                        </div>
                     ) : (
                         <div className="grid gap-3 md:grid-cols-2">
                             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
                                 <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Plain Text</div>
                                 <pre data-testid="snap-image-extract-plain" className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
-                                    {imageExtractedText || "No questions detected from this image."}
+                                    {extractedPreviewText || `No questions detected from this ${isPdfMode ? "PDF" : "image"}.`}
                                 </pre>
                             </div>
                             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
                                 <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">LaTeX Review</div>
                                 <article data-testid="snap-image-extract-latex" className="prose prose-slate max-w-none rounded-lg border border-rose-200 bg-rose-50 p-2 text-sm dark:prose-invert dark:border-rose-900/40 dark:bg-rose-950/20">
                                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                        {imageLatexReviewText || "_No extracted math text to render._"}
+                                        {extractedPreviewLatex || "_No extracted math text to render._"}
                                     </ReactMarkdown>
                                 </article>
                             </div>
@@ -1207,7 +1415,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                     }}
                                 />
                                 <div className="flex-1">
-                                    <div>{q.text}</div>
+                                    <div className="font-medium">{q.text}</div>
                                     <div className="text-xs text-slate-500">confidence: {Math.round((q.confidence || 0) * 100)}%</div>
                                 </div>
                             </label>
@@ -1219,20 +1427,25 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 </div>
             )}
 
-            {requiresOcrReview && (
-                <label className="flex items-center gap-2 text-sm text-slate-600">
-                    <input
-                        type="checkbox"
-                        checked={ocrReviewed}
-                        onChange={(e) => setOcrReviewed(e.target.checked)}
-                    />
-                    I confirm the extract is correct and reviewed
-                </label>
-            )}
+            <div className="sticky bottom-3 z-20 mt-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95">
+                {requiresOcrReview && (
+                    <div className="mb-3 flex justify-end">
+                        <label className="inline-flex items-center gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-100 px-5 py-2.5 text-base font-extrabold text-emerald-950 shadow-md ring-1 ring-emerald-300/70">
+                            <input
+                                type="checkbox"
+                                checked={ocrReviewed}
+                                onChange={(e) => setOcrReviewed(e.target.checked)}
+                                className="h-5 w-5 accent-emerald-700"
+                            />
+                            I confirm the extract is correct and reviewed
+                        </label>
+                    </div>
+                )}
 
-            <div className="flex items-center justify-end gap-3">
-                <button type="button" onClick={handleClear} data-testid="snap-clear-btn" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">Clear</button>
-                <button type="button" onClick={handleSubmit} disabled={!resolveEnabled || isSubmitting} data-testid="snap-submit-btn" className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? "Resolving..." : "Resolve"}</button>
+                <div className="flex items-center justify-end gap-3">
+                    <button type="button" onClick={handleClear} data-testid="snap-clear-btn" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">Clear</button>
+                    <button type="button" onClick={handleSubmit} disabled={!resolveEnabled || isSubmitting} data-testid="snap-submit-btn" className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? "Resolving..." : "Resolve"}</button>
+                </div>
             </div>
 
             {result && (

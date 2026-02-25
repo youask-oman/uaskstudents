@@ -8,6 +8,9 @@ from typing import Any, Dict, List, Optional, Protocol
 VISION_PROVIDER_ALIASES = {
     "pix2txt": "pix2txt",
     "pix2text": "pix2txt",
+    "glm_ocr": "glm_ocr",
+    "glm-ocr": "glm_ocr",
+    "glm": "glm_ocr",
     "openai": "openai",
     "lmm": "openai",
 }
@@ -85,7 +88,7 @@ class VisionRoutingConfig:
             fallback = enabled.copy()
 
         mode = (os.getenv("VISION_OCR_DEFAULT_MODE") or "AUTO").strip().upper()
-        if mode not in {"AUTO", "AUTO_WITH_FALLBACK", "PIX2TXT", "OPENAI"}:
+        if mode not in {"AUTO", "AUTO_WITH_FALLBACK", "PIX2TXT", "GLM_OCR", "OPENAI"}:
             mode = "AUTO"
 
         return cls(
