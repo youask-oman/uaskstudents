@@ -9469,15 +9469,20 @@ class ProfileLocationUpdateRequest(BaseModel):
 
 @api_router.patch("/user/profile-location")
 async def update_profile_location(
-    user_id: int = Query(...),
+    user_id: Optional[int] = Query(None),
     body: ProfileLocationUpdateRequest = ...,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update user's location profile for curriculum context.
     Validates all fields and checks school_id consistency.
     """
-    user = session.get(User, user_id)
+    resolved_user_id = int(user_id or current_user.id)
+    if resolved_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only update your own profile")
+
+    user = session.get(User, resolved_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     

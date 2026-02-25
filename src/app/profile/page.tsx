@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import StudentLayout from "@/components/layout/StudentLayout";
 import { useToast } from "@/components/ui/ToastProvider";
-import { parseApiError } from "@/lib/api";
+import { getAuthToken, parseApiError } from "@/lib/api";
 import { fetchWalletPrograms, fetchWalletSummary, WalletProgramEnrollment, WalletSummary } from "@/lib/wallet";
 import TransferAndNotificationsPanel from "@/components/solve/TransferAndNotificationsPanel";
 
@@ -26,6 +26,8 @@ interface ProfileData {
     grade_level?: string;
     school_id?: number;
     school_name?: string;
+    whatsapp_linked?: boolean;
+    whatsapp_enabled?: boolean;
     usage: {
         questions_count: number;
         questions_total: number;
@@ -123,8 +125,7 @@ export default function ProfilePage() {
     const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
     
     // WhatsApp integration
-    const [whatsappSecret, setWhatsappSecret] = useState("");
-    const [showWhatsappSecret, setShowWhatsappSecret] = useState(false);
+    const [whatsappLinked, setWhatsappLinked] = useState(false);
     const [whatsappEnabled, setWhatsappEnabled] = useState(true);
     const [whatsappBotStatus, setWhatsappBotStatus] = useState<WhatsAppBotStatus>("disconnected");
     const [whatsappBotConnected, setWhatsappBotConnected] = useState(false);
@@ -148,11 +149,23 @@ export default function ProfilePage() {
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
 
     useEffect(() => {
-        const userId = localStorage.getItem("user_id");
-        if (!userId) return;
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
 
-        fetch(`${apiBaseUrl}/api/v1/user/profile?user_id=${userId}`)
-            .then(res => res.json())
+        fetch(`${apiBaseUrl}/api/v1/user/profile`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    throw new Error((await parseApiError(res)).message);
+                }
+                return res.json();
+            })
             .then(data => {
                 setProfile(data);
                 setFullName(data.full_name ?? "");
@@ -170,8 +183,9 @@ export default function ProfilePage() {
                 setSelectedSchoolName(data.school_name || "");
                 setSchoolQuery(data.school_name || "");
                 // WhatsApp
-                setWhatsappSecret(data.whatsapp_secret || "");
-                setWhatsappEnabled(data.whatsapp_enabled !== false);
+                const linked = Boolean(data.whatsapp_linked);
+                setWhatsappLinked(linked);
+                setWhatsappEnabled(linked && data.whatsapp_enabled !== false);
                 setLoading(false);
             })
             .catch(err => {
@@ -311,13 +325,20 @@ export default function ProfilePage() {
     }, [schoolQuery, profileCountry, profileProvinceState, apiBaseUrl]);
 
     const handleSaveProfile = async () => {
-        const userId = localStorage.getItem("user_id");
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
         setSaving(true);
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9000";
         try {
-            const res = await fetch(`${apiBaseUrl}/api/v1/user/profile?user_id=${userId}`, {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/profile`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
                 body: JSON.stringify({
                     full_name: fullName,
                     email: email,
@@ -347,17 +368,24 @@ export default function ProfilePage() {
     };
 
     const handleSavePreferences = async () => {
-        const userId = localStorage.getItem("user_id");
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
         setSaving(true);
         try {
-            const res = await fetch(`${apiBaseUrl}/api/v1/user/preferences?user_id=${userId}`, {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/preferences`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
                 body: JSON.stringify({
                     theme: theme,
                     preferred_language: language,
                     solving_mode: solvingMode,
-                    whatsapp_enabled: whatsappBotConnected ? whatsappEnabled : false,
+                    whatsapp_enabled: whatsappBotConnected && whatsappLinked ? whatsappEnabled : false,
                 })
             });
             if (res.ok) {
@@ -386,7 +414,11 @@ export default function ProfilePage() {
     };
 
     const handleSaveLocation = async () => {
-        const userId = localStorage.getItem("user_id");
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
 
         // Validate required fields
         if (!profileCountry || !profileProvinceState || !gradeLevel) {
@@ -408,9 +440,12 @@ export default function ProfilePage() {
 
         setSaving(true);
         try {
-            const res = await fetch(`${apiBaseUrl}/api/v1/user/profile-location?user_id=${userId}`, {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/profile-location`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
                 body: JSON.stringify({
                     profile_country: profileCountry,
                     profile_province_state: profileProvinceState,
@@ -1042,70 +1077,45 @@ export default function ProfilePage() {
                                         </div>
                                         <span
                                             className={`ml-auto px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                                whatsappBotConnected
+                                                whatsappLinked
                                                     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                                                     : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                                             }`}
                                         >
-                                            {whatsappBotConnected ? "Active" : "Inactive"}
+                                            {whatsappLinked ? "Linked" : "Not Linked"}
                                         </span>
                                     </div>
                                     
                                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-5 space-y-4">
-                                        <div className="flex items-start gap-3">
-                                            <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-xl">info</span>
-                                            <div className="flex-1">
-                                                <p className="text-sm text-green-900 dark:text-green-100 font-semibold mb-1">
-                                                    Your WhatsApp Verification Code
-                                                </p>
-                                                <p className="text-xs text-green-700 dark:text-green-300">
-                                                    Use this code to connect your WhatsApp number to uask.ai. Send it to the bot when you first message it.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                                            <div className="flex-1">
+                                        <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-700">
+                                            <div>
                                                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">
-                                                    Verification Code
+                                                    Account Link
                                                 </label>
-                                                <div className="font-mono text-2xl font-bold text-slate-900 dark:text-white tracking-wider">
-                                                    {showWhatsappSecret ? whatsappSecret : "********"}
+                                                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                                                    {whatsappLinked ? "WhatsApp number linked" : "No linked WhatsApp number"}
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => setShowWhatsappSecret(!showWhatsappSecret)}
-                                                className="size-10 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                                            >
-                                                <span className="material-symbols-outlined text-green-700 dark:text-green-300">
-                                                    {showWhatsappSecret ? "visibility_off" : "visibility"}
-                                                </span>
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(whatsappSecret);
-                                                    pushToast({
-                                                        type: "success",
-                                                        title: "Copied",
-                                                        message: "Code copied to clipboard.",
-                                                    });
-                                                }}
-                                                className="size-10 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                                            >
-                                                <span className="material-symbols-outlined text-green-700 dark:text-green-300">
-                                                    content_copy
-                                                </span>
-                                            </button>
+                                            <span className={`text-xs font-semibold ${whatsappLinked ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"}`}>
+                                                {whatsappLinked ? "Ready" : "Action Needed"}
+                                            </span>
                                         </div>
-                                        
+
                                         <div className="space-y-2">
-                                            <p className="text-xs font-semibold text-green-900 dark:text-green-100">How to connect:</p>
-                                            <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
-                                                <li>Save the WhatsApp bot number (ask admin for the number)</li>
-                                                <li>Send a message: <code className="bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded">CODE {whatsappSecret}</code></li>
-                                                <li>Once verified, send math problems directly!</li>
-                                                <li>You can send text questions or photos of problems</li>
-                                            </ol>
+                                            <p className="text-xs font-semibold text-green-900 dark:text-green-100">How to use:</p>
+                                            {whatsappLinked ? (
+                                                <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
+                                                    <li>Open WhatsApp and send your problem to the bot number.</li>
+                                                    <li>You can send text questions or photos.</li>
+                                                    <li>Keep this toggle on to receive WhatsApp replies.</li>
+                                                </ol>
+                                            ) : (
+                                                <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
+                                                    <li>Ask admin/support to reissue your pairing flow.</li>
+                                                    <li>Complete linking from WhatsApp, then return here.</li>
+                                                    <li>Turn on WhatsApp Notifications after linking.</li>
+                                                </ol>
+                                            )}
                                         </div>
                                     </div>
                                     {!whatsappBotConnected && (
@@ -1124,12 +1134,12 @@ export default function ProfilePage() {
                                         </div>
                                         <button
                                             onClick={() => {
-                                                if (!whatsappBotConnected) return;
+                                                if (!whatsappBotConnected || !whatsappLinked) return;
                                                 setWhatsappEnabled(!whatsappEnabled);
                                             }}
-                                            disabled={!whatsappBotConnected}
+                                            disabled={!whatsappBotConnected || !whatsappLinked}
                                             className={`relative w-14 h-7 rounded-full transition-colors ${
-                                                !whatsappBotConnected
+                                                !whatsappBotConnected || !whatsappLinked
                                                     ? "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
                                                     : whatsappEnabled 
                                                     ? "bg-green-500" 
