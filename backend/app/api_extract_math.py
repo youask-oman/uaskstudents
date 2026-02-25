@@ -4,7 +4,7 @@ import json
 import os
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -39,6 +39,18 @@ class ExtractPayload(BaseModel):
 class MathQuestionExtractResponse(BaseModel):
     source: ExtractSource
     extraction: ExtractPayload
+
+
+class LatexToSympyRequest(BaseModel):
+    latex: str
+    backend: Literal["antlr", "lark"] = "antlr"
+
+
+class LatexToSympyResponse(BaseModel):
+    ok: bool
+    backend: str
+    expression: Optional[str] = None
+    error: Optional[str] = None
 
 
 def _parse_pages(raw_pages: Optional[str]) -> Optional[List[int]]:
@@ -128,3 +140,52 @@ async def extract_math_question(
             backend_used=str(extraction.get("backend_used") or "unknown"),
         ),
     )
+
+
+@router.post("/latex-to-sympy", response_model=LatexToSympyResponse)
+async def latex_to_sympy(body: LatexToSympyRequest):
+    latex = str(body.latex or "").strip()
+    if not latex:
+        raise HTTPException(status_code=400, detail="latex is required")
+
+    try:
+        from sympy.parsing.latex import parse_latex
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"SymPy LaTeX parser unavailable: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    try:
+        expr = parse_latex(latex, backend=body.backend)
+        return LatexToSympyResponse(ok=True, backend=body.backend, expression=str(expr), error=None)
+    except ImportError as exc:
+        if body.backend == "antlr":
+            try:
+                expr = parse_latex(latex, backend="lark")
+                return LatexToSympyResponse(
+                    ok=True,
+                    backend="lark",
+                    expression=str(expr),
+                    error=f"ANTLR unavailable, used lark backend: {exc}",
+                )
+            except Exception as lark_exc:
+                return LatexToSympyResponse(
+                    ok=False,
+                    backend=body.backend,
+                    expression=None,
+                    error=f"{type(lark_exc).__name__}: {lark_exc}",
+                )
+        return LatexToSympyResponse(
+            ok=False,
+            backend=body.backend,
+            expression=None,
+            error=f"{type(exc).__name__}: {exc}",
+        )
+    except Exception as exc:
+        return LatexToSympyResponse(
+            ok=False,
+            backend=body.backend,
+            expression=None,
+            error=f"{type(exc).__name__}: {exc}",
+        )

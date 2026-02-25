@@ -15,6 +15,13 @@ interface MarkdownMathContentProps {
   simple?: boolean;
 }
 
+type MarkdownWithMathComponents = Components & {
+  math?: (props: LatexLikeProps) => React.ReactNode;
+  inlineMath?: (props: LatexLikeProps) => React.ReactNode;
+  "latex-math-block"?: (props: LatexLikeProps) => React.ReactNode;
+  "latex-math-inline"?: (props: LatexLikeProps) => React.ReactNode;
+};
+
 type LatexLikeProps = {
   tex?: unknown;
   value?: unknown;
@@ -69,26 +76,22 @@ export default function MarkdownMathContent({ content, className, simple }: Mark
     return processed;
   }, [content, simple]);
 
-  const components: Components = {
+  const components: MarkdownWithMathComponents = {
     math: (props) => {
-      const p = props as LatexLikeProps;
-      const tex = String(p.tex || p.value || childrenToRawText(p.children) || "");
+      const tex = String(props.tex || props.value || childrenToRawText(props.children) || "");
       if (!tex) return null;
       return <MathSvg tex={tex} display={true} />;
     },
     inlineMath: (props) => {
-      const p = props as LatexLikeProps;
-      const tex = String(p.tex || p.value || childrenToRawText(p.children) || "");
+      const tex = String(props.tex || props.value || childrenToRawText(props.children) || "");
       if (!tex) return null;
       return <MathSvg tex={tex} display={false} />;
     },
     "latex-math-block": (props) => {
-      const p = props as LatexLikeProps;
-      return <MathSvg tex={String(p.tex || "")} display={true} />;
+      return <MathSvg tex={String(props.tex || "")} display={true} />;
     },
     "latex-math-inline": (props) => {
-      const p = props as LatexLikeProps;
-      return <MathSvg tex={String(p.tex || "")} display={false} />;
+      return <MathSvg tex={String(props.tex || "")} display={false} />;
     },
     code: (props) => {
       const p = props as CodeLikeProps;
@@ -126,10 +129,10 @@ export default function MarkdownMathContent({ content, className, simple }: Mark
         fontFamily: "inherit",
       }}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkLatexDelimiters, remarkMath]}
-        components={components}
-      >
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkLatexDelimiters, remarkMath]}
+          components={components as Components}
+        >
         {processedContent}
       </ReactMarkdown>
     </span>

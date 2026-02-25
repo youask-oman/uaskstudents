@@ -1,0 +1,1 @@
+{"request_id": "manual-single-silo", "filename": "Screenshot 2026-02-19 193258.jpg", "type": "image", "pages_processed": [1], "runtime_ms": 5932, "quality_score": 1.0, "warnings": [], "backend_used": "ollama_generate"}

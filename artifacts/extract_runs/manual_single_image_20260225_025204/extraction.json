@@ -1,0 +1,59 @@
+{
+  "source": {
+    "filename": "Screenshot 2026-02-19 193258.jpg",
+    "type": "image",
+    "pages": [
+      1
+    ],
+    "page_count": null,
+    "rendered_debug_dir": null
+  },
+  "extraction": {
+    "question_text": "A grain silo is built from two right circular cones and a right circular cylinder with internal measurements represented by the figure above. Of the following, which is closest to the volume of the grain silo, in cubic feet? A) 261.8 B) 785.4 C) 916.3 D) 1047.2",
+    "question_latex": "",
+    "markdown": "A grain silo is built from two right circular cones and a right circular cylinder with internal measurements represented by the figure above. Of the following, which is closest to the volume of the grain silo, in cubic feet?\n\nA) 261.8\nB) 785.4\nC) 916.3\nD) 1047.2",
+    "json": {
+      "raw": {
+        "transcription": "A grain silo is built from two right circular cones and a right circular cylinder with internal measurements represented by the figure above. Of the following, which is closest to the volume of the grain silo, in cubic feet?\n\nA) 261.8\nB) 785.4\nC) 916.3\nD) 1047.2",
+        "source_image": {
+          "file": "Screenshot 2026-02-19 193258.jpg",
+          "page": 1
+        }
+      },
+      "detected": {
+        "has_mcq": true,
+        "has_graph": false,
+        "has_table": false,
+        "has_geometry": true
+      },
+      "mcq": {
+        "stem": "A grain silo is built from two right circular cones and a right circular cylinder with internal measurements represented by the figure above. Of the following, which is closest to the volume of the grain silo, in cubic feet?\nA) 261.8\nB) 785.4\nC) 916.3\nD) 1047.2",
+        "choices": {
+          "A": "261.8",
+          "B": "785.4",
+          "C": "916.3",
+          "D": "1047.2"
+        },
+        "notes": []
+      },
+      "graph": null,
+      "table": null,
+      "geometry": {
+        "objects": [
+          "cylinder"
+        ],
+        "dimensions": [],
+        "relationships": []
+      },
+      "measurements_only": [],
+      "quality": {
+        "score": 1.0,
+        "warnings": []
+      }
+    },
+    "warnings": [],
+    "quality_score": 1.0,
+    "backend_used": "ollama_generate",
+    "runtime_ms": 5932
+  }
+}

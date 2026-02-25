@@ -61,6 +61,14 @@ type OcrExtractResponse = {
     billing?: { hold_applied?: boolean; hold_amount?: number };
 };
 
+type LatexToSympyResponse = {
+    ok?: boolean;
+    backend?: string;
+    expression?: string | null;
+    error?: string | null;
+    detail?: string | null;
+};
+
 type SolvedQuestion = {
     questionId: string;
     result?: SolveResponse;
@@ -123,6 +131,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
     const [ocrReviewed, setOcrReviewed] = React.useState(false);
     const [extractProgressPct, setExtractProgressPct] = React.useState(0);
     const [pdfExtractProgress, setPdfExtractProgress] = React.useState<{ current: number; total: number; mode: "crop" | "page" | "document" } | null>(null);
+    const [sympyParsedExpression, setSympyParsedExpression] = React.useState("");
+    const [sympyParseError, setSympyParseError] = React.useState<string | null>(null);
+    const [isSympyParsing, setIsSympyParsing] = React.useState(false);
     const [ocrEngineAvailability, setOcrEngineAvailability] = React.useState<OcrEngineAvailability>({
         local_engine_enabled: true,
         openai_engine_enabled: true,
@@ -338,6 +349,69 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             .join("\n\n"),
         [extractedPreviewQuestions, normalizeLatexForReview],
     );
+    const sympyLatexInput = React.useMemo(() => {
+        for (const q of extractedPreviewQuestions) {
+            const source = q.latex || q.text || "";
+            const normalized = normalizeLatexForReview(source).trim();
+            if (normalized) return normalized;
+        }
+        return "";
+    }, [extractedPreviewQuestions, normalizeLatexForReview]);
+
+    React.useEffect(() => {
+        let cancelled = false;
+        const run = async () => {
+            if (!sympyLatexInput) {
+                if (!cancelled) {
+                    setSympyParsedExpression("");
+                    setSympyParseError(null);
+                    setIsSympyParsing(false);
+                }
+                return;
+            }
+            setIsSympyParsing(true);
+            setSympyParseError(null);
+            try {
+                const res = await fetch("/api/extract/latex-to-sympy", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ latex: sympyLatexInput, backend: "antlr" }),
+                });
+                const raw = await res.text();
+                let data: LatexToSympyResponse = {};
+                if (raw) {
+                    try {
+                        data = JSON.parse(raw) as LatexToSympyResponse;
+                    } catch {
+                        throw new Error(raw || "Invalid parser response.");
+                    }
+                }
+                if (!res.ok) {
+                    throw new Error(String(data.detail || raw || "Unable to parse LaTeX."));
+                }
+                if (!cancelled) {
+                    if (data.ok && typeof data.expression === "string" && data.expression.trim()) {
+                        setSympyParsedExpression(data.expression.trim());
+                        setSympyParseError(null);
+                    } else {
+                        setSympyParsedExpression("");
+                        setSympyParseError(String(data.error || "Unable to parse LaTeX with SymPy."));
+                    }
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setSympyParsedExpression("");
+                    setSympyParseError(err instanceof Error ? err.message : "Unable to parse LaTeX with SymPy.");
+                }
+            } finally {
+                if (!cancelled) setIsSympyParsing(false);
+            }
+        };
+        void run();
+        return () => {
+            cancelled = true;
+        };
+    }, [sympyLatexInput]);
 
     React.useEffect(() => {
         if (!ocrAttemptId) return;
@@ -413,6 +487,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setImageExtractNote(null);
         setImageCrop(null);
         setImageRender(null);
+        setSympyParsedExpression("");
+        setSympyParseError(null);
+        setIsSympyParsing(false);
         setOcrAttemptId(null);
         setOcrEngineUsed(null);
     }, [clearPdfCache]);
@@ -427,6 +504,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         setImageExtracting(false);
         setImageExtractedQuestions([]);
         setImageExtractNote(null);
+        setSympyParsedExpression("");
+        setSympyParseError(null);
+        setIsSympyParsing(false);
         setOcrAttemptId(null);
         setOcrEngineUsed(null);
         setOcrReviewed(false);
@@ -949,9 +1029,19 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
                 });
-                const data = (await res.json()) as PdfExtractResponse;
+                const rawText = await res.text();
+                let data: Partial<PdfExtractResponse> = {};
+                if (rawText) {
+                    try {
+                        data = JSON.parse(rawText) as PdfExtractResponse;
+                    } catch {
+                        if (!res.ok) {
+                            throw new Error(rawText || "Extraction failed.");
+                        }
+                    }
+                }
                 if (!res.ok) throw new Error(extractErrorMessage(data, "Extraction failed."));
-                return data;
+                return data as PdfExtractResponse;
             };
 
             let questions: ExtractedQuestion[] = [];
@@ -1091,16 +1181,27 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         }
     };
 
+    const btnBase =
+        "inline-flex items-center justify-center rounded-xl px-3.5 py-2 text-xs font-semibold tracking-[0.01em] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 disabled:pointer-events-none disabled:opacity-50";
+    const btnGhost =
+        `${btnBase} border border-slate-500/45 bg-slate-900/55 text-slate-100 shadow-[0_8px_18px_-12px_rgba(6,182,212,0.45)] hover:-translate-y-[1px] hover:border-cyan-300/60 hover:bg-slate-800/80`;
+    const btnLightGhost =
+        `${btnBase} border border-slate-300 bg-white text-slate-700 shadow-[0_8px_18px_-12px_rgba(2,132,199,0.22)] hover:-translate-y-[1px] hover:border-sky-400 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-sky-400 dark:hover:text-sky-200`;
+    const btnPrimary =
+        `${btnBase} border border-sky-400/40 bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 text-white shadow-[0_12px_24px_-14px_rgba(14,165,233,0.9)] hover:-translate-y-[1px] hover:brightness-110`;
+    const btnSuccess =
+        `${btnBase} border border-emerald-400/40 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-[0_12px_24px_-14px_rgba(16,185,129,0.9)] hover:-translate-y-[1px] hover:brightness-110`;
+
     return (
         <div className="flex flex-col gap-4">
-            <div className="grid w-full grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+            <div className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-slate-200/90 bg-white/85 p-1.5 shadow-[0_16px_30px_-24px_rgba(2,132,199,0.65)] backdrop-blur dark:border-slate-700 dark:bg-slate-800/85">
                 <button
                     type="button"
                     onClick={() => setActiveSubTab("upload")}
                     data-testid="snap-subtab-upload"
-                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${activeSubTab === "upload"
-                        ? "bg-sky-600 text-white shadow"
-                        : "bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-950/50 dark:text-sky-200"
+                    className={`${btnBase} px-4 py-2.5 text-sm font-bold ${activeSubTab === "upload"
+                        ? "border border-sky-400/60 bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-[0_14px_24px_-14px_rgba(14,165,233,0.95)]"
+                        : "border border-slate-300 bg-slate-50 text-slate-700 hover:bg-sky-50 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-200 dark:hover:bg-sky-950/40 dark:hover:text-sky-200"
                         }`}
                 >
                     Upload
@@ -1109,9 +1210,9 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                     type="button"
                     onClick={() => setActiveSubTab("sketch")}
                     data-testid="snap-subtab-sketch"
-                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${activeSubTab === "sketch"
-                        ? "bg-emerald-600 text-white shadow"
-                        : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200"
+                    className={`${btnBase} px-4 py-2.5 text-sm font-bold ${activeSubTab === "sketch"
+                        ? "border border-emerald-400/60 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_14px_24px_-14px_rgba(16,185,129,0.9)]"
+                        : "border border-slate-300 bg-slate-50 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900/55 dark:text-slate-200 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
                         }`}
                 >
                     Sketch
@@ -1127,12 +1228,12 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                 clearExtractedState();
                                 fileInputRef.current?.click();
                             }}
-                            className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold"
+                            className={btnGhost}
                         >
                             Upload file
                         </button>
-                        <button type="button" onClick={openCamera} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Camera</button>
-                        <button type="button" onClick={() => void handleClipboardButtonPaste()} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold">Paste from Clipboard</button>
+                        <button type="button" onClick={openCamera} className={btnGhost}>Camera</button>
+                        <button type="button" onClick={() => void handleClipboardButtonPaste()} className={btnGhost}>Paste from Clipboard</button>
                     </div>
                     <input ref={fileInputRef} type="file" className="hidden" accept={ACCEPTED_UPLOAD} onChange={onFileInputChange} data-testid="snap-upload-input" />
                     <input ref={cameraInputRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp" capture="environment" onChange={onFileInputChange} />
@@ -1147,7 +1248,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                     <div className="flex items-center gap-2 text-xs">
                                         <button
                                             type="button"
-                                            className="rounded border border-slate-600 px-2 py-1"
+                                            className={btnGhost}
                                             onClick={() => {
                                                 clearExtractedState();
                                                 setImageCrop(null);
@@ -1158,7 +1259,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         </button>
                                         <button
                                             type="button"
-                                            className="rounded border border-slate-600 px-2 py-1 inline-flex items-center gap-1"
+                                            className={`${btnGhost} gap-1`}
                                             onClick={() => void rotateImageFile("left")}
                                             title="Rotate left"
                                         >
@@ -1167,7 +1268,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         </button>
                                         <button
                                             type="button"
-                                            className="rounded border border-slate-600 px-2 py-1 inline-flex items-center gap-1"
+                                            className={`${btnGhost} gap-1`}
                                             onClick={() => void rotateImageFile("right")}
                                             title="Rotate right"
                                         >
@@ -1176,7 +1277,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         </button>
                                         <button
                                             type="button"
-                                            className="rounded border border-slate-600 px-2 py-1 inline-flex items-center gap-1"
+                                            className={`${btnGhost} gap-1`}
                                             onClick={resetImageOrientation}
                                             title="Reset image"
                                             disabled={!originalImageFile}
@@ -1227,7 +1328,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                         type="button"
                                         onClick={() => void extractImageQuestions(uploadedFile)}
                                         disabled={imageExtracting}
-                                        className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                                        className={btnPrimary}
                                     >
                                         {imageExtracting ? "Extracting..." : "Extract"}
                                     </button>
@@ -1254,7 +1355,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                     {isPdfMode && pdfSession && (
                         <div className="mt-4 flex flex-col gap-3">
                             <div className="flex items-center gap-2 text-xs">
-                                <button type="button" className="rounded border border-slate-600 px-2 py-1" onClick={() => setPdfPage((p) => Math.max(1, p - 1))} disabled={pdfPage <= 1}>Prev</button>
+                                <button type="button" className={btnGhost} onClick={() => setPdfPage((p) => Math.max(1, p - 1))} disabled={pdfPage <= 1}>Prev</button>
                                 <span>Page</span>
                                 <input
                                     value={pdfPage}
@@ -1266,10 +1367,10 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                     className="w-14 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-center"
                                 />
                                 <span>/ {pdfSession.pageCount}</span>
-                                <button type="button" className="rounded border border-slate-600 px-2 py-1" onClick={() => setPdfPage((p) => Math.min(pdfSession.pageCount, p + 1))} disabled={pdfPage >= pdfSession.pageCount}>Next</button>
-                                <button type="button" className="rounded border border-slate-600 px-2 py-1" onClick={() => setPdfScale((s) => Math.max(0.5, Number((s - 0.1).toFixed(2))))}>-</button>
+                                <button type="button" className={btnGhost} onClick={() => setPdfPage((p) => Math.min(pdfSession.pageCount, p + 1))} disabled={pdfPage >= pdfSession.pageCount}>Next</button>
+                                <button type="button" className={btnGhost} onClick={() => setPdfScale((s) => Math.max(0.5, Number((s - 0.1).toFixed(2))))}>-</button>
                                 <span>{Math.round(pdfScale * 100)}%</span>
-                                <button type="button" className="rounded border border-slate-600 px-2 py-1" onClick={() => setPdfScale((s) => Math.min(4, Number((s + 0.1).toFixed(2))))}>+</button>
+                                <button type="button" className={btnGhost} onClick={() => setPdfScale((s) => Math.min(4, Number((s + 0.1).toFixed(2))))}>+</button>
                             </div>
                             {pdfLoading && <div className="text-xs text-slate-400">Rendering page...</div>}
                             {pdfPageImage && (
@@ -1300,10 +1401,10 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                 </div>
                             )}
                             <div className="flex flex-wrap items-center gap-2">
-                                <button type="button" onClick={() => void runPdfExtract("crop")} disabled={extracting || !pdfCrop} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Extract Crop</button>
-                                <button type="button" onClick={() => void runPdfExtract("page")} disabled={extracting} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Extract This Page</button>
+                                <button type="button" onClick={() => void runPdfExtract("crop")} disabled={extracting || !pdfCrop} className={btnPrimary}>Extract Crop</button>
+                                <button type="button" onClick={() => void runPdfExtract("page")} disabled={extracting} className={btnPrimary}>Extract This Page</button>
                                 {PDF_DOCUMENT_ENABLED && (
-                                    <button type="button" onClick={() => void runPdfExtract("document")} disabled={extracting} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Extract Entire PDF (page-by-page)</button>
+                                    <button type="button" onClick={() => void runPdfExtract("document")} disabled={extracting} className={btnPrimary}>Extract Entire PDF (page-by-page)</button>
                                 )}
                             </div>
                             {extractProgressPct > 0 && (
@@ -1332,10 +1433,10 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
             ) : (
                 <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap items-center gap-3">
-                        <button type="button" onClick={() => setTool("draw")} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tool === "draw" ? "bg-primary text-white" : "border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>Pen</button>
-                        <button type="button" onClick={() => setTool("erase")} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tool === "erase" ? "bg-primary text-white" : "border border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>Eraser</button>
+                        <button type="button" onClick={() => setTool("draw")} className={tool === "draw" ? btnPrimary : btnLightGhost}>Pen</button>
+                        <button type="button" onClick={() => setTool("erase")} className={tool === "erase" ? btnPrimary : btnLightGhost}>Eraser</button>
                         <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">Brush <input type="range" min={2} max={24} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} /></label>
-                        <button type="button" onClick={() => { sketchRef.current?.clear(); setSketchHasContent(false); }} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">Clear canvas</button>
+                        <button type="button" onClick={() => { sketchRef.current?.clear(); setSketchHasContent(false); }} className={btnLightGhost}>Clear canvas</button>
                     </div>
                     <SketchCanvas ref={sketchRef} tool={tool} brushSize={brushSize} onContentChange={setSketchHasContent} />
                 </div>
@@ -1366,6 +1467,27 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                             </div>
                         </div>
                     )}
+                    <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-3 dark:border-violet-900/40 dark:bg-violet-950/20">
+                        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                            SymPy `parse_latex()` Output
+                        </div>
+                        <textarea
+                            readOnly
+                            value={
+                                isSympyParsing
+                                    ? "Parsing extracted LaTeX with sympy.parsing.latex.parse_latex()..."
+                                    : (sympyParsedExpression || "")
+                            }
+                            rows={3}
+                            className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 font-mono text-sm text-violet-900 outline-none dark:border-violet-900/50 dark:bg-slate-900 dark:text-violet-200"
+                            placeholder="Parsed SymPy expression will appear here."
+                        />
+                        {sympyParseError && (
+                            <div className="mt-2 text-xs text-rose-700 dark:text-rose-300">
+                                Parse error: {sympyParseError}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -1385,7 +1507,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                 type="button"
                                 data-testid="snap-select-all-btn"
                                 onClick={() => setSelectedQuestionIds(new Set(extractedQuestions.map((q) => q.id)))}
-                                className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                                className={btnLightGhost}
                             >
                                 Select all
                             </button>
@@ -1393,7 +1515,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                                 type="button"
                                 data-testid="snap-clear-selection-btn"
                                 onClick={() => setSelectedQuestionIds(new Set())}
-                                className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                                className={btnLightGhost}
                             >
                                 Clear selection
                             </button>
@@ -1421,7 +1543,7 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                             </label>
                         ))}
                     </div>
-                    <button type="button" onClick={() => void solveSelectedQuestions()} disabled={solvingSelected || selectedQuestionIds.size === 0} className="mt-3 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+                    <button type="button" onClick={() => void solveSelectedQuestions()} disabled={solvingSelected || selectedQuestionIds.size === 0} className={`mt-3 ${btnSuccess}`}>
                         {solvingSelected ? "Solving..." : "Solve selected questions individually"}
                     </button>
                 </div>
@@ -1443,8 +1565,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                 )}
 
                 <div className="flex items-center justify-end gap-3">
-                    <button type="button" onClick={handleClear} data-testid="snap-clear-btn" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">Clear</button>
-                    <button type="button" onClick={handleSubmit} disabled={!resolveEnabled || isSubmitting} data-testid="snap-submit-btn" className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? "Resolving..." : "Resolve"}</button>
+                    <button type="button" onClick={handleClear} data-testid="snap-clear-btn" className={btnLightGhost}>Clear</button>
+                    <button type="button" onClick={handleSubmit} disabled={!resolveEnabled || isSubmitting} data-testid="snap-submit-btn" className={btnSuccess}>{isSubmitting ? "Resolving..." : "Resolve"}</button>
                 </div>
             </div>
 
@@ -1485,8 +1607,8 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
                         <div className="mb-3 text-sm font-bold text-white">Take a photo</div>
                         <video ref={videoRef} className="h-auto max-h-[70vh] w-full rounded-lg bg-black" playsInline autoPlay muted />
                         <div className="mt-4 flex items-center justify-end gap-2">
-                            <button type="button" onClick={closeCamera} className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-200">Cancel</button>
-                            <button type="button" onClick={captureCameraFrame} className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white">Capture</button>
+                            <button type="button" onClick={closeCamera} className={btnGhost}>Cancel</button>
+                            <button type="button" onClick={captureCameraFrame} className={btnPrimary}>Capture</button>
                         </div>
                     </div>
                 </div>

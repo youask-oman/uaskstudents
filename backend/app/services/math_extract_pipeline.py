@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from app.services.glmocr_direct import parse_image_with_ollama_generate
+from app.services.glmocr_extractor import extract_structured_from_image, merge_structured_pages
 from app.services.math_extract_normalize import normalize_math_extraction
 from app.services.pdf_to_images import render_pdf_to_images
 from app.services.quality_score import compute_quality_score
@@ -42,7 +42,7 @@ async def run_math_extraction_pipeline(
     rendered_debug_dir: Optional[str] = None
 
     markdown_chunks: List[str] = []
-    json_chunks: List[Dict[str, Any]] = []
+    page_structured: List[Dict[str, Any]] = []
 
     if source_type_norm == "pdf":
         rendered_pages, rendered_debug_dir, total_pages = render_pdf_to_images(
@@ -55,41 +55,39 @@ async def run_math_extraction_pipeline(
         page_count = total_pages
         for page_num, image_bytes in rendered_pages:
             page_numbers.append(page_num)
-            parsed = await parse_image_with_ollama_generate(
-                image_bytes,
-                request_id=request_id,
-                mime_type="image/png",
+            structured = await extract_structured_from_image(
+                image_bytes=image_bytes,
+                request_id=f"{request_id}-p{page_num}",
                 filename=f"{filename}#page={page_num}",
+                page=page_num,
             )
-            backend_used = parsed.get("backend_used", backend_used)
-            warnings.extend(parsed.get("warnings") or [])
-            markdown_chunks.append(str(parsed.get("markdown_result") or ""))
-            json_payload = parsed.get("json_result")
-            if isinstance(json_payload, dict):
-                json_payload = dict(json_payload)
-                json_payload["page"] = page_num
-            else:
-                json_payload = {"page": page_num, "raw": json_payload}
-            json_chunks.append(json_payload)
+            backend_used = "ollama_generate"
+            warnings.extend((structured.get("quality") or {}).get("warnings") or [])
+            markdown_chunks.append(str((structured.get("raw") or {}).get("transcription") or ""))
+            page_structured.append(structured)
     else:
         page_numbers = [1]
-        parsed = await parse_image_with_ollama_generate(
-            content_bytes,
+        structured = await extract_structured_from_image(
+            image_bytes=content_bytes,
             request_id=request_id,
-            mime_type=_guess_mime_type(filename),
             filename=filename,
+            page=1,
         )
-        backend_used = parsed.get("backend_used", backend_used)
-        warnings.extend(parsed.get("warnings") or [])
-        markdown_chunks.append(str(parsed.get("markdown_result") or ""))
-        json_payload = parsed.get("json_result")
-        json_chunks.append(json_payload if isinstance(json_payload, dict) else {"raw": json_payload})
+        backend_used = "ollama_generate"
+        warnings.extend((structured.get("quality") or {}).get("warnings") or [])
+        markdown_chunks.append(str((structured.get("raw") or {}).get("transcription") or ""))
+        page_structured.append(structured)
 
     merged_markdown = "\n\n".join(chunk.strip() for chunk in markdown_chunks if chunk and chunk.strip()).strip()
-    merged_json: Dict[str, Any] = {
-        "pages": json_chunks if source_type_norm == "pdf" else None,
-        "result": json_chunks[0] if source_type_norm == "image" and json_chunks else {},
-    }
+    merged_structured = merge_structured_pages(page_structured)
+    merged_json: Dict[str, Any] = (
+        {
+            "pages": page_structured,
+            "merged": merged_structured,
+        }
+        if source_type_norm == "pdf"
+        else merged_structured
+    )
 
     normalized = normalize_math_extraction(merged_markdown, merged_json)
     quality_score, quality_warnings = compute_quality_score(
@@ -142,17 +140,6 @@ async def run_math_extraction_pipeline(
             "runtime_ms": runtime_ms,
         },
     }
-
-
-def _guess_mime_type(filename: str) -> str:
-    lower = (filename or "").lower()
-    if lower.endswith(".png"):
-        return "image/png"
-    if lower.endswith(".webp"):
-        return "image/webp"
-    return "image/jpeg"
-
-
 def _emit_jsonl_observation(
     *,
     request_id: str,
