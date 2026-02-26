@@ -59,14 +59,9 @@ class LLMManager:
     def get_active_provider(self, db_session: Optional[Any] = None) -> str:
         """
         Returns the active LLM provider.
-        Prioritizes SystemConfig in DB, falls back to LLM_PROVIDER env.
+        Reads from environment/runtime configuration only.
         """
-        if db_session:
-            from app.models import SystemConfig
-            row = db_session.get(SystemConfig, "active_llm_provider")
-            if row and row.value.strip().lower() in _SUPPORTED_PROVIDERS:
-                return row.value.strip().lower()
-
+        _ = db_session
         return self._default_provider
 
     def get_provider_chain(self, db_session: Optional[Any] = None) -> list:

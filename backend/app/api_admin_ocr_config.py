@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/admin/ocr-configuration", tags=["admin", "ocr"])
 class OcrConfigPayload(BaseModel):
     local_engine_enabled: bool = True
     openai_engine_enabled: bool = True
-    glm_ocr_engine_enabled: bool = True
+    glm_ocr_engine_enabled: bool = False
     glm_ocr_model: str = Field(default="glm-ocr:latest")
     openai_model: str = Field(default="gpt-5-mini")
     openai_system_prompt_key: str = Field(default="openai_ocr_system_prompt_v1.txt")

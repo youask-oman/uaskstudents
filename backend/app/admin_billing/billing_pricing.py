@@ -6,13 +6,14 @@ Provides an alias for provider pricing management under /api/admin/billing/prici
 
 from datetime import datetime
 from typing import Optional, Dict, Any
+import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from pydantic import BaseModel
 from sqlmodel import Session, select, desc, and_
 
 from app.database import get_session
-from app.models import ProviderModelPricing, SystemConfig, User
+from app.models import ProviderModelPricing, User
 from app.models.admin_audit_log import AdminAuditLog
 from app.api_admin import get_staff_user, get_admin_user
 from app.services.audit_log_service import audit_log_service
@@ -112,10 +113,8 @@ def create_provider_pricing(
         raise HTTPException(400, detail="Only GPT-5 family models are supported")
 
     if pricing_data.model != "gpt-5-mini":
-        allow_advanced = session.exec(
-            select(SystemConfig).where(SystemConfig.key == "ALLOW_ADVANCED_MODELS")
-        ).first()
-        if not allow_advanced or allow_advanced.value != "true":
+        allow_advanced = (os.getenv("ALLOW_ADVANCED_MODELS") or "false").strip().lower() in {"1", "true", "yes", "on"}
+        if not allow_advanced:
             raise HTTPException(
                 403,
                 detail=f"Advanced model {pricing_data.model} is not enabled.",

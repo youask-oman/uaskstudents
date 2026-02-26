@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import SystemConfigPanel from "@/components/admin/SystemConfigPanel";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 
 type FilterState = {
@@ -797,8 +796,6 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
                 </section>
-
-                <SystemConfigPanel baseUrl={baseUrl} />
 
                 <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
                     <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-800/20">

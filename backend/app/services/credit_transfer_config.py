@@ -6,8 +6,6 @@ from decimal import Decimal
 
 from sqlmodel import Session
 
-from app.models import SystemConfig
-
 
 @dataclass
 class CreditTransferConfig:
@@ -23,9 +21,10 @@ class CreditTransferConfig:
 
 
 def _cfg_value(session: Session, key: str, default: str) -> str:
-    row = session.get(SystemConfig, key)
-    if row and row.value is not None and str(row.value).strip() != "":
-        return str(row.value).strip()
+    _ = session
+    val = os.getenv(key)
+    if val is not None and str(val).strip() != "":
+        return str(val).strip()
     return default
 
 

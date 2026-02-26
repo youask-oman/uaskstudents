@@ -2410,7 +2410,7 @@ async def get_my_subscription(
 @api_router.get("/config/token-policy", response_model=TokenPolicyResponse)
 async def get_token_policy_endpoint(session: Session = Depends(get_session)):
     policy = get_token_policy(session)
-    return TokenPolicyResponse(ok=True, policy=serialize_token_policy(policy), source="system_config")
+    return TokenPolicyResponse(ok=True, policy=serialize_token_policy(policy), source="env")
 
 
 @api_router.get("/ocr/engines", response_model=OcrEngineAvailabilityResponse)
@@ -14826,45 +14826,20 @@ async def admin_apply_quota_override(req: QuotaOverrideRequest, db: Session = De
 
 @api_router.get("/admin/system-config", response_model=List[SystemConfigEntry])
 async def admin_list_system_config(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
-    """Admin only: fetch the entire system configuration table."""
-    rows = session.exec(select(SystemConfig)).all()
-    row_map = {str(row.key): row for row in rows}
-    defaults: Dict[str, Dict[str, str]] = {
-        "SOLVE_LOCAL_SYMPY_NUMPY_ENABLED": {
-            "value": "true",
-            "description": "Enable local SymPy/NumPy solve path before LLM fallback (FINAL/SHORT tiers).",
-        },
-    }
-    for key, meta in defaults.items():
-        if key not in row_map:
-            session.add(
-                SystemConfig(
-                    key=key,
-                    value=str(meta.get("value") or ""),
-                    description=str(meta.get("description") or ""),
-                )
-            )
-    session.commit()
-    rows = session.exec(select(SystemConfig)).all()
-    return [SystemConfigEntry(key=row.key, value=row.value, description=row.description) for row in rows]
+    _ = (session, admin)
+    raise HTTPException(
+        status_code=410,
+        detail="SystemConfig table is deprecated. Use prompt bindings, OCR configuration, and environment variables.",
+    )
 
 
 @api_router.post("/admin/system-config")
 async def admin_update_system_config(req: SystemConfigUpdateRequest, session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
-    """Admin only: persist updated system configuration entries."""
-    updated = 0
-    for entry in req.entries:
-        row = session.get(SystemConfig, entry.key)
-        if row:
-            row.value = entry.value
-            if entry.description is not None:
-                row.description = entry.description
-        else:
-            row = SystemConfig(key=entry.key, value=entry.value, description=entry.description)
-            session.add(row)
-        updated += 1
-    session.commit()
-    return {"ok": True, "updated": updated}
+    _ = (req, session, admin)
+    raise HTTPException(
+        status_code=410,
+        detail="SystemConfig table is deprecated. Use prompt bindings, OCR configuration, and environment variables.",
+    )
 
 
 @api_router.get("/admin/config/credit_transfer", response_model=CreditTransferAdminConfigResponse)
@@ -14892,61 +14867,19 @@ async def admin_update_credit_transfer_config(
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user),
 ):
-    entries = [
-        ("CREDIT_TRANSFER_ENABLED", "true" if req.credit_transfer_enabled else "false", "Enable credit transfer flow"),
-        ("NOTIFICATIONS_ENABLED", "true" if req.notifications_enabled else "false", "Enable in-app notifications"),
-        ("CREDIT_TRANSFER_MIN", str(req.min_transfer), "Minimum credit transfer amount"),
-        ("CREDIT_TRANSFER_MAX", str(req.max_transfer), "Maximum credit transfer amount"),
-        ("CREDIT_TRANSFER_DAILY_CAP", str(req.daily_cap), "Daily sender credit transfer cap"),
-        ("CREDIT_TRANSFER_PENDING_EXPIRY_DAYS", str(req.pending_expiry_days), "Days before pending transfers expire/refund"),
-        ("CREDIT_TRANSFER_PER_MIN_LIMIT", str(req.per_minute_limit), "Sender transfer rate limit per minute"),
-        ("NOTIFICATIONS_THANK_PER_MIN_LIMIT", str(req.thank_per_minute_limit), "Notification thank action limit per minute"),
-        ("CREDIT_TRANSFER_ACCOUNT_AGE_MINUTES", str(req.account_age_minutes_min), "Minimum account age (minutes) to allow transfer"),
-    ]
-    for key, value, description in entries:
-        row = session.get(SystemConfig, key)
-        if row:
-            row.value = value
-            row.description = description
-        else:
-            session.add(SystemConfig(key=key, value=value, description=description))
-    session.commit()
-    cfg = load_credit_transfer_config(session)
-    return CreditTransferAdminConfigResponse(
-        credit_transfer_enabled=cfg.enabled,
-        notifications_enabled=cfg.notifications_enabled,
-        min_transfer=float(cfg.min_transfer),
-        max_transfer=float(cfg.max_transfer),
-        daily_cap=float(cfg.daily_cap),
-        pending_expiry_days=cfg.pending_expiry_days,
-        per_minute_limit=cfg.per_minute_limit,
-        thank_per_minute_limit=cfg.thank_per_minute_limit,
-        account_age_minutes_min=cfg.account_age_minutes_min,
+    _ = (req, session, admin)
+    raise HTTPException(
+        status_code=410,
+        detail="Credit transfer config is now environment-managed. Update deployment environment variables instead.",
     )
 
 
 @api_router.get("/admin/solve-v2-config", response_model=SolveV2ConfigResponse)
 async def admin_get_solve_v2_config(session: Session = Depends(get_session), admin: User = Depends(get_admin_user)):
-    def _get(key: str, default: str) -> str:
-        row = session.get(SystemConfig, key)
-        if not row or row.value is None:
-            return default
-        return str(row.value)
-
-    return SolveV2ConfigResponse(
-        system_prompt_id=_get("SOLVE_SYSTEM_PROMPT_ID", ""),
-        orchestrator_prompt_id=_get("SOLVE_ORCHESTRATOR_DEV_PROMPT_ID", ""),
-        output_contract_id=_get("SOLVE_OUTPUT_CONTRACT_ID", ""),
-        narrator_prompt_id=_get("SOLVE_NARRATOR_PROMPT_ID", ""),
-        plot_spec_prompt_id=_get("SOLVE_PLOT_SPEC_PROMPT_ID", ""),
-        repair_prompt_id=_get("SOLVE_REPAIR_PROMPT_ID", ""),
-        clarify_prompt_id=_get("SOLVE_CLARIFY_PROMPT_ID", ""),
-        schema_id=_get("SOLVE_SCHEMA_ID", ""),
-        llm_min_schema_id=_get("SOLVE_LLM_MIN_SCHEMA_ID", ""),
-        clarify_schema_id=_get("SOLVE_CLARIFY_SCHEMA_ID", ""),
-        repair_schema_id=_get("SOLVE_REPAIR_SCHEMA_ID", ""),
-        tier_policy_json=_get("SOLVE_TIER_POLICY_JSON", "{}"),
-        narrator_enabled=_get("SOLVE_NARRATOR_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"},
+    _ = (session, admin)
+    raise HTTPException(
+        status_code=410,
+        detail="Solve v2 SystemConfig endpoint is deprecated. Configure via prompt bindings and environment variables.",
     )
 
 
@@ -14956,33 +14889,11 @@ async def admin_update_solve_v2_config(
     session: Session = Depends(get_session),
     admin: User = Depends(get_admin_user),
 ):
-    entries = [
-        ("SOLVE_SYSTEM_PROMPT_ID", req.system_prompt_id, "Active solve system prompt ID"),
-        ("SOLVE_ORCHESTRATOR_DEV_PROMPT_ID", req.orchestrator_prompt_id, "Active solve orchestrator developer prompt ID"),
-        ("SOLVE_OUTPUT_CONTRACT_ID", req.output_contract_id or "", "Legacy output contract prompt ID (unused by solve_v3)"),
-        ("SOLVE_NARRATOR_PROMPT_ID", req.narrator_prompt_id, "Active solve narrator prompt ID"),
-        ("SOLVE_PLOT_SPEC_PROMPT_ID", req.plot_spec_prompt_id, "Active solve plot spec prompt ID"),
-        ("SOLVE_REPAIR_PROMPT_ID", req.repair_prompt_id, "Active solve verification-repair prompt ID"),
-        ("SOLVE_CLARIFY_PROMPT_ID", req.clarify_prompt_id, "Active solve clarification prompt ID"),
-        ("SOLVE_SCHEMA_ID", req.schema_id, "Active solve schema ID"),
-        ("SOLVE_LLM_MIN_SCHEMA_ID", req.llm_min_schema_id, "Active solve main LLM-min schema ID"),
-        ("SOLVE_CLARIFY_SCHEMA_ID", req.clarify_schema_id, "Active solve clarification patch schema ID"),
-        ("SOLVE_REPAIR_SCHEMA_ID", req.repair_schema_id, "Active solve repair patch schema ID"),
-        ("SOLVE_TIER_POLICY_JSON", req.tier_policy_json, "Tier policy JSON (min/max steps, max tokens, narrator)"),
-        ("SOLVE_NARRATOR_ENABLED", "true" if req.narrator_enabled else "false", "Enable post-verification narrator pass"),
-    ]
-    updated = 0
-    for key, value, description in entries:
-        row = session.get(SystemConfig, key)
-        if row:
-            row.value = value
-            row.description = description
-        else:
-            row = SystemConfig(key=key, value=value, description=description)
-            session.add(row)
-        updated += 1
-    session.commit()
-    return {"ok": True, "updated": updated}
+    _ = (req, session, admin)
+    raise HTTPException(
+        status_code=410,
+        detail="Solve v2 SystemConfig endpoint is deprecated. Configure via prompt bindings and environment variables.",
+    )
 
 # Legacy duplicate of /admin/users/{user_id} detail route; intentionally not registered.
 async def admin_get_user_full_data(user_id: int, db: Session = Depends(get_session), admin: User = Depends(get_admin_user)):

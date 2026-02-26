@@ -19,7 +19,6 @@ from app.models import (
     PromptBinding,
     PromptModeEnum,
     PromptTierEnum,
-    SystemConfig,
     User,
 )
 from app.services.llm.manager import LLMManager, get_llm_manager
@@ -281,13 +280,7 @@ def _read_system_bool_config(
     *,
     default: bool,
 ) -> bool:
-    # DB config is source of truth for admin toggles. Env key remains fallback for safety.
-    try:
-        row = session.get(SystemConfig, key)
-        if row and row.value is not None:
-            return _parse_bool_flag(row.value, default)
-    except Exception:
-        pass
+    _ = session
     return _parse_bool_flag(os.environ.get(key), default)
 
 
@@ -307,14 +300,7 @@ def _read_system_optional_bool_config(
             return False
         return None
 
-    try:
-        row = session.get(SystemConfig, key)
-        if row and row.value is not None:
-            parsed = _parse_optional(row.value)
-            if parsed is not None:
-                return parsed
-    except Exception:
-        pass
+    _ = session
     return _parse_optional(os.environ.get(key))
 
 

@@ -796,9 +796,55 @@ class PromptRegistryService:
             row.updated_at = datetime.utcnow()
             row.updated_by = updated_by
             session.add(row)
-        # This avoids violating the unique constraint on
-        # (tier, mode, provider, global_system_prompt_id, developer_prompt_id, output_schema_id)
-        # when admins "update" an existing active/inactive binding.
+        # The table enforces one row per (tier, mode, provider), so updates must
+        # mutate the existing slot row instead of inserting a new record.
+        slot_row = session.exec(
+            select(PromptBinding)
+            .where(PromptBinding.tier == tier)
+            .where(PromptBinding.mode == mode)
+            .where(PromptBinding.provider == provider)
+            .order_by(PromptBinding.updated_at.desc())
+        ).first()
+
+        if slot_row:
+            slot_row.global_system_prompt_id = global_system_prompt_id
+            slot_row.developer_prompt_id = developer_prompt_id
+            slot_row.output_schema_id = output_schema_id
+            slot_row.max_output_tokens = max_output_tokens
+            slot_row.max_input_tokens = max_input_tokens
+            slot_row.max_questions_allowed = max_questions_allowed
+            slot_row.system_schema_budget_tokens = system_schema_budget_tokens
+            slot_row.context_budget_tokens = context_budget_tokens
+            slot_row.json_retry_max_output_tokens = json_retry_max_output_tokens
+            slot_row.json_retry_max_attempts = json_retry_max_attempts
+            slot_row.timeout_ms = timeout_ms
+            slot_row.temperature = temperature
+            slot_row.top_p = top_p
+            slot_row.plot_points_cap = plot_points_cap
+            slot_row.plot_traces_cap = plot_traces_cap
+            slot_row.plot_annotations_cap = plot_annotations_cap
+            slot_row.trim_strategy = trim_strategy
+            slot_row.max_steps = max_steps
+            slot_row.retry_cap_tokens = retry_cap_tokens
+            slot_row.solve_text_cost = solve_text_cost
+            slot_row.solve_snap_image_cost = solve_snap_image_cost
+            slot_row.solve_snap_pdf_cost = solve_snap_pdf_cost
+            slot_row.solve_voice_cost = solve_voice_cost
+            slot_row.verify_addon_cost = verify_addon_cost
+            slot_row.plot_addon_cost = plot_addon_cost
+            slot_row.attempt_fee = attempt_fee
+            slot_row.features = features or {}
+            slot_row.multipliers = multipliers or {}
+            slot_row.is_active = True
+            slot_row.updated_at = datetime.utcnow()
+            slot_row.updated_by = updated_by
+            session.add(slot_row)
+            session.commit()
+            session.refresh(slot_row)
+            return slot_row
+
+        # Backward-compatibility path for older schemas that may allow multiple
+        # rows with same (tier,mode,provider,ids).
         existing = session.exec(
             select(PromptBinding)
             .where(PromptBinding.tier == tier)

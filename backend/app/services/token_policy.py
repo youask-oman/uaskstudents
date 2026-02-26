@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, Tuple
+import os
 
-from sqlmodel import Session, select
-
-from app.models import SystemConfig
+from sqlmodel import Session
+from app.constants.token_policy_defaults import TOKEN_POLICY_DEFAULTS
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,6 @@ class TokenPolicy:
     voice_input_overhead: int
 
 
-# Keys required in the SystemConfig database table
 REQUIRED_CONFIG_KEYS = [
     "tokens.text.input_max",
     "tokens.text.input_max_chars",
@@ -71,25 +70,31 @@ def _coerce_int(value: str, default: int) -> int:
         return default
 
 
+def _env_keys_for_token_key(key: str) -> Tuple[str, str]:
+    env_key = key.upper().replace(".", "_")
+    legacy = key.split(".")[-1]
+    return env_key, legacy
+
+
+def _read_token_value(key: str, default: int) -> int:
+    env_key, legacy_key = _env_keys_for_token_key(key)
+    raw = os.getenv(env_key)
+    if raw is None:
+        raw = os.getenv(legacy_key)
+    if raw is None:
+        raw = str(default)
+    return _coerce_int(raw, default)
+
+
 def get_token_policy(session: Session) -> TokenPolicy:
     """
-    Loads token limits strictly from the SystemConfig database table.
-    Defaults are enforced via database seeding (see scripts/seed_config.py).
+    Loads token limits from environment variables with defaults from TOKEN_POLICY_DEFAULTS.
+    The `session` parameter is retained for call-site compatibility.
     """
-    rows = session.exec(select(SystemConfig).where(SystemConfig.key.in_(REQUIRED_CONFIG_KEYS))).all()
-    config_map = {row.key: row.value for row in rows}
-    
-    # helper: fetch from config_map with 0 as hard fallback if DB missing (to check for missing seeds)
+    _ = session
+    defaults = {k: v[0] for k, v in TOKEN_POLICY_DEFAULTS.items()}
     def get_val(key: str) -> int:
-        val = config_map.get(key, "0")
-        coerced = _coerce_int(val, 0)
-    # print(f"[TOKEN_POLICY] Loaded {key} = {coerced} (Raw: {val})")
-        return coerced
-
-    # Log warning if keys are completely missing
-    missing = set(REQUIRED_CONFIG_KEYS) - set(config_map.keys())
-    if missing:
-        print(f"[TOKEN_POLICY] WARNING: The following config keys are missing in SystemConfig: {missing}")
+        return _read_token_value(key, int(defaults.get(key, 0)))
 
     return TokenPolicy(
         text_input_max=get_val("tokens.text.input_max"),

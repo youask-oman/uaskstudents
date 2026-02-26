@@ -17,7 +17,7 @@ OCR_CONFIG_TYPE = "ocr_configuration"
 class OcrRuntimeConfig:
     local_engine_enabled: bool = True
     openai_engine_enabled: bool = True
-    glm_ocr_engine_enabled: bool = True
+    glm_ocr_engine_enabled: bool = False
     glm_ocr_model: str = "glm-ocr:latest"
     openai_model: str = ""
     openai_system_prompt_key: str = "openai_ocr_system_prompt_v1.txt"

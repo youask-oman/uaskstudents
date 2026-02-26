@@ -1,11 +1,10 @@
 
 from typing import Optional, Dict, List, Any
-from datetime import datetime
 import json
 import hashlib
 from sqlmodel import Session, select, desc
 
-from app.models import SystemConfig, SystemConfigVersion, User
+from app.models import SystemConfigVersion, User
 
 def _simple_diff(old: Dict, new: Dict) -> Dict:
     """Simple diff implementation without external dependencies."""
@@ -26,9 +25,8 @@ class AdminConfigService:
     def get_active_config(self, session: Session, config_type: str) -> Dict[str, Any]:
         """
         Get the currently active configuration for the given type.
-        Falls back to SystemConfig (legacy) if no versioned config exists yet.
+        Uses versioned configuration only.
         """
-        # 1. Try to get latest version
         statement = select(SystemConfigVersion).where(
             SystemConfigVersion.config_type == config_type
         ).order_by(desc(SystemConfigVersion.version))
@@ -36,16 +34,7 @@ class AdminConfigService:
         
         if latest:
             return latest.value
-            
-        # 2. Fallback to legacy SystemConfig
-        legacy = session.get(SystemConfig, config_type)
-        if legacy:
-            try:
-                return json.loads(legacy.value)
-            except:
-                pass
-                
-        return {} # Return empty (or default) if nothing found
+        return {}
         
     def update_config(
         self, 
@@ -60,7 +49,6 @@ class AdminConfigService:
         1. Validate (TODO: Add schema validation schemas)
         2. Calculate Diff
         3. Create new Version
-        4. Update Legacy SystemConfig (for compatibility)
         """
         
         # 1. Get current active to compute diff
@@ -92,16 +80,6 @@ class AdminConfigService:
         )
         session.add(new_version)
         
-        # Update Legacy SystemConfig (Single Source of Truth for reads usually)
-        legacy = session.get(SystemConfig, config_type)
-        if not legacy:
-            legacy = SystemConfig(key=config_type, value=content_str)
-            session.add(legacy)
-        else:
-            legacy.value = content_str
-            legacy.updated_at = datetime.utcnow()
-            session.add(legacy)
-            
         session.commit()
         session.refresh(new_version)
         return new_version

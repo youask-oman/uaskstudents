@@ -1,12 +1,11 @@
 
 from typing import Dict, Optional, Any, Tuple
-import json
 import math
 from datetime import datetime
 from sqlmodel import Session, select, desc
 from pydantic import BaseModel, Field
 
-from app.models import SystemConfig, SystemConfigVersion
+from app.models import SystemConfigVersion
 
 # Default Pricing Configuration
 DEFAULT_PRICING_CONFIG = {
@@ -80,7 +79,7 @@ class PricingConfig(BaseModel):
 class PricingService:
     def get_pricing_config(self, session: Session) -> PricingConfig:
         """
-        Retrieve pricing config from SystemConfigVersion (active) or fallback to SystemConfig.
+        Retrieve pricing config from SystemConfigVersion (active) or defaults.
         """
         # 1. Try to get latest version
         statement = select(SystemConfigVersion).where(
@@ -94,14 +93,6 @@ class PricingService:
         if latest:
             data = latest.value
             version_id = latest.id
-        else:
-            # Fallback to legacy
-            config_entry = session.get(SystemConfig, "pricing")
-            if config_entry:
-                try:
-                    data = json.loads(config_entry.value)
-                except:
-                    pass
             
         if not data:
             data = DEFAULT_PRICING_CONFIG.copy()

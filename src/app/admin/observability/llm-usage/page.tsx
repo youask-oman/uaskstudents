@@ -56,9 +56,11 @@ type LlmUsageListResponse = {
 };
 
 export default function AdminLlmUsagePage() {
+  const pageSize = 10;
   const { pushToast } = useToast();
   const [items, setItems] = useState<LlmUsageItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [dataSource, setDataSource] = useState<string>("llmusageledger");
   const [query, setQuery] = useState("");
@@ -103,11 +105,16 @@ export default function AdminLlmUsagePage() {
     };
   }, [filtered]);
 
-  const fetchItems = async () => {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const fetchItems = async (page = currentPage) => {
     setLoading(true);
     try {
+      const safePage = Math.max(1, page);
+      const offset = (safePage - 1) * pageSize;
       const params = new URLSearchParams();
-      params.set("limit", "200");
+      params.set("limit", String(pageSize));
+      params.set("offset", String(offset));
       if (provider.trim()) params.set("provider", provider.trim());
       if (model.trim()) params.set("model", model.trim());
       if (userId.trim()) params.set("user_id", userId.trim());
@@ -120,6 +127,7 @@ export default function AdminLlmUsagePage() {
       const data = (await res.json()) as LlmUsageListResponse;
       setItems(Array.isArray(data.items) ? data.items : []);
       setTotal(Number(data.total || 0));
+      setCurrentPage(safePage);
       setDataSource((data.source || "llmusageledger").toLowerCase());
     } catch (err) {
       pushToast({
@@ -147,7 +155,7 @@ export default function AdminLlmUsagePage() {
               Context-rich observability for each model call. IDs are enriched with chat/request metadata so admins can understand what each record represents.
             </p>
           </div>
-          <div className="text-sm text-slate-500">Total rows: {total} | Showing: {filtered.length}</div>
+          <div className="text-sm text-slate-500">Total rows: {total} | Showing: {filtered.length} | Page: {currentPage}/{totalPages}</div>
         </div>
         <div className="mt-4 grid grid-cols-1 md:grid-cols-5 gap-3">
           <Stat title="Unique Requests" value={stats.uniqueRequests} subtitle="request_id count" />
@@ -183,7 +191,7 @@ export default function AdminLlmUsagePage() {
             placeholder="Lookup user email"
           />
           <input className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm" placeholder="Request ID" value={requestId} onChange={(e) => setRequestId(e.target.value)} />
-          <button onClick={() => void fetchItems()} className="px-4 py-2 rounded-xl bg-admin-primary text-white text-sm font-semibold">{loading ? "Loading..." : "Refresh"}</button>
+          <button onClick={() => void fetchItems(currentPage)} className="px-4 py-2 rounded-xl bg-admin-primary text-white text-sm font-semibold">{loading ? "Loading..." : "Refresh"}</button>
           <button
             onClick={() => {
               setQuery("");
@@ -192,7 +200,7 @@ export default function AdminLlmUsagePage() {
               setUserId("");
               setUserLookup("");
               setRequestId("");
-              void fetchItems();
+              void fetchItems(1);
             }}
             className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-semibold"
           >
@@ -269,6 +277,29 @@ export default function AdminLlmUsagePage() {
             </article>
           ))}
         {loading && <div className="text-slate-500">Loading...</div>}
+      </section>
+      <section className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm text-slate-600 dark:text-slate-300">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => void fetchItems(currentPage - 1)}
+              disabled={loading || currentPage <= 1}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-50 text-sm"
+            >
+              Prev
+            </button>
+            <button
+              onClick={() => void fetchItems(currentPage + 1)}
+              disabled={loading || currentPage >= totalPages}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-50 text-sm"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   );

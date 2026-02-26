@@ -17,7 +17,6 @@ from app.models import (
     JsonSchemaEntry,
     PromptTemplateEntry,
     SolverOutputAttempt,
-    SystemConfig,
     User,
 )
 from app.services.plot_integration import apply_graph_mode_override, format_plot_for_response, maybe_generate_plot
@@ -77,16 +76,27 @@ DEFAULT_TIER_POLICY = {
     "RESEARCH": {"min_steps": 6, "max_steps": 20, "max_tokens": 8000, "narrator": True},
 }
 
+DEFAULT_SOLVE_V2_KEYS = {
+    "SOLVE_SYSTEM_PROMPT_ID": "global_system_prompt_v2_compact.txt",
+    "SOLVE_ORCHESTRATOR_DEV_PROMPT_ID": "solve_orchestrator_developer_v2_compact.txt",
+    "SOLVE_NARRATOR_PROMPT_ID": "solve_explain_narrator_v2_compact.txt",
+    "SOLVE_PLOT_SPEC_PROMPT_ID": "solve_plot_spec_v2_compact.txt",
+    "SOLVE_REPAIR_PROMPT_ID": "solve_repair_verification_patch_v1.txt",
+    "SOLVE_CLARIFY_PROMPT_ID": "solve_clarification_patch_v1.txt",
+    "SOLVE_SCHEMA_ID": "solve_superset_v2.schema.json",
+    "SOLVE_LLM_MIN_SCHEMA_ID": "solve_llm_min_v2.schema.json",
+    "SOLVE_CLARIFY_SCHEMA_ID": "solve_clarification_patch_v1.schema.json",
+    "SOLVE_REPAIR_SCHEMA_ID": "solve_repair_patch_v1.schema.json",
+}
+
 
 def _truthy(value: Optional[str]) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _system_config_value(session: Session, key: str, default: str) -> str:
-    row = session.get(SystemConfig, key)
-    if not row or row.value is None:
-        return default
-    value = str(row.value).strip()
+    _ = session
+    value = str(os.getenv(key) or "").strip()
     return value if value else default
 
 
@@ -100,24 +110,56 @@ def load_solve_v2_config(session: Session) -> SolveV2Config:
         tier_policy = copy.deepcopy(DEFAULT_TIER_POLICY)
 
     return SolveV2Config(
-        system_prompt_id=_system_config_value(session, "SOLVE_SYSTEM_PROMPT_ID", ""),
+        system_prompt_id=_system_config_value(
+            session,
+            "SOLVE_SYSTEM_PROMPT_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_SYSTEM_PROMPT_ID"],
+        ),
         orchestrator_prompt_id=_system_config_value(
             session,
             "SOLVE_ORCHESTRATOR_DEV_PROMPT_ID",
-            "",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_ORCHESTRATOR_DEV_PROMPT_ID"],
         ),
-        narrator_prompt_id=_system_config_value(session, "SOLVE_NARRATOR_PROMPT_ID", ""),
-        plot_spec_prompt_id=_system_config_value(session, "SOLVE_PLOT_SPEC_PROMPT_ID", ""),
-        repair_prompt_id=_system_config_value(session, "SOLVE_REPAIR_PROMPT_ID", ""),
+        narrator_prompt_id=_system_config_value(
+            session,
+            "SOLVE_NARRATOR_PROMPT_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_NARRATOR_PROMPT_ID"],
+        ),
+        plot_spec_prompt_id=_system_config_value(
+            session,
+            "SOLVE_PLOT_SPEC_PROMPT_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_PLOT_SPEC_PROMPT_ID"],
+        ),
+        repair_prompt_id=_system_config_value(
+            session,
+            "SOLVE_REPAIR_PROMPT_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_REPAIR_PROMPT_ID"],
+        ),
         clarify_prompt_id=_system_config_value(
             session,
             "SOLVE_CLARIFY_PROMPT_ID",
-            "",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_CLARIFY_PROMPT_ID"],
         ),
-        superset_schema_id=_system_config_value(session, "SOLVE_SCHEMA_ID", ""),
-        llm_min_schema_id=_system_config_value(session, "SOLVE_LLM_MIN_SCHEMA_ID", ""),
-        clarify_schema_id=_system_config_value(session, "SOLVE_CLARIFY_SCHEMA_ID", ""),
-        repair_schema_id=_system_config_value(session, "SOLVE_REPAIR_SCHEMA_ID", ""),
+        superset_schema_id=_system_config_value(
+            session,
+            "SOLVE_SCHEMA_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_SCHEMA_ID"],
+        ),
+        llm_min_schema_id=_system_config_value(
+            session,
+            "SOLVE_LLM_MIN_SCHEMA_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_LLM_MIN_SCHEMA_ID"],
+        ),
+        clarify_schema_id=_system_config_value(
+            session,
+            "SOLVE_CLARIFY_SCHEMA_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_CLARIFY_SCHEMA_ID"],
+        ),
+        repair_schema_id=_system_config_value(
+            session,
+            "SOLVE_REPAIR_SCHEMA_ID",
+            DEFAULT_SOLVE_V2_KEYS["SOLVE_REPAIR_SCHEMA_ID"],
+        ),
         tier_policy=tier_policy,
         narrator_enabled=_truthy(_system_config_value(session, "SOLVE_NARRATOR_ENABLED", "false")),
         parse_timeout_ms=int(_system_config_value(session, "SOLVE_TIMEOUT_PARSE_MS", "1500")),
@@ -1069,9 +1111,19 @@ def _extract_schema_validator(schema_entry: JsonSchemaEntry) -> Tuple[str, Dict[
     return _extract_schema_name(schema_entry), deref_schema, Draft202012Validator(deref_schema)
 
 
+def _normalize_structured_output_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(schema, dict):
+        return {}
+    normalized = copy.deepcopy(schema)
+    if normalized.get("type") == "object" and not isinstance(normalized.get("properties"), dict):
+        normalized["properties"] = {}
+    return normalized
+
+
 def _schema_wrapper(name: str, schema: Dict[str, Any], call_name: str) -> Dict[str, Any]:
+    normalized_schema = _normalize_structured_output_schema(schema)
     return build_openai_structured_output(
-        {"type": "json_schema", "name": name, "strict": True, "schema": schema},
+        {"type": "json_schema", "name": name, "strict": True, "schema": normalized_schema},
         endpoint="responses",
         call_name=call_name,
     )
@@ -1529,7 +1581,13 @@ async def run_solve_v3_superset_v2(
                     details={"tier": tier, "openai_fallback_blocked": True},
                 )
 
-        provider_name = solver.client_manager.get_active_provider(session)
+        provider_name = "openai"
+        client_manager = getattr(solver, "client_manager", None)
+        if client_manager is not None:
+            try:
+                provider_name = str(client_manager.get_active_provider(session) or "openai")
+            except Exception:
+                provider_name = "openai"
         timeout_seconds = max(3, config.openai_timeout_ms // 1000)
 
         async def _call_primary(

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from sqlmodel import Session, select, desc, and_, or_
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+import os
 from app.database import get_session
 from app.models import (
     User,
@@ -9,7 +10,6 @@ from app.models import (
     ProviderPricingAuditEvent,
     ProviderPricingAction,
     SystemConfigVersion,
-    SystemConfig,
     TopUpProduct,
     StripePriceMap,
 )
@@ -460,11 +460,8 @@ def create_provider_pricing(
     
     # Check if advanced models are allowed for non-mini models
     if pricing.model != "gpt-5-mini":
-        allow_advanced = session.exec(
-            select(SystemConfig).where(SystemConfig.key == "ALLOW_ADVANCED_MODELS")
-        ).first()
-        
-        if not allow_advanced or allow_advanced.value != "true":
+        allow_advanced = (os.getenv("ALLOW_ADVANCED_MODELS") or "false").strip().lower() in {"1", "true", "yes", "on"}
+        if not allow_advanced:
             raise HTTPException(
                 403, 
                 detail=f"Advanced model {pricing.model} is not enabled. Only gpt-5-mini is currently allowed."
