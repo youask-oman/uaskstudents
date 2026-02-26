@@ -344,6 +344,62 @@ def force_lock(
     return {"ok": True, "seconds": seconds}
 
 
+def get_unlock_request(user_id: int) -> Optional[Dict[str, Any]]:
+    key = f"wa:unlock_request:user:{int(user_id)}"
+    try:
+        raw = get_redis().hgetall(key) or {}
+    except Exception:
+        return None
+    if not raw:
+        return None
+
+    def _v(name: str) -> str:
+        val = raw.get(name)
+        if isinstance(val, bytes):
+            return val.decode("utf-8", errors="ignore")
+        return str(val or "")
+
+    return {
+        "status": _v("status") or "pending",
+        "requested_at": _v("requested_at"),
+        "updated_at": _v("updated_at"),
+        "phone": _v("phone"),
+        "reason": _v("reason"),
+    }
+
+
+def submit_unlock_request(
+    *,
+    user_id: int,
+    phone: Optional[str],
+    reason: str = "",
+    actor: str = "user",
+) -> Dict[str, Any]:
+    user_id = int(user_id)
+    key = f"wa:unlock_request:user:{user_id}"
+    now = datetime.now(timezone.utc).isoformat()
+    existing = get_unlock_request(user_id)
+    if existing and str(existing.get("status") or "").lower() == "pending":
+        return {"status": "already_pending", "requested_at": existing.get("requested_at")}
+
+    payload = {
+        "status": "pending",
+        "requested_at": now,
+        "updated_at": now,
+        "phone": str(phone or ""),
+        "reason": str(reason or "")[:300],
+    }
+    redis = get_redis()
+    redis.hset(key, mapping=payload)
+    redis.expire(key, _env_int("WHATSAPP_UNLOCK_REQUEST_TTL_SECONDS", 7 * 24 * 3600))
+    _audit(
+        "unlock_request",
+        actor,
+        {"user_id": user_id, "phone": str(phone or ""), "reason": payload["reason"]},
+    )
+    return {"status": "pending", "requested_at": now}
+
+
 def register_offense(user_id: Optional[int], phone: Optional[str], reason: str) -> Dict[str, Any]:
     redis = get_redis()
     now = int(time.time())

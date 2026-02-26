@@ -494,14 +494,36 @@ async function connectToWhatsApp() {
         ]);
     }
 
+    function detectImagePayload(message) {
+        const image = message?.imageMessage;
+        if (image) {
+            return {
+                hasImage: true,
+                mimeType: image?.mimetype || 'image/jpeg',
+                caption: image?.caption || '',
+            };
+        }
+        const doc = message?.documentMessage;
+        const docMime = String(doc?.mimetype || '').toLowerCase();
+        if (doc && docMime.startsWith('image/')) {
+            return {
+                hasImage: true,
+                mimeType: doc?.mimetype || 'image/jpeg',
+                caption: doc?.caption || doc?.fileName || '',
+            };
+        }
+        return { hasImage: false, mimeType: 'image/jpeg', caption: '' };
+    }
+
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
         if (!msg.key.fromMe && m.type === 'notify') {
             const messageId = msg.key.id;
             const normalizedMessage = unwrapMessage(msg.message);
             const text = extractIncomingText(normalizedMessage);
+            const imageMeta = detectImagePayload(normalizedMessage);
             const requestId = makeRequestId();
-            if (!text && !normalizedMessage?.imageMessage) {
+            if (!text && !imageMeta.hasImage) {
                 const botJid = (sock.user?.id || '').split(':')[0];
                 const fromJid = String(msg.key.remoteJid || '');
                 const fromNormalized = fromJid.replace(/\D+/g, '');
@@ -521,7 +543,7 @@ async function connectToWhatsApp() {
                 type: 'message',
                 from: msg.key.remoteJid,
                 text,
-                hasImage: !!normalizedMessage?.imageMessage,
+                hasImage: !!imageMeta.hasImage,
                 timestamp: new Date().toISOString(),
                 message_id: messageId,
                 request_id: requestId,
@@ -542,8 +564,8 @@ async function connectToWhatsApp() {
                             { logger: P({ level: 'silent' }) }
                         );
 
-                        const mimeType = normalizedMessage?.imageMessage?.mimetype || 'image/jpeg';
-                        const caption = normalizedMessage?.imageMessage?.caption || '';
+                        const mimeType = imageMeta.mimeType || 'image/jpeg';
+                        const caption = imageMeta.caption || '';
                         const fileExt = mimeType.includes('png') ? '.png' : (mimeType.includes('webp') ? '.webp' : '.jpg');
                         const filename = `${messageId || Date.now()}${fileExt}`;
 

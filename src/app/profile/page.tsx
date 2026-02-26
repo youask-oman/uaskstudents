@@ -28,6 +28,12 @@ interface ProfileData {
     school_name?: string;
     whatsapp_linked?: boolean;
     whatsapp_enabled?: boolean;
+    whatsapp_lock_active?: boolean;
+    whatsapp_lock_scope?: string | null;
+    whatsapp_lock_ttl_seconds?: number | null;
+    whatsapp_lock_reason?: string | null;
+    whatsapp_unlock_requested?: boolean;
+    whatsapp_unlock_requested_at?: string | null;
     usage: {
         questions_count: number;
         questions_total: number;
@@ -133,6 +139,13 @@ export default function ProfilePage() {
     const [pairingCodeExpiresIn, setPairingCodeExpiresIn] = useState<number | null>(null);
     const [whatsappBotNumber, setWhatsappBotNumber] = useState("");
     const [creatingPairingCode, setCreatingPairingCode] = useState(false);
+    const [whatsappLockActive, setWhatsappLockActive] = useState(false);
+    const [whatsappLockScope, setWhatsappLockScope] = useState<string | null>(null);
+    const [whatsappLockTtlSeconds, setWhatsappLockTtlSeconds] = useState<number | null>(null);
+    const [whatsappLockReason, setWhatsappLockReason] = useState<string | null>(null);
+    const [whatsappUnlockRequested, setWhatsappUnlockRequested] = useState(false);
+    const [whatsappUnlockRequestedAt, setWhatsappUnlockRequestedAt] = useState<string | null>(null);
+    const [requestingUnlock, setRequestingUnlock] = useState(false);
 
     // Security (password)
     const [currentPassword, setCurrentPassword] = useState("");
@@ -190,6 +203,14 @@ export default function ProfilePage() {
                 const linked = Boolean(data.whatsapp_linked);
                 setWhatsappLinked(linked);
                 setWhatsappEnabled(linked && data.whatsapp_enabled !== false);
+                setWhatsappLockActive(Boolean(data.whatsapp_lock_active));
+                setWhatsappLockScope(data.whatsapp_lock_scope || null);
+                setWhatsappLockTtlSeconds(
+                    typeof data.whatsapp_lock_ttl_seconds === "number" ? data.whatsapp_lock_ttl_seconds : null
+                );
+                setWhatsappLockReason(data.whatsapp_lock_reason || null);
+                setWhatsappUnlockRequested(Boolean(data.whatsapp_unlock_requested));
+                setWhatsappUnlockRequestedAt(data.whatsapp_unlock_requested_at || null);
                 setLoading(false);
             })
             .catch(err => {
@@ -392,7 +413,7 @@ export default function ProfilePage() {
                     theme: theme,
                     preferred_language: language,
                     solving_mode: solvingMode,
-                    whatsapp_enabled: whatsappBotConnected && whatsappLinked ? whatsappEnabled : false,
+                    whatsapp_enabled: whatsappBotConnected && whatsappLinked && !whatsappLockActive ? whatsappEnabled : false,
                 })
             });
             if (res.ok) {
@@ -504,6 +525,14 @@ export default function ProfilePage() {
     };
 
     const handleGeneratePairingCode = async () => {
+        if (whatsappLockActive) {
+            pushToast({
+                type: "error",
+                title: "WhatsApp is locked",
+                message: "Your WhatsApp access is currently locked by admin. Request unlock below.",
+            });
+            return;
+        }
         if (!whatsappBotConnected) {
             pushToast({
                 type: "error",
@@ -569,6 +598,55 @@ export default function ProfilePage() {
         }
     };
 
+    const handleRequestUnlock = async () => {
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
+        setRequestingUnlock(true);
+        try {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/whatsapp/unlock-request`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ reason: "Requested from profile page" }),
+            });
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                throw new Error(err.message);
+            }
+            const data = await res.json();
+            if (data?.status === "no_lock") {
+                setWhatsappLockActive(false);
+                setWhatsappUnlockRequested(false);
+                pushToast({
+                    type: "success",
+                    title: "No active lock",
+                    message: "Your WhatsApp account is currently not locked.",
+                });
+                return;
+            }
+            setWhatsappUnlockRequested(true);
+            if (data?.requested_at) setWhatsappUnlockRequestedAt(String(data.requested_at));
+            pushToast({
+                type: "success",
+                title: "Unlock requested",
+                message: "Your request was sent to admin for review.",
+            });
+        } catch (err) {
+            pushToast({
+                type: "error",
+                title: "Request failed",
+                message: err instanceof Error ? err.message : "Unexpected error",
+            });
+        } finally {
+            setRequestingUnlock(false);
+        }
+    };
+
     const handleSelectSchool = (school: SchoolSearchResult) => {
         setSchoolId(school.id);
         setSelectedSchoolName(school.school_name);
@@ -585,6 +663,10 @@ export default function ProfilePage() {
     const waDigits = (whatsappBotNumber || process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "").replace(/\D+/g, "");
     const waText = pairingCode ? encodeURIComponent(`CODE ${pairingCode}`) : encodeURIComponent("CODE");
     const waLink = waDigits ? `https://wa.me/${waDigits}?text=${waText}` : "";
+    const lockTtlText =
+        typeof whatsappLockTtlSeconds === "number" && whatsappLockTtlSeconds > 0
+            ? `${Math.max(1, Math.ceil(whatsappLockTtlSeconds / 60))} min remaining`
+            : "Active lock";
 
     // If profile has school_id but API payload misses school_name, resolve by ID.
     useEffect(() => {
@@ -1164,12 +1246,14 @@ export default function ProfilePage() {
                                             </span>
                                             <span
                                                 className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                                    whatsappLinked
+                                                    whatsappLockActive
+                                                        ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                                                        : whatsappLinked
                                                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                                                         : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                                                 }`}
                                             >
-                                                {whatsappLinked ? "Linked" : "Not Linked"}
+                                                {whatsappLockActive ? "Locked" : whatsappLinked ? "Linked" : "Not Linked"}
                                             </span>
                                         </div>
                                     </div>
@@ -1184,10 +1268,46 @@ export default function ProfilePage() {
                                                     {whatsappLinked ? "WhatsApp number linked" : "No linked WhatsApp number"}
                                                 </div>
                                             </div>
-                                            <span className={`text-xs font-semibold ${whatsappLinked ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"}`}>
-                                                {whatsappLinked ? "Ready" : "Action Needed"}
+                                            <span className={`text-xs font-semibold ${
+                                                whatsappLockActive
+                                                    ? "text-rose-700 dark:text-rose-300"
+                                                    : whatsappLinked
+                                                    ? "text-green-700 dark:text-green-300"
+                                                    : "text-amber-700 dark:text-amber-300"
+                                            }`}>
+                                                {whatsappLockActive ? "Locked by Admin" : whatsappLinked ? "Ready" : "Action Needed"}
                                             </span>
                                         </div>
+
+                                        {whatsappLockActive && (
+                                            <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-3 space-y-2">
+                                                <div className="text-xs font-semibold text-rose-800 dark:text-rose-200">
+                                                    WhatsApp access is temporarily locked by admin.
+                                                </div>
+                                                <div className="text-[11px] text-rose-700 dark:text-rose-300">
+                                                    Scope: {whatsappLockScope || "user"} | {lockTtlText}
+                                                    {whatsappLockReason ? ` | Reason: ${whatsappLockReason}` : ""}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={handleRequestUnlock}
+                                                        disabled={requestingUnlock || whatsappUnlockRequested}
+                                                        className="px-3 py-1.5 text-xs font-bold rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60"
+                                                    >
+                                                        {requestingUnlock
+                                                            ? "Submitting..."
+                                                            : whatsappUnlockRequested
+                                                            ? "Unlock Requested"
+                                                            : "Request Unlock"}
+                                                    </button>
+                                                    {whatsappUnlockRequestedAt ? (
+                                                        <span className="text-[11px] text-rose-700 dark:text-rose-300">
+                                                            Requested at {new Date(whatsappUnlockRequestedAt).toLocaleString()}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="space-y-2">
                                             <p className="text-xs font-semibold text-green-900 dark:text-green-100">How to use:</p>
@@ -1221,7 +1341,7 @@ export default function ProfilePage() {
                                                             </div>
                                                             <button
                                                                 onClick={handleGeneratePairingCode}
-                                                                disabled={creatingPairingCode || !whatsappBotConnected}
+                                                                disabled={creatingPairingCode || !whatsappBotConnected || whatsappLockActive}
                                                                 className="px-3 py-2 text-xs font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
                                                             >
                                                                 {creatingPairingCode ? "Generating..." : pairingCode ? "Refresh Code" : "Generate Code"}
@@ -1283,12 +1403,12 @@ export default function ProfilePage() {
                                         </div>
                                         <button
                                             onClick={() => {
-                                                if (!whatsappBotConnected || !whatsappLinked) return;
+                                                if (!whatsappBotConnected || !whatsappLinked || whatsappLockActive) return;
                                                 setWhatsappEnabled(!whatsappEnabled);
                                             }}
-                                            disabled={!whatsappBotConnected || !whatsappLinked}
+                                            disabled={!whatsappBotConnected || !whatsappLinked || whatsappLockActive}
                                             className={`relative w-14 h-7 rounded-full transition-colors ${
-                                                !whatsappBotConnected || !whatsappLinked
+                                                !whatsappBotConnected || !whatsappLinked || whatsappLockActive
                                                     ? "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
                                                     : whatsappEnabled 
                                                     ? "bg-green-500" 

@@ -1762,6 +1762,10 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
     confirm_password: Optional[str] = None
 
+
+class WhatsAppUnlockRequestPayload(BaseModel):
+    reason: Optional[str] = None
+
 class UserUsageStats(BaseModel):
     questions_count: int
     questions_total: int
@@ -2170,6 +2174,12 @@ class UserProfileResponse(BaseModel):
     # WhatsApp Integration
     whatsapp_linked: bool = False
     whatsapp_enabled: bool = True
+    whatsapp_lock_active: bool = False
+    whatsapp_lock_scope: Optional[str] = None
+    whatsapp_lock_ttl_seconds: Optional[int] = None
+    whatsapp_lock_reason: Optional[str] = None
+    whatsapp_unlock_requested: bool = False
+    whatsapp_unlock_requested_at: Optional[str] = None
 
     usage: UserUsageStats
 
@@ -11363,6 +11373,10 @@ async def get_user_profile(
         select(OCRJob)
         .where(OCRJob.user_id == resolved_user_id)
     ).all()
+    normalized_wa = _normalize_whatsapp_number(str(user.whatsapp_number or ""))
+    lock_status = wa_abuse.check_lock(user.id, normalized_wa)
+    unlock_request = wa_abuse.get_unlock_request(user.id)
+    unlock_pending = bool(unlock_request and str(unlock_request.get("status") or "").lower() == "pending")
     
     return UserProfileResponse(
         id=user.id,
@@ -11389,6 +11403,12 @@ async def get_user_profile(
         # WhatsApp Integration
         whatsapp_linked=bool(user.whatsapp_number),
         whatsapp_enabled=user.whatsapp_enabled,
+        whatsapp_lock_active=bool(lock_status),
+        whatsapp_lock_scope=(str(lock_status.get("scope")) if lock_status else None),
+        whatsapp_lock_ttl_seconds=(int(lock_status.get("ttl_seconds")) if lock_status else None),
+        whatsapp_lock_reason=(str(lock_status.get("reason") or "") if lock_status else None),
+        whatsapp_unlock_requested=unlock_pending,
+        whatsapp_unlock_requested_at=(str(unlock_request.get("requested_at") or "") if unlock_request else None),
         
         usage=UserUsageStats(
             questions_count=len(questions_count),
@@ -11495,6 +11515,34 @@ async def issue_user_whatsapp_pairing_code(
         "pairing_code": code_payload["code"],
         "expires_in_seconds": int(code_payload["expires_in_seconds"]),
         "bot_number": bot_number,
+    }
+
+
+@api_router.post("/user/whatsapp/unlock-request")
+async def request_whatsapp_unlock(
+    body: WhatsAppUnlockRequestPayload,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    user = db.get(User, current_user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    normalized_wa = _normalize_whatsapp_number(str(user.whatsapp_number or ""))
+    lock_status = wa_abuse.check_lock(user.id, normalized_wa)
+    if not lock_status:
+        return {"status": "no_lock", "message": "No active WhatsApp lock was found."}
+
+    result = wa_abuse.submit_unlock_request(
+        user_id=user.id,
+        phone=normalized_wa,
+        reason=str(body.reason or "").strip(),
+        actor=f"user:{user.id}",
+    )
+    return {
+        "status": str(result.get("status") or "pending"),
+        "requested_at": result.get("requested_at"),
+        "message": "Unlock request submitted to admin.",
     }
 
 @api_router.post("/user/change-password")
@@ -16872,11 +16920,20 @@ async def handle_whatsapp_message(
                 db.commit()
             return {"reply": "Activity temporarily restricted. Please try again later.", "retry_after_seconds": 300}
         try:
-            celery_app.send_task(
+            task = celery_app.send_task(
                 "whatsapp_ocr_extract",
                 args=[upload_id, user.id, from_number, message_id, request_id],
                 queue="whatsapp",
                 countdown=12 if abuse_eval.get("slow_lane") else 0,
+            )
+            logger.info(
+                "wa_enqueue_ocr_success request_id=%s user_id=%s phone=%s message_id=%s upload_id=%s task_id=%s",
+                request_id,
+                user.id,
+                normalized_number,
+                message_id,
+                upload_id,
+                getattr(task, "id", None),
             )
             increment_metric("enqueue_success")
             wa_abuse.note_enqueued()
@@ -16933,7 +16990,7 @@ async def handle_whatsapp_message(
         return {"reply": "Thanks. Please send your math question now."}
 
     try:
-        celery_app.send_task(
+        task = celery_app.send_task(
             "whatsapp_solve",
             args=[user.id, from_number, text, upload_id, message_id, request_id],
             queue="whatsapp",
@@ -16948,6 +17005,7 @@ async def handle_whatsapp_message(
             normalized_number,
             message_id,
         )
+        logger.info("wa_enqueue_solve_task request_id=%s task_id=%s", request_id, getattr(task, "id", None))
         return {"reply": "Processing your problem now. I will reply shortly."}
     except Exception as exc:
         increment_metric("enqueue_failure")
