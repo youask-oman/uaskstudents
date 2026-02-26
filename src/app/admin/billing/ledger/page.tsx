@@ -24,6 +24,8 @@ type LedgerRow = {
   addons_cost: number;
   attempt_fee: number;
   total_cost: number;
+  balance_after?: number | null;
+  channel?: string | null;
   outcome: string;
   pricing_snapshot?: Record<string, unknown> | null;
   created_at: string;
@@ -288,10 +290,12 @@ export default function LedgerExplorerPage() {
                 <th className="px-3 py-2 text-left">Action</th>
                 <th className="px-3 py-2 text-left">User</th>
                 <th className="px-3 py-2 text-left">Tier</th>
+                <th className="px-3 py-2 text-left">Channel</th>
                 <th className="px-3 py-2 text-left">Request / Attempt</th>
                 <th className="px-3 py-2 text-left">Question</th>
                 <th className="px-3 py-2 text-left">Costs (Base+Addon+Fee)</th>
                 <th className="px-3 py-2 text-left">Total</th>
+                <th className="px-3 py-2 text-left">Balance After</th>
                 <th className="px-3 py-2 text-left">Outcome</th>
                 <th className="px-3 py-2 text-left">Ledger / Hold</th>
                 <th className="px-3 py-2 text-left">Created</th>
@@ -312,6 +316,11 @@ export default function LedgerExplorerPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3">{row.tier || "n/a"}</td>
+                    <td className="px-3 py-3">
+                      <span className="px-2 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800">
+                        {(row.channel || "app").toString().toLowerCase()}
+                      </span>
+                    </td>
                     <td className="px-3 py-3 font-mono text-[11px]">
                       <div>
                         {row.request_id ? (
@@ -342,6 +351,9 @@ export default function LedgerExplorerPage() {
                       {fmt(row.base_cost)} + {fmt(row.addons_cost)} + {fmt(row.attempt_fee)}
                     </td>
                     <td className="px-3 py-3 font-black text-rose-600 dark:text-rose-300">-{fmt(row.total_cost)}</td>
+                    <td className="px-3 py-3 font-mono text-[11px]">
+                      {row.balance_after !== null && row.balance_after !== undefined ? fmt(row.balance_after) : "n/a"}
+                    </td>
                     <td className="px-3 py-3">
                       <span className="px-2 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800">{row.outcome}</span>
                     </td>
@@ -372,13 +384,15 @@ export default function LedgerExplorerPage() {
                   </tr>
                   {expandedId === row.ledger_id && (
                     <tr key={`${row.ledger_id}-details`} className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50">
-                      <td colSpan={11} className="px-4 py-3">
+                      <td colSpan={13} className="px-4 py-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
                             <div className="font-semibold mb-2">Identifiers</div>
                             <div>idempotency_key: <span className="font-mono">{row.idempotency_key || "n/a"}</span></div>
                             <div>request_id: <span className="font-mono">{row.request_id || "n/a"}</span></div>
                             <div>attempt_id: <span className="font-mono">{row.attempt_id || "n/a"}</span></div>
+                            <div>channel: <span className="font-mono">{row.channel || "app"}</span></div>
+                            <div>balance_after: <span className="font-mono">{row.balance_after ?? "n/a"}</span></div>
                           </div>
                           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
                             <div className="font-semibold mb-2">Pricing Snapshot</div>
@@ -394,7 +408,7 @@ export default function LedgerExplorerPage() {
               ))}
               {loading && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-slate-500">Loading ledger...</td>
+                  <td colSpan={13} className="px-4 py-8 text-center text-slate-500">Loading ledger...</td>
                 </tr>
               )}
             </tbody>

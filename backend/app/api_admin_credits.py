@@ -23,8 +23,10 @@ from app.models import (
     PromptModeEnum,
     PromptTierEnum,
     StripePriceMap,
+    Subscription,
     TopUpProduct,
     TrimStrategyEnum,
+    UsageLedger,
     UsageLedgerV2,
     User,
 )
@@ -66,6 +68,18 @@ def _decode_cursor(cursor: Optional[str]) -> tuple[Optional[datetime], Optional[
 
 def _encode_cursor(created_at: datetime, entity_id: str) -> str:
     return f"{created_at.isoformat()}|{entity_id}"
+
+
+def _detect_channel(*, request_id: Optional[str], action: Optional[str], meta: Optional[dict] = None) -> str:
+    rid = str(request_id or "").strip().lower()
+    act = str(action or "").strip().lower()
+    meta_obj = meta if isinstance(meta, dict) else {}
+    meta_channel = str(meta_obj.get("channel") or "").strip().lower()
+    if meta_channel in {"whatsapp", "app"}:
+        return meta_channel
+    if rid.startswith("wa-") or rid.startswith("wa:") or "whatsapp" in act:
+        return "whatsapp"
+    return "app"
 
 
 class CursorPage(BaseModel):
@@ -256,6 +270,12 @@ def admin_credits_ledger(
             "addons_cost": float(r.addons_cost),
             "attempt_fee": float(r.attempt_fee),
             "total_cost": float(r.total_cost),
+            "balance_after": None,
+            "channel": _detect_channel(
+                request_id=r.request_id,
+                action=r.action,
+                meta=(r.pricing_snapshot if isinstance(r.pricing_snapshot, dict) else {}),
+            ),
             "outcome": r.outcome,
             "pricing_snapshot": r.pricing_snapshot,
             "created_at": r.created_at,
@@ -266,7 +286,7 @@ def admin_credits_ledger(
         next_cursor = _encode_cursor(rows[-1].created_at, rows[-1].ledger_id) if has_more and rows else None
         return CursorPage(items=items, next_cursor=next_cursor, limit=limit, total=total)
 
-    # Legacy fallback for environments still writing to BillingLedger/CreditHold.
+    # Legacy fallback for environments still writing to BillingLedger/CreditHold/UsageLedger.
     legacy_q = select(BillingLedger)
     legacy_count_q = select(func.count(BillingLedger.id))
     if user_id is not None:
@@ -317,29 +337,136 @@ def admin_credits_ledger(
         legacy_users = session.exec(select(User).where(User.id.in_(legacy_user_ids))).all()
         legacy_user_email_map = {int(u.id): u.email for u in legacy_users if u.id is not None}
 
-    legacy_items = [
-        {
-            "ledger_id": f"legacy_billing_{r.id}",
-            "user_id": r.user_id,
-            "user_email": legacy_user_email_map.get(r.user_id),
-            "hold_id": None,
-            "request_id": r.request_id,
-            "attempt_id": None,
-            "idempotency_key": r.idempotency_key,
-            "tier": r.tier,
-            "action": r.action_type,
-            "question_id": r.question_id,
-            "question_index": None,
-            "base_cost": 0.0,
-            "addons_cost": 0.0,
-            "attempt_fee": 0.0,
-            "total_cost": float(r.credits_charged or 0),
-            "outcome": (r.status or "").lower() or "charged",
-            "pricing_snapshot": r.pricing_snapshot_json,
-            "created_at": r.created_at,
-        }
-        for r in legacy_rows
-    ]
+    legacy_items: List[Dict[str, Any]] = []
+    for r in legacy_rows:
+        snap = r.pricing_snapshot_json if isinstance(r.pricing_snapshot_json, dict) else {}
+        base_cost = float(snap.get("base_cost") or snap.get("solve_base_cost") or 0)
+        addons_cost = float(snap.get("addons_cost") or snap.get("plot_addon_cost") or snap.get("verify_addon_cost") or 0)
+        attempt_fee_cost = float(snap.get("attempt_fee") or 0)
+        total_cost = float(r.credits_charged or 0)
+        if base_cost == 0 and addons_cost == 0 and attempt_fee_cost == 0 and total_cost > 0:
+            # Legacy BillingLedger does not always store a pricing snapshot breakdown.
+            base_cost = total_cost
+
+        legacy_items.append(
+            {
+                "ledger_id": f"legacy_billing_{r.id}",
+                "user_id": r.user_id,
+                "user_email": legacy_user_email_map.get(r.user_id),
+                "hold_id": None,
+                "request_id": r.request_id,
+                "attempt_id": None,
+                "idempotency_key": r.idempotency_key,
+                "tier": r.tier,
+                "action": r.action_type,
+                "question_id": r.question_id,
+                "question_index": None,
+                "base_cost": base_cost,
+                "addons_cost": addons_cost,
+                "attempt_fee": attempt_fee_cost,
+                "total_cost": total_cost,
+                "balance_after": float(r.credits_after or 0),
+                "channel": _detect_channel(
+                    request_id=r.request_id,
+                    action=r.action_type,
+                    meta=snap,
+                ),
+                "outcome": (r.status or "").lower() or "charged",
+                "pricing_snapshot": snap,
+                "created_at": r.created_at,
+            }
+        )
+
+    legacy_usage_q = (
+        select(UsageLedger, Subscription.user_id)
+        .join(Subscription, Subscription.id == UsageLedger.subscription_id)
+        .where(UsageLedger.transaction_type == "DEBIT")
+    )
+    if user_id is not None:
+        legacy_usage_q = legacy_usage_q.where(Subscription.user_id == user_id)
+    if request_id:
+        legacy_usage_q = legacy_usage_q.where(UsageLedger.reference_id == request_id.strip())
+    if date_from:
+        legacy_usage_q = legacy_usage_q.where(UsageLedger.created_at >= date_from)
+    if date_to:
+        legacy_usage_q = legacy_usage_q.where(UsageLedger.created_at <= date_to)
+    if cursor_dt:
+        legacy_usage_q = legacy_usage_q.where(UsageLedger.created_at <= cursor_dt)
+
+    usage_rows = session.exec(
+        legacy_usage_q.order_by(UsageLedger.created_at.desc(), UsageLedger.id.desc()).limit(limit * 3)
+    ).all()
+    usage_user_ids = {int(uid) for _, uid in usage_rows if uid is not None}
+    usage_user_email_map: Dict[int, str] = {}
+    if usage_user_ids:
+        usage_users = session.exec(select(User).where(User.id.in_(usage_user_ids))).all()
+        usage_user_email_map = {int(u.id): u.email for u in usage_users if u.id is not None}
+
+    usage_items: List[Dict[str, Any]] = []
+    for usage_row, usage_user_id in usage_rows:
+        meta_obj = usage_row.meta if isinstance(usage_row.meta, dict) else {}
+        req_id = str(usage_row.reference_id or "")
+        tier_token = str(meta_obj.get("requested_tier") or meta_obj.get("tier") or "").strip().upper() or None
+        action_token = str(meta_obj.get("action") or "").strip().lower() or None
+        if not action_token:
+            action_token = "whatsapp_solve" if _detect_channel(request_id=req_id, action="", meta=meta_obj) == "whatsapp" else "solve"
+        if tier and tier_token and tier_token != tier.upper():
+            continue
+        if action and action_token != action:
+            continue
+        usage_items.append(
+            {
+                "ledger_id": f"legacy_usage_{usage_row.id}",
+                "user_id": int(usage_user_id),
+                "user_email": usage_user_email_map.get(int(usage_user_id)),
+                "hold_id": None,
+                "request_id": req_id or None,
+                "attempt_id": None,
+                "idempotency_key": None,
+                "tier": tier_token,
+                "action": action_token,
+                "question_id": None,
+                "question_index": None,
+                "base_cost": float(usage_row.amount or 0),
+                "addons_cost": 0.0,
+                "attempt_fee": 0.0,
+                "total_cost": float(usage_row.amount or 0),
+                "balance_after": float(usage_row.balance_after or 0),
+                "channel": _detect_channel(
+                    request_id=req_id,
+                    action=action_token,
+                    meta=meta_obj,
+                ),
+                "outcome": "charged",
+                "pricing_snapshot": meta_obj,
+                "created_at": usage_row.created_at,
+            }
+        )
+
+    combined_items = legacy_items + usage_items
+    if cursor_dt and cursor_id:
+        combined_items = [
+            i
+            for i in combined_items
+            if (i.get("created_at") < cursor_dt)
+            or (i.get("created_at") == cursor_dt and str(i.get("ledger_id")) < str(cursor_id))
+        ]
+    combined_items.sort(key=lambda i: (i.get("created_at"), str(i.get("ledger_id"))), reverse=True)
+    combined_page = combined_items[:limit]
+    combined_has_more = len(combined_items) > limit
+    if combined_page:
+        next_cursor = (
+            _encode_cursor(combined_page[-1]["created_at"], str(combined_page[-1]["ledger_id"]))
+            if combined_has_more
+            else None
+        )
+        return CursorPage(
+            items=combined_page,
+            next_cursor=next_cursor,
+            limit=limit,
+            total=legacy_total + len(usage_items),
+        )
+
     legacy_next_cursor = (
         _encode_cursor(legacy_rows[-1].created_at, f"legacy_billing_{legacy_rows[-1].id}")
         if legacy_has_more and legacy_rows

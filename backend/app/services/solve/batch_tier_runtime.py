@@ -22,7 +22,7 @@ from app.models import (
     SystemConfig,
     User,
 )
-from app.services.llm.manager import LLMManager, get_configured_ollama_model, get_llm_manager
+from app.services.llm.manager import LLMManager, get_llm_manager
 from app.services.llm.clients import LLMProviderError
 from app.services.prompt_manager import prompt_manager
 from app.services.prompt_binding_policy import (
@@ -2478,21 +2478,20 @@ async def execute_batch_solve(
                 managed_prompt_cache_key = request_scoped_key
             else:
                 managed_prompt_cache_key = "pbk:" + hashlib.sha256(request_scoped_key.encode("utf-8")).hexdigest()[:48]
-    managed_prompt_variables = (
-        _build_managed_prompt_variables(
-            managed_prompt_variable_mapping,
-            runtime_request_id=runtime_request_id,
-            runtime_attempt_id=runtime_attempt_id,
-            external_tier=external_tier,
-            runtime_mode=runtime_mode,
-            runtime_graph=runtime_graph,
-            runtime_domain=runtime_domain,
-            runtime_lang=runtime_lang,
-            max_questions_allowed=max_questions_allowed,
-            normalized_questions=normalized_questions,
-        )
-        if managed_prompt_variable_mapping
-        else {}
+    # Always construct canonical runtime variables for managed prompts,
+    # even when explicit mapping is empty ({}), so QUESTION / QUESTIONS_JSON_ARRAY
+    # are still available for FINAL/STANDARD tiers.
+    managed_prompt_variables = _build_managed_prompt_variables(
+        managed_prompt_variable_mapping if isinstance(managed_prompt_variable_mapping, dict) else {},
+        runtime_request_id=runtime_request_id,
+        runtime_attempt_id=runtime_attempt_id,
+        external_tier=external_tier,
+        runtime_mode=runtime_mode,
+        runtime_graph=runtime_graph,
+        runtime_domain=runtime_domain,
+        runtime_lang=runtime_lang,
+        max_questions_allowed=max_questions_allowed,
+        normalized_questions=normalized_questions,
     )
     if external_tier == "SHORT_STEPS":
         if managed_prompt_variable_mapping:
@@ -2561,7 +2560,7 @@ async def execute_batch_solve(
         and (managed_prompt_use_latest or managed_prompt_version != "")
     )
     managed_prompt_runtime_active = managed_prompt_active
-    if managed_prompt_runtime_active and external_tier == "STANDARD":
+    if managed_prompt_runtime_active and external_tier != "SHORT_STEPS":
         mp_vars = managed_prompt_variables if isinstance(managed_prompt_variables, dict) else {}
         q_var = str(mp_vars.get("QUESTION") or mp_vars.get("question") or "").strip()
         qarr_var = str(
@@ -2922,23 +2921,9 @@ async def execute_batch_solve(
     ]
 
     llm_manager = get_llm_manager()
-    primary_provider = llm_manager.get_active_provider(session)
-    binding_provider = str(_bget("provider") or "").strip().lower()
-    provider_candidates: List[str] = [primary_provider]
-    if external_tier == "SHORT_STEPS":
-        # FREE batch solve v2 is pinned to OpenAI managed prompt.
-        provider_candidates = ["openai"]
-    ollama_first_tier = external_tier in {"SHORT_STEPS", "FINAL"}
-    if binding_provider in {"openai", "ollama"}:
-        provider_candidates = [binding_provider]
-        if binding_provider == "ollama" and _allow_openai_fallback_for_ollama_first_tiers():
-            provider_candidates.append("openai")
-    elif ollama_first_tier:
-        provider_candidates = ["ollama"]
-        if _allow_openai_fallback_for_ollama_first_tiers():
-            provider_candidates.append("openai")
-    elif (not local_sympy_enabled):
-        provider_candidates = [primary_provider]
+    # OpenAI-only solve path: always route batch solve output generation via OpenAI.
+    # This avoids Ollama text-mode extraction and keeps responses on schema-first output.
+    provider_candidates: List[str] = ["openai"]
     # Preserve order and remove accidental duplicates.
     seen: set[str] = set()
     provider_candidates = [p for p in provider_candidates if not (p in seen or seen.add(p))]
@@ -2948,7 +2933,7 @@ async def execute_batch_solve(
     client = llm_manager.get_client(provider_name)
     binding_features = _bget("features") if isinstance(_bget("features"), dict) else {}
     model_name = (model or str(binding_features.get("model") or "")).strip()
-    ollama_model_name = get_configured_ollama_model(external_tier) if "ollama" in provider_candidates else ""
+    ollama_model_name = ""
 
     def _ollama_direct_text_mode_active() -> bool:
         return provider_name == "ollama" and external_tier in {"SHORT_STEPS", "FINAL"}

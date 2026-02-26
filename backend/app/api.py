@@ -7078,8 +7078,12 @@ async def solve_v3_stream_endpoint(
     def _input_looks_incomplete(text: str) -> bool:
         re_mod = __import__("re")
         src = (text or "").replace("\r", "").strip()
+        # Allow concise but complete math prompts such as "2x+3=7" or "integrate x^2".
+        has_math_signal = bool(
+            re_mod.search(r"[=+\-*/^√∫]|\\b(solve|find|evaluate|simplify|differentiate|integrate|limit|derivative|factor)\\b", src.lower())
+        )
         if len(src) < 12:
-            return True
+            return not has_math_signal
         lowered = src.lower()
         if lowered.endswith(("...", "???", ":", ",", ";", " and", " or", " because")):
             return True
@@ -7095,7 +7099,7 @@ async def solve_v3_stream_endpoint(
             return True
         lines = [ln.strip() for ln in src.split("\n") if ln.strip()]
         if len(lines) == 1 and len(lines[0]) < 24 and "?" not in lines[0] and "=" not in lines[0]:
-            return True
+            return not has_math_signal
         return False
 
     trusted_ctx = body.trusted_context if isinstance(body.trusted_context, dict) else {}
@@ -7210,7 +7214,8 @@ async def solve_v3_stream_endpoint(
             }
             yield f"event: done\ndata: {json.dumps({'ok': False, 'error': err})}\n\n"
             return
-        if _input_looks_incomplete(raw_problem_text):
+        has_snap_source = bool(body.image_url or body.artifact_id or body.question_id)
+        if (not has_snap_source) and _input_looks_incomplete(raw_problem_text):
             err = {
                 "code": "incomplete_input",
                 "message": "Input looks incomplete. Please provide the full question before solve.",
@@ -16480,10 +16485,14 @@ async def admin_clear_whatsapp_monitor(admin: User = Depends(get_admin_user)):
 @api_router.get("/admin/whatsapp/monitor")
 async def whatsapp_monitor(
     request: Request,
-    limit: int = 50,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(15, ge=1, le=50),
     phone: Optional[str] = None,
     direction: Optional[str] = None,
+    user_id: Optional[int] = Query(None),
+    user_email: Optional[str] = Query(None),
     admin: User = Depends(get_admin_user),
+    session: Session = Depends(get_session),
 ):
     """
     Admin monitor: recent WhatsApp events + Celery queue length.
@@ -16497,11 +16506,60 @@ async def whatsapp_monitor(
         queue_len = None
         queue_len_whatsapp = None
 
+    raw_events = get_whatsapp_events(limit=200, phone=phone, direction=direction)
+
+    users_with_wa = session.exec(
+        select(User).where(User.whatsapp_number.is_not(None))
+    ).all()
+    phone_to_user: Dict[str, User] = {}
+    for u in users_with_wa:
+        wa = str(u.whatsapp_number or "").strip()
+        if not wa:
+            continue
+        phone_to_user[wa] = u
+        phone_to_user[re.sub(r"\D+", "", wa)] = u
+
+    enriched_events: List[Dict[str, Any]] = []
+    for evt in raw_events:
+        row = dict(evt or {})
+        from_raw = str(row.get("from") or "")
+        to_raw = str(row.get("to") or "")
+        from_norm = re.sub(r"\D+", "", from_raw)
+        to_norm = re.sub(r"\D+", "", to_raw)
+        matched_user = (
+            phone_to_user.get(from_raw)
+            or phone_to_user.get(from_norm)
+            or phone_to_user.get(to_raw)
+            or phone_to_user.get(to_norm)
+        )
+        if matched_user:
+            row["user_id"] = int(matched_user.id)
+            row["user_email"] = str(matched_user.email or "")
+        enriched_events.append(row)
+
+    if user_id is not None:
+        enriched_events = [
+            e for e in enriched_events if str(e.get("user_id") or "").strip() == str(user_id)
+        ]
+    if user_email and user_email.strip():
+        needle = user_email.strip().lower()
+        enriched_events = [
+            e for e in enriched_events if needle in str(e.get("user_email") or "").lower()
+        ]
+
+    total = len(enriched_events)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = enriched_events[start:end]
+
     return {
         "bot_status": whatsapp_service.get_status(),
         "queue_length": queue_len,
         "queue_length_whatsapp": queue_len_whatsapp,
-        "events": get_whatsapp_events(limit=limit, phone=phone, direction=direction),
+        "events": page_items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
         "server_time": datetime.utcnow().isoformat() + "Z",
     }
 

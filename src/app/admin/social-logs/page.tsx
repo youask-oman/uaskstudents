@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { API_BASE_URL } from "@/lib/api";
+import { parseApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface MonitorEvent {
     direction: "in" | "out";
@@ -14,6 +15,8 @@ interface MonitorEvent {
     ok?: boolean;
     error?: string;
     timestamp?: string;
+    user_id?: number;
+    user_email?: string;
 }
 
 interface MonitorResponse {
@@ -21,26 +24,41 @@ interface MonitorResponse {
     queue_length: number | null;
     queue_length_whatsapp?: number | null;
     events: MonitorEvent[];
+    total?: number;
+    page?: number;
+    page_size?: number;
     server_time?: string;
 }
 
 export default function SocialLogsPage() {
+    const { pushToast } = useToast();
     const [data, setData] = useState<MonitorResponse | null>(null);
     const [phoneFilter, setPhoneFilter] = useState("");
+    const [userEmailFilter, setUserEmailFilter] = useState("");
+    const [userIdFilter, setUserIdFilter] = useState("");
     const [directionFilter, setDirectionFilter] = useState("");
+    const [streaming, setStreaming] = useState(false);
+    const [page, setPage] = useState(1);
+    const pageSize = 15;
 
     const fetchData = useCallback(async () => {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-        const params = new URLSearchParams({ limit: "80" });
+        const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
         if (phoneFilter.trim()) params.set("phone", phoneFilter.trim());
+        if (userEmailFilter.trim()) params.set("user_email", userEmailFilter.trim());
+        if (userIdFilter.trim()) params.set("user_id", userIdFilter.trim());
         if (directionFilter) params.set("direction", directionFilter);
-        const res = await fetch(`${API_BASE_URL}/api/admin/whatsapp/monitor?${params.toString()}`, {
+        const res = await fetch(`/api/admin/whatsapp/monitor?${params.toString()}`, {
             headers,
         });
+        if (!res.ok) {
+            const err = await parseApiError(res);
+            throw new Error(err.message);
+        }
         const json = await res.json();
         setData(json);
-    }, [phoneFilter, directionFilter]);
+    }, [directionFilter, page, phoneFilter, userEmailFilter, userIdFilter]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -50,6 +68,26 @@ export default function SocialLogsPage() {
         const id = setInterval(fetchData, 5000);
         return () => clearInterval(id);
     }, [fetchData]);
+
+    useEffect(() => {
+        if (!streaming) return;
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const params = new URLSearchParams();
+        if (token) params.set("token", token);
+        const es = new EventSource(`/api/admin/whatsapp/monitor/stream?${params.toString()}`);
+        es.onmessage = () => {
+            void fetchData();
+        };
+        es.onerror = () => {
+            es.close();
+        };
+        return () => es.close();
+    }, [fetchData, streaming]);
+
+    const total = Number(data?.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const canPrev = page > 1;
+    const canNext = page < totalPages;
 
     return (
         <div className="p-8 max-w-6xl mx-auto">
@@ -62,19 +100,95 @@ export default function SocialLogsPage() {
                 <div className="flex flex-col md:flex-row md:items-center gap-3">
                     <input
                         value={phoneFilter}
-                        onChange={(e) => setPhoneFilter(e.target.value)}
+                        onChange={(e) => {
+                            setPhoneFilter(e.target.value);
+                            setPage(1);
+                        }}
                         placeholder="Filter by phone (e.g. 12345@s.whatsapp.net)"
                         className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-transparent text-sm"
                     />
+                    <input
+                        value={userEmailFilter}
+                        onChange={(e) => {
+                            setUserEmailFilter(e.target.value);
+                            setPage(1);
+                        }}
+                        placeholder="Filter by user email"
+                        className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-transparent text-sm"
+                    />
+                    <input
+                        value={userIdFilter}
+                        onChange={(e) => {
+                            setUserIdFilter(e.target.value);
+                            setPage(1);
+                        }}
+                        placeholder="Filter by user id"
+                        className="w-44 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-transparent text-sm"
+                    />
                     <select
                         value={directionFilter}
-                        onChange={(e) => setDirectionFilter(e.target.value)}
+                        onChange={(e) => {
+                            setDirectionFilter(e.target.value);
+                            setPage(1);
+                        }}
                         className="px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-transparent text-sm"
                     >
                         <option value="">All directions</option>
                         <option value="in">Inbound</option>
                         <option value="out">Outbound</option>
                     </select>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const params = new URLSearchParams({ limit: "200" });
+                            if (phoneFilter.trim()) params.set("phone", phoneFilter.trim());
+                            if (directionFilter) params.set("direction", directionFilter);
+                            const token = localStorage.getItem("token");
+                            if (token) params.set("token", token);
+                            window.location.href = `/api/admin/whatsapp/monitor/export?${params.toString()}`;
+                        }}
+                        className="px-4 py-2 rounded bg-slate-900 text-white text-sm"
+                    >
+                        Export CSV
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setStreaming((v) => !v)}
+                        className="px-4 py-2 rounded border border-slate-200 dark:border-slate-700 text-sm"
+                    >
+                        {streaming ? "Stop Live" : "Start Live"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            if (!confirm("Are you sure you want to clear the WhatsApp event monitor?")) return;
+                            const token = localStorage.getItem("token");
+                            const res = await fetch(`/api/admin/whatsapp/all`, {
+                                method: "DELETE",
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (!res.ok) {
+                                const err = await parseApiError(res);
+                                pushToast({
+                                    type: "error",
+                                    title: "Clear failed",
+                                    message: err.message,
+                                    requestId: err.requestId,
+                                });
+                                return;
+                            }
+                            setPage(1);
+                            await fetchData();
+                            pushToast({
+                                type: "success",
+                                title: "Monitor cleared",
+                                message: "WhatsApp events cleared successfully.",
+                            });
+                        }}
+                        className="px-4 py-2 rounded bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition-all"
+                    >
+                        Clear Monitor
+                    </button>
                 </div>
             </div>
 
@@ -91,6 +205,7 @@ export default function SocialLogsPage() {
                 <div className="p-4 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500">Events</p>
                     <p className="text-lg font-semibold text-slate-900 dark:text-white">{data?.events?.length || 0}</p>
+                    <p className="text-xs text-slate-500 mt-1">total matched: {total}</p>
                 </div>
             </div>
 
@@ -117,9 +232,34 @@ export default function SocialLogsPage() {
                             <div className="mt-1 text-xs text-slate-500">
                                 {evt.from ? `from: ${evt.from}` : ""} {evt.to ? `to: ${evt.to}` : ""}
                             </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                                {evt.user_id ? `user_id: ${evt.user_id}` : "user_id: n/a"}{" "}
+                                {evt.user_email ? `| user_email: ${evt.user_email}` : "| user_email: n/a"}
+                            </div>
                             {evt.error && <div className="mt-1 text-xs text-red-600">{evt.error}</div>}
                         </div>
                     ))}
+                </div>
+                <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <p className="text-xs text-slate-500">Page {page} of {totalPages} | 15 per page</p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            disabled={!canPrev}
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            className="px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-sm disabled:opacity-50"
+                        >
+                            Prev
+                        </button>
+                        <button
+                            type="button"
+                            disabled={!canNext}
+                            onClick={() => setPage((p) => p + 1)}
+                            className="px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-sm disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

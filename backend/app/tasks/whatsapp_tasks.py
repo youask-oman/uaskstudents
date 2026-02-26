@@ -86,19 +86,64 @@ def _format_steps_for_history(steps, final_text: str = "") -> str:
     return "\n".join(lines)
 
 
+def _has_meaningful_steps(steps: list) -> bool:
+    for step in steps or []:
+        if not isinstance(step, dict):
+            continue
+        title = str(step.get("title") or "").strip()
+        explanation = str(step.get("explanation") or "").strip()
+        math = step.get("math")
+        if title or explanation:
+            return True
+        if isinstance(math, dict) and any(str(v).strip() for v in math.values() if v is not None):
+            return True
+    return False
+
+
+def _normalize_whatsapp_tier(raw: Optional[str]) -> str:
+    token = str(raw or "").strip().lower()
+    if token in {"final", "final_only"}:
+        return "final"
+    return "short_steps"
+
+
+def _resolve_whatsapp_tier(user: User) -> str:
+    env_tier = os.getenv("WHATSAPP_SOLVE_TIER", "").strip()
+    if env_tier:
+        return _normalize_whatsapp_tier(env_tier)
+    return _normalize_whatsapp_tier(getattr(user, "subscription_tier", "short_steps"))
+
+
+def _log_whatsapp_billing_event(event: str, **fields) -> None:
+    payload = " ".join(f"{k}={fields[k]}" for k in sorted(fields.keys()))
+    logger.info("wa_billing_%s %s", event, payload)
+
+
 def _deduct_whatsapp_final_shot_credits(
     session: Session,
     *,
     user: User,
+    requested_tier: str,
+    requested_mode: str,
     source_type: str,
     reference_id: str,
 ):
+    tier_key = _normalize_whatsapp_tier(requested_tier)
+    mode_key = "minimal" if str(requested_mode or "").strip().lower() == "minimal" else "detailed"
+    _log_whatsapp_billing_event(
+        "debit_attempt",
+        user_id=user.id,
+        reference_id=reference_id,
+        tier=tier_key,
+        mode=mode_key,
+        source_type=source_type,
+    )
     entitlement = subscription_service.check_entitlement_and_debit(
         session,
         user.id,
         {
-            "tier": "short_steps",
-            "mode": "minimal",
+            "tier": tier_key,
+            "mode": mode_key,
             "source_type": source_type,
             "has_ocr": source_type in {"snap_image", "snap_pdf"},
             "has_voice": False,
@@ -108,6 +153,16 @@ def _deduct_whatsapp_final_shot_credits(
     if not entitlement.get("allowed"):
         reason = str(entitlement.get("reason") or "Action not allowed")
         error_code = str(entitlement.get("error_code") or "")
+        _log_whatsapp_billing_event(
+            "debit_denied",
+            user_id=user.id,
+            reference_id=reference_id,
+            tier=tier_key,
+            mode=mode_key,
+            source_type=source_type,
+            error_code=error_code or "UNKNOWN",
+            reason=reason,
+        )
         if error_code == "INSUFFICIENT_CREDITS":
             return False, None, 0.0, "Insufficient credits. Please top up or use the app."
         if error_code == "CAP_EXCEEDED":
@@ -120,14 +175,24 @@ def _deduct_whatsapp_final_shot_credits(
     meta.update(
         {
             "channel": "whatsapp",
-            "requested_tier": "short_steps",
-            "requested_mode": "minimal",
+            "requested_tier": tier_key,
+            "requested_mode": mode_key,
             "source_type": source_type,
             "has_ocr": source_type in {"snap_image", "snap_pdf"},
         }
     )
     subscription_service.execute_debit(session, subscription, cost, meta, reference_id)
     session.commit()
+    _log_whatsapp_billing_event(
+        "debit_success",
+        user_id=user.id,
+        subscription_id=getattr(subscription, "id", None),
+        reference_id=reference_id,
+        amount=cost,
+        tier=tier_key,
+        mode=mode_key,
+        source_type=source_type,
+    )
     return True, subscription, cost, ""
 
 @celery_app.task(
@@ -247,6 +312,7 @@ def whatsapp_solve(
     engine = create_engine(DATABASE_URL)
 
     use_latex = os.getenv("WHATSAPP_LATEX_RENDER_ENABLED", "false").lower() == "true"
+    deliver_steps = os.getenv("WHATSAPP_DELIVER_STEPS", "false").lower() == "true"
 
     with Session(engine) as session:
         user = session.get(User, user_id)
@@ -254,11 +320,16 @@ def whatsapp_solve(
             send_whatsapp_message(phone, "I couldn't verify your account. Please try again.")
             increment_metric("worker_failure")
             return "no_user"
+        effective_tier = _resolve_whatsapp_tier(user)
+        pipeline_mode = "final_only" if effective_tier == "final" else "free_minimal"
+        solver_tier = "FINAL" if effective_tier == "final" else "SHORT_STEPS"
         source_type = "snap_image" if upload_id else "text"
         reference_id = request_id or f"wa:{user.id}:{message_id or uuid.uuid4()}"
         allowed, subscription, charged_cost, deny_message = _deduct_whatsapp_final_shot_credits(
             session,
             user=user,
+            requested_tier=effective_tier,
+            requested_mode="minimal",
             source_type=source_type,
             reference_id=reference_id,
         )
@@ -272,8 +343,8 @@ def whatsapp_solve(
                 solve_text_questions(
                     session=session,
                     user_id=user.id,
-                    requested_mode="free_minimal",
-                    tier="SHORT_STEPS",
+                    requested_mode=pipeline_mode,
+                    tier=solver_tier,
                     questions=[{"question_id": request_id or str(uuid.uuid4()), "text": text}],
                 )
             )
@@ -289,8 +360,24 @@ def whatsapp_solve(
                         reference_id,
                     )
                     session.commit()
+                    _log_whatsapp_billing_event(
+                        "refund_success",
+                        user_id=user.id,
+                        subscription_id=getattr(subscription, "id", None),
+                        reference_id=reference_id,
+                        amount=charged_cost,
+                        reason="solve_pipeline_failed",
+                    )
                 except Exception:
                     session.rollback()
+                    _log_whatsapp_billing_event(
+                        "refund_failed",
+                        user_id=user.id,
+                        subscription_id=getattr(subscription, "id", None),
+                        reference_id=reference_id,
+                        amount=charged_cost,
+                        reason="solve_pipeline_failed",
+                    )
             send_whatsapp_message(phone, "Sorry, I hit an error solving that. Please try again.")
             increment_metric("worker_failure")
             return "solve_pipeline_failed"
@@ -306,8 +393,24 @@ def whatsapp_solve(
                         reference_id,
                     )
                     session.commit()
+                    _log_whatsapp_billing_event(
+                        "refund_success",
+                        user_id=user.id,
+                        subscription_id=getattr(subscription, "id", None),
+                        reference_id=reference_id,
+                        amount=charged_cost,
+                        reason="solve_failed",
+                    )
                 except Exception:
                     session.rollback()
+                    _log_whatsapp_billing_event(
+                        "refund_failed",
+                        user_id=user.id,
+                        subscription_id=getattr(subscription, "id", None),
+                        reference_id=reference_id,
+                        amount=charged_cost,
+                        reason="solve_failed",
+                    )
             send_whatsapp_message(phone, "Sorry, I encountered an error processing your problem. Please try again.")
             increment_metric("worker_failure")
             return "solve_failed"
@@ -322,7 +425,10 @@ def whatsapp_solve(
             final_answer = str(final_obj or "").strip()
         steps = first_solution.get("steps") if isinstance(first_solution.get("steps"), list) else []
 
-        if use_latex and (steps or final_answer):
+        # Tier-based delivery:
+        # - final: final-answer-only
+        # - short_steps: optional step navigation pack
+        if effective_tier == "short_steps" and deliver_steps and use_latex and _has_meaningful_steps(steps):
             normalized_steps = []
             for i, step in enumerate(steps, 1):
                 math = step.get("math") or {}
@@ -352,7 +458,7 @@ def whatsapp_solve(
             increment_metric("worker_success")
             return "ok"
 
-        reply = "*Solution (Short Steps):*\n"
+        reply = "*Final Answer:*\n"
         if final_answer:
             reply += final_answer
         elif steps:
@@ -367,10 +473,13 @@ def whatsapp_solve(
 
         reply += "\n\n_Need more help? Visit uask.ai_"
 
-        session.add(UsageLog(user_id=user.id, action_type="whatsapp_solve_short_steps", tokens_used=len(text.split()) + len(reply.split())))
+        action_type = "whatsapp_solve_final" if effective_tier == "final" else "whatsapp_solve_short_steps"
+        session.add(UsageLog(user_id=user.id, action_type=action_type, tokens_used=len(text.split()) + len(reply.split())))
         session.commit()
 
-        send_whatsapp_logo(phone)
+        send_brand_image = os.getenv("WHATSAPP_SEND_BRAND_IMAGE", "false").lower() == "true"
+        if send_brand_image:
+            send_whatsapp_logo(phone)
         send_whatsapp_message(phone, reply)
         _save_whatsapp_history(session, user, text, reply)
         increment_metric("worker_success")

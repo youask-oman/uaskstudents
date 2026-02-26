@@ -188,6 +188,7 @@ export default function AdminDashboardPage() {
     const [ollamaLoading, setOllamaLoading] = useState(false);
     const [ollamaDetailLoading, setOllamaDetailLoading] = useState(false);
     const [ollamaError, setOllamaError] = useState<string | null>(null);
+    const [ollamaLoadedOnce, setOllamaLoadedOnce] = useState(false);
     const baseUrl = API_BASE_URL;
     const router = useRouter();
     const settingsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -253,21 +254,21 @@ export default function AdminDashboardPage() {
         setOllamaLoading(true);
         setOllamaError(null);
         try {
-            const qs = buildQuery({ limit: 500, offset: 0, output_format: "freeform" });
+            const qs = buildQuery({ limit: 500, offset: 0 });
             const res = await fetchApi(`/api/v1/admin/solver-output-attempts?${qs}`, { headers: getAuthHeaders() });
             if (!res.ok) {
-                throw new Error("Failed to load Ollama output attempts.");
+                throw new Error("Failed to load OpenAI output attempts.");
             }
             const data = (await res.json()) as SolverOutputAttemptListItem[];
             const onlyOllama = (Array.isArray(data) ? data : []).filter(
-                (row) => (row.provider || "").toLowerCase() === "ollama"
+                (row) => (row.provider || "").toLowerCase() === "openai"
             );
             setOllamaRows(onlyOllama);
             if (onlyOllama.length === 0) {
                 setOllamaSelected(null);
             }
         } catch (err) {
-            setOllamaError((err as Error).message || "Unable to load Ollama output attempts.");
+            setOllamaError((err as Error).message || "Unable to load OpenAI output attempts.");
         } finally {
             setOllamaLoading(false);
         }
@@ -279,12 +280,12 @@ export default function AdminDashboardPage() {
         try {
             const res = await fetchApi(`/api/v1/admin/solver-output-attempts/${attemptId}`, { headers: getAuthHeaders() });
             if (!res.ok) {
-                throw new Error("Failed to load Ollama output details.");
+                throw new Error("Failed to load OpenAI output details.");
             }
             const data = (await res.json()) as SolverOutputAttemptDetail;
             setOllamaSelected(data);
         } catch (err) {
-            setOllamaError((err as Error).message || "Unable to load Ollama output details.");
+            setOllamaError((err as Error).message || "Unable to load OpenAI output details.");
         } finally {
             setOllamaDetailLoading(false);
         }
@@ -354,9 +355,10 @@ export default function AdminDashboardPage() {
 
     useEffect(() => {
         if (activeTab !== "ollama_output") return;
-        if (ollamaRows.length > 0 || ollamaLoading) return;
+        if (ollamaLoadedOnce || ollamaLoading) return;
+        setOllamaLoadedOnce(true);
         void loadOllamaRows();
-    }, [activeTab, loadOllamaRows, ollamaRows.length, ollamaLoading]);
+    }, [activeTab, loadOllamaRows, ollamaLoadedOnce, ollamaLoading]);
 
     const routingSeries = Array.isArray(routing?.series) ? routing.series : [];
     const maxVolume = routingSeries.length > 0
@@ -478,7 +480,7 @@ export default function AdminDashboardPage() {
                                 : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
                                 }`}
                         >
-                            Ollama Output
+                            OpenAI Output
                         </button>
                     </div>
                 </section>
@@ -849,8 +851,8 @@ export default function AdminDashboardPage() {
                     <section className="bg-white dark:bg-panel-dark border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-6">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Ollama Raw Output</h4>
-                                <p className="text-sm text-slate-500">Verbatim output saved in solver attempts (`provider=ollama`).</p>
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white">OpenAI Raw Output</h4>
+                                <p className="text-sm text-slate-500">Verbatim output saved in solver attempts (`provider=openai`).</p>
                             </div>
                             <button
                                 type="button"
@@ -871,9 +873,9 @@ export default function AdminDashboardPage() {
                             <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
                                 <div className="max-h-[560px] overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
                                     {ollamaLoading ? (
-                                        <div className="p-4 text-sm text-slate-500">Loading Ollama attempts...</div>
+                                        <div className="p-4 text-sm text-slate-500">Loading OpenAI attempts...</div>
                                     ) : ollamaRows.length === 0 ? (
-                                        <div className="p-4 text-sm text-slate-500">No Ollama attempts found.</div>
+                                        <div className="p-4 text-sm text-slate-500">No OpenAI attempts found.</div>
                                     ) : (
                                         ollamaRows.map((row) => (
                                             <button
@@ -898,7 +900,7 @@ export default function AdminDashboardPage() {
                                 {ollamaDetailLoading ? (
                                     <div className="text-sm text-slate-500">Loading output detail...</div>
                                 ) : !ollamaSelected ? (
-                                    <div className="text-sm text-slate-500">Select an Ollama attempt to see full raw output.</div>
+                                    <div className="text-sm text-slate-500">Select an OpenAI attempt to see full raw output.</div>
                                 ) : (
                                     <div className="flex flex-col gap-3">
                                         <pre className="text-[11px] whitespace-pre-wrap break-words bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3">

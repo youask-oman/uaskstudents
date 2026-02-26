@@ -358,6 +358,40 @@ def _ensure_solution_question_ids(solutions: List[Dict[str, Any]], requested_que
     return ordered
 
 
+def _coerce_batch_solutions(
+    result_payload: Dict[str, Any],
+    requested_questions: List[Dict[str, str]],
+) -> List[Dict[str, Any]]:
+    # Preferred batch shape.
+    raw = result_payload.get("solutions")
+    if isinstance(raw, list):
+        return [item for item in raw if isinstance(item, dict)]
+
+    # Common alternative shape from solve schemas.
+    items = result_payload.get("items")
+    if isinstance(items, list):
+        return [item for item in items if isinstance(item, dict)]
+
+    # Single-solution fallback shape.
+    if isinstance(result_payload, dict) and (
+        result_payload.get("question_id")
+        or result_payload.get("final_answer") is not None
+        or result_payload.get("steps") is not None
+    ):
+        return [dict(result_payload)]
+
+    # Last resort: build one minimal solution using first requested question id.
+    if requested_questions:
+        return [
+            {
+                "question_id": requested_questions[0]["question_id"],
+                "steps": [],
+                "final_answer": {"answer_text": ""},
+            }
+        ]
+    return []
+
+
 def _append_missing_solution_fallbacks(
     solutions: List[Dict[str, Any]],
     requested_questions: List[Dict[str, str]],
@@ -554,10 +588,10 @@ async def solve_text_questions(
         result_payload = validated
 
         if cfg.batch_supported:
-            raw_solutions = result_payload.get("solutions")
-            if not isinstance(raw_solutions, list):
+            raw_solutions = _coerce_batch_solutions(result_payload, normalized_questions)
+            if not raw_solutions:
                 error_code = "SCHEMA_INVALID"
-                raise SolveTextPipelineError("SCHEMA_INVALID", "Batch schema output missing solutions[]", 502)
+                raise SolveTextPipelineError("SCHEMA_INVALID", "Batch schema output missing solutions/items", 502)
             solutions = _ensure_solution_question_ids(raw_solutions, normalized_questions)
             solutions = _append_missing_solution_fallbacks(
                 solutions,
