@@ -417,7 +417,16 @@ const parseResultFromObject = (value: unknown): string | undefined => {
   const obj = asRecord(value);
   if (!obj) return undefined;
 
-  const finalAnswer = asRecord(asRecord(obj.solution)?.final_answer) || asRecord(obj.final_answer);
+  const finalAnswer =
+    asRecord(asRecord(obj.solution)?.final_answer) ||
+    asRecord(obj.final_answer) ||
+    (asString(obj.answer_text) || asString(obj.answer_latex)
+      ? ({
+          answer_text: asString(obj.answer_text) || "",
+          answer_latex: asString(obj.answer_latex) || "",
+          values: Array.isArray(obj.values) ? obj.values : [],
+        } as Record<string, unknown>)
+      : null);
   if (finalAnswer) {
     const candidate = cleanAnswerCandidate(
       asString(finalAnswer.latex) ||
@@ -799,7 +808,17 @@ const parseMathSolutionFromObject = (value: unknown): MathSolutionPayload | null
   const recognizedLatex = parseRecognizedLatexFromObject(obj);
   const plots = parsePlotFromObject(obj);
   const verificationChecks = parseVerificationChecks(obj);
-  const finalAnswer = parseFinalAnswerFromObject(obj.final_answer ?? asRecord(obj.solution)?.final_answer);
+  const finalAnswer = parseFinalAnswerFromObject(
+    obj.final_answer ??
+      asRecord(obj.solution)?.final_answer ??
+      (asString(obj.answer_text) || asString(obj.answer_latex)
+        ? {
+            answer_text: asString(obj.answer_text) || "",
+            answer_latex: asString(obj.answer_latex) || "",
+            values: Array.isArray(obj.values) ? obj.values : [],
+          }
+        : undefined)
+  );
   const plotPayload = asRecord(obj.plot) || undefined;
   const pythonCode =
     asString(obj.python_code) ||
@@ -1430,6 +1449,28 @@ export const extractBatchSolutionsFromSessionMessages = (
     }
 
     if (mode !== "batch_text_solve" && solutionsRaw.length === 0 && itemsRaw.length === 0) continue;
+    if (solutionsRaw.length === 0 && itemsRaw.length > 0) {
+      const parsedFromItems = itemsRaw
+        .map((entry, idx) => {
+          const itemObj = asRecord(entry);
+          if (!itemObj) return null;
+          const questionId = (asString(itemObj.question_id) || `q${idx + 1}`).trim() || `q${idx + 1}`;
+          const payload = parseMathSolutionFromObject(itemObj);
+          if (!payload) return null;
+          const questionText =
+            asString(itemObj.question_text) ||
+            asString(asRecord(itemObj.problem)?.original_text) ||
+            questionTextMap[questionId];
+          return {
+            questionId,
+            questionText,
+            solution: payload,
+          } as BatchSolutionItem;
+        })
+        .filter((entry): entry is BatchSolutionItem => Boolean(entry))
+        .sort((left, right) => sortBatchQuestionIds(left.questionId, right.questionId));
+      if (parsedFromItems.length > 0) return parsedFromItems;
+    }
     if (solutionsRaw.length === 0) {
       const shortDirect = parseMathSolutionFromObject(structured);
       if (shortDirect) {

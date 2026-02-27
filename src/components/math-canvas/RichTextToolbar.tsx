@@ -48,26 +48,27 @@ export default function RichTextToolbar({
   return (
     <div className={styles.richTextToolbar} data-no-export="true">
       {/* Group 1: Page & Export Actions (Align Left) */}
-      <button
-        type="button"
-        className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
-        onClick={() => {
-          if (window.confirm("Delete current page? This cannot be undone.")) {
-            onDeletePage();
-          }
-        }}
-        aria-label="Delete Page"
-        disabled={!canDeletePage}
-        style={{ height: 36, padding: "0 8px", minWidth: 90 }}
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
-          delete
-        </span>
-        <div className={styles.actionButtonTextCol}>
-          <span className={styles.actionTop} style={{ fontSize: 9 }}>Delete</span>
-          <span className={styles.actionBottom} style={{ fontSize: 12 }}>Page</span>
-        </div>
-      </button>
+      {canDeletePage ? (
+        <button
+          type="button"
+          className={`${styles.actionButtonDual} ${styles.actionButtonSecondary}`}
+          onClick={() => {
+            if (window.confirm("Delete current page? This cannot be undone.")) {
+              onDeletePage();
+            }
+          }}
+          aria-label="Delete Page"
+          style={{ height: 36, padding: "0 8px", minWidth: 90 }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }} aria-hidden="true">
+            delete
+          </span>
+          <div className={styles.actionButtonTextCol}>
+            <span className={styles.actionTop} style={{ fontSize: 9 }}>Delete</span>
+            <span className={styles.actionBottom} style={{ fontSize: 12 }}>Page</span>
+          </div>
+        </button>
+      ) : null}
 
       <button
         type="button"

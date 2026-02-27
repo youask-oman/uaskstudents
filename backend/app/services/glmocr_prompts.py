@@ -71,4 +71,3 @@ GLMOCR_TEXT_ONLY_CLEAN_PROMPT = os.getenv(
         "Keep math exactly. Do not solve."
     ),
 )
-

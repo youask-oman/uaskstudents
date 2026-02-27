@@ -26,6 +26,8 @@ const fallbackEvents = (text: string): RenderEvent[] => [
 const decodeEscapedMathText = (value: unknown): string => {
   let text = typeof value === "string" ? value : value == null ? "" : String(value);
   if (!text) return "";
+  // Recover a common corruption where "\text" became TAB + "ext".
+  text = text.replace(/\text(?=[({])/g, "\\text");
   text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
     try {
       return String.fromCodePoint(parseInt(hex, 16));
@@ -43,7 +45,6 @@ const decodeEscapedMathText = (value: unknown): string => {
   text = text
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
     .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
   return text;
 };
@@ -178,13 +179,19 @@ export default function ChatLikeSolvePlayer({ messageId, fallbackContent, anchor
                     return (
                       <tr key={`final-value-${idx}`}>
                         <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
-                          {label ? <UnifiedMathRenderer content={label} mode="inline" /> : "-"}
+                          {label ? (
+                            looksMathy(label) ? <UnifiedMathRenderer content={label} mode="inline" /> : <span>{label}</span>
+                          ) : "-"}
                         </td>
                         <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
-                          {valueText ? <UnifiedMathRenderer content={valueText} mode="inline" /> : "-"}
+                          {valueText ? (
+                            looksMathy(valueText) ? <UnifiedMathRenderer content={valueText} mode="inline" /> : <span>{valueText}</span>
+                          ) : "-"}
                         </td>
                         <td style={{ borderBottom: "1px solid #dcfce7", padding: "6px 8px", verticalAlign: "top" }}>
-                          {valueLatex ? <UnifiedMathRenderer content={valueLatex} mode="inline" /> : "-"}
+                          {valueLatex ? (
+                            looksMathy(valueLatex) ? <UnifiedMathRenderer content={valueLatex} mode="inline" /> : <span>{valueLatex}</span>
+                          ) : "-"}
                         </td>
                       </tr>
                     );

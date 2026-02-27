@@ -4,6 +4,7 @@ import React from "react";
 import { normalizeProseMath, autoFixMath } from "./mathNormalize";
 import { sanitizeLatex } from "../MathUtils";
 import { segmentMath } from "./mathSegment";
+import { assertLatexSafe } from "@/lib/latexSafety";
 import {
     markMalformedLatex,
 } from "./mathTelemetry";
@@ -106,7 +107,7 @@ const useMathSvgBatch = (jobs: Array<{ key: string; latex: string; inline: boole
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         items: pending.map((job) => ({
-                            tex: job.latex,
+                            tex: assertLatexSafe(job.latex, "UnifiedMathRenderer.batch"),
                             display: !job.inline,
                         })),
                     }),

@@ -3147,3 +3147,32 @@
   background-image: radial-gradient(circle, rgba(191, 211, 235, 0.95) 1.2px, transparent 1.2px) !important;
   background-size: 28px 28px !important;
 }
+
+/* Short-paper overflow safety: keep rendered playback always inside page width */
+.paperPageShortPaper .chatBubbleAssistant,
+.paperPageShortPaper .stepValue {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.paperPageShortPaper .chatBubbleAssistant :global(p),
+.paperPageShortPaper .stepValue :global(p) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.paperPageShortPaper .chatBubbleAssistant :global(span[role="img"]),
+.paperPageShortPaper .stepValue :global(span[role="img"]) {
+  display: inline-block !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  vertical-align: baseline !important;
+}
+
+.paperPageShortPaper .chatBubbleAssistant :global(svg),
+.paperPageShortPaper .stepValue :global(svg) {
+  max-width: 100% !important;
+  height: auto !important;
+}

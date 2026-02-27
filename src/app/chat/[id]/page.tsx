@@ -20,6 +20,7 @@ import { buildInitialDocumentState, createPageId, documentReducer } from "@/comp
 import { DEMO_SOLUTION } from "@/lib/mock-response";
 import { DEMO_BATCH_MESSAGES } from "@/lib/mock-batch-session";
 import { resolvePlaybackFromMessage, type PlaybackSegment } from "@/lib/chat_final_playback";
+import { fetchApi } from "@/lib/api";
 
 interface ChatSessionPayload {
   id: number | string;
@@ -589,7 +590,7 @@ export default function ChatFinalPage({ params }: { params: Promise<{ id: string
       const userId = Number(rawUserId);
       if (!Number.isFinite(userId) || userId <= 0) return;
       try {
-        const res = await fetch(`/api/v1/user/profile?user_id=${userId}`);
+        const res = await fetchApi(`/api/v1/user/profile?user_id=${userId}`);
         if (!res.ok) return;
         const payload = (await res.json()) as { preferred_language?: string | null };
         const lang = normalizeLanguageCode(payload.preferred_language || "");

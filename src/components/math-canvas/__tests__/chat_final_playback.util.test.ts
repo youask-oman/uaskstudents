@@ -63,5 +63,38 @@ describe("chat_final_playback resolver", () => {
     expect(resolved.content).toContain("\\boxed{0.9513}");
     expect(resolved.content).not.toContain("2*0.03");
   });
+
+  test("renders full question text and fallback answer fields for items payload", () => {
+    const msg: SessionMessage = {
+      id: "m-items",
+      role: "assistant",
+      content: "",
+      structured_data: {
+        items: [
+          {
+            question_id: "q1",
+            question_text: "Q1 full text",
+            status: "ok",
+            answer_text: "Answer one full text",
+            answer_latex: "x=1",
+          },
+          {
+            question_id: "q2",
+            question_text: "Q2 full text",
+            status: "ok",
+            answer_text: "Answer two full text",
+            answer_latex: "x=2",
+          },
+        ],
+      },
+    };
+
+    const resolved = resolvePlaybackFromMessage(msg);
+    expect(resolved.source).toBe("items_steps");
+    expect(resolved.content).toContain("Q1 full text");
+    expect(resolved.content).toContain("Q2 full text");
+    expect(resolved.content).toContain("x=1");
+    expect(resolved.content).toContain("x=2");
+  });
 });
 

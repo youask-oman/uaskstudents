@@ -115,6 +115,11 @@ export function convertBackendRenderEventsToStandard(
           push(id, at_ms, "PYTHON_CODE_SHOW", { code: asString(payload.code) });
         }
         break;
+      case "QUALITY_SET":
+        push(id, at_ms, "QUALITY_SET", {
+          quality: asRecord(payload.quality) || payload,
+        });
+        break;
       case "MESSAGE_END":
         push(id, at_ms, "MESSAGE_END", {});
         break;

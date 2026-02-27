@@ -31,6 +31,8 @@ const asString = (value: unknown): string => (typeof value === "string" ? value 
 const decodeEscapedMathText = (value: unknown): string => {
   let text = asString(value);
   if (!text) return "";
+  // Recover a common corruption where "\text" became TAB + "ext".
+  text = text.replace(/\text(?=[({])/g, "\\text");
   text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
     try {
       return String.fromCodePoint(parseInt(hex, 16));
@@ -48,7 +50,6 @@ const decodeEscapedMathText = (value: unknown): string => {
   text = text
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
     .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
   return text;
 };
@@ -421,6 +422,16 @@ export default function StandardChatSolvePlayer({
                     <ul style={{ paddingInlineStart: 18 }}>
                       {state.quality.warnings.map((entry, idx) => (
                         <li key={`warning-${idx}`}>{asString(entry)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {Array.isArray(state.quality.common_mistakes) && state.quality.common_mistakes.length > 0 ? (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>Common Mistakes</div>
+                    <ul style={{ paddingInlineStart: 18 }}>
+                      {state.quality.common_mistakes.map((entry, idx) => (
+                        <li key={`common-mistake-${idx}`}>{asString(entry)}</li>
                       ))}
                     </ul>
                   </div>

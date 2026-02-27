@@ -637,6 +637,31 @@ def _coerce_mode(value: Optional[str]) -> str:
     return "SOLVE"
 
 
+_SOLUTION_ITEM_MODE_ENUM = {
+    "SOLVE",
+    "SIMPLIFY",
+    "FACTOR",
+    "EXPAND",
+    "EVALUATE",
+    "DERIVATIVE",
+    "INTEGRAL",
+    "LIMIT",
+    "PLOT",
+    "PROOF",
+    "CHECK_WORK",
+    "OTHER",
+}
+
+
+def _coerce_solution_item_mode(value: Optional[str]) -> str:
+    raw = (value or "").strip().upper()
+    if raw in _SOLUTION_ITEM_MODE_ENUM:
+        return raw
+    if raw in {"GENERAL", "DEFAULT", "AUTO", "MATH"}:
+        return "SOLVE"
+    return "OTHER"
+
+
 def _replace_prompt_tokens(template: str, replacements: Dict[str, str]) -> str:
     out = template
     for key, val in replacements.items():
@@ -1882,6 +1907,308 @@ def _clean_question_text_for_local_solver(value: Any) -> str:
     return text
 
 
+def _final_answer_from_any(value: Any) -> Optional[Dict[str, Any]]:
+    def _build(answer_text: str, answer_latex: Optional[str] = None) -> Dict[str, Any]:
+        text = str(answer_text or "").strip()
+        latex = str(answer_latex or "").strip() or None
+        return {
+            "answer_text": text,
+            "answer_latex": latex,
+            "values": [],
+            "units": None,
+        }
+
+    if isinstance(value, dict):
+        answer_text = str(value.get("answer_text") or value.get("value") or value.get("answer") or "").strip()
+        answer_latex = str(value.get("answer_latex") or value.get("latex") or "").strip()
+        values = value.get("values") if isinstance(value.get("values"), list) else []
+        units = value.get("units")
+        if not answer_text and answer_latex:
+            answer_text = answer_latex
+        if answer_text or answer_latex or values:
+            return {
+                "answer_text": answer_text,
+                "answer_latex": answer_latex or None,
+                "values": values,
+                "units": units,
+            }
+        return None
+
+    if isinstance(value, str) and value.strip():
+        text = value.strip()
+        return _build(text, text if "\\" in text else None)
+
+    return None
+
+
+def _synthesize_final_answer(item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    direct = _final_answer_from_any(item.get("final_answer"))
+    if direct:
+        return direct
+
+    # New FINAL minimal schema can provide direct answer fields at item root.
+    direct_fields = _final_answer_from_any(
+        {
+            "answer_text": item.get("answer_text"),
+            "answer_latex": item.get("answer_latex"),
+            "value": item.get("value"),
+        }
+    )
+    if direct_fields:
+        return direct_fields
+
+    solution = item.get("solution")
+    if isinstance(solution, dict):
+        nested = _final_answer_from_any(solution.get("final_answer"))
+        if nested:
+            return nested
+
+    results = item.get("results")
+    if isinstance(results, dict):
+        for key in ("final_answer", "answer_text", "answer_latex", "result", "value", "output", "text"):
+            candidate = _final_answer_from_any(results.get(key))
+            if candidate:
+                return candidate
+        task_results = results.get("task_results") if isinstance(results.get("task_results"), list) else []
+        for task in task_results:
+            if not isinstance(task, dict):
+                continue
+            for key in ("final_answer", "answer_text", "answer_latex", "result", "value", "output", "text"):
+                candidate = _final_answer_from_any(task.get(key))
+                if candidate:
+                    return candidate
+
+    steps = item.get("steps") if isinstance(item.get("steps"), list) else []
+    for step in reversed(steps):
+        if not isinstance(step, dict):
+            continue
+        math_latex = step.get("math_latex")
+        if isinstance(math_latex, str) and math_latex.strip():
+            return _final_answer_from_any({"answer_text": math_latex.strip(), "answer_latex": math_latex.strip()})
+        if isinstance(math_latex, list):
+            for part in reversed(math_latex):
+                if isinstance(part, str) and part.strip():
+                    return _final_answer_from_any({"answer_text": part.strip(), "answer_latex": part.strip()})
+        for key in ("answer", "result", "output", "explanation"):
+            candidate = _final_answer_from_any(step.get(key))
+            if candidate:
+                return candidate
+
+    return None
+
+
+def _normalize_provider_batch_payload(
+    payload: Dict[str, Any],
+    *,
+    runtime_request_id: str,
+    runtime_attempt_id: str,
+    external_tier: str,
+    runtime_mode: str,
+    runtime_domain: str,
+    runtime_lang: str,
+    normalized_questions: List[Dict[str, Any]],
+    allowed_root_keys: Optional[set[str]] = None,
+    allow_item_question_text: bool = True,
+    allowed_item_keys: Optional[set[str]] = None,
+    prune_unknown_root_keys: bool = False,
+    prune_unknown_item_keys: bool = False,
+) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+
+    if prune_unknown_root_keys and isinstance(allowed_root_keys, set):
+        for k in list(payload.keys()):
+            if k not in allowed_root_keys:
+                payload.pop(k, None)
+
+    def _fill_root(key: str, value: str) -> None:
+        if allowed_root_keys is not None and key not in allowed_root_keys:
+            return
+        if allowed_root_keys is None and key not in payload:
+            return
+        existing = str(payload.get(key) or "").strip()
+        if not existing:
+            payload[key] = value
+
+    _fill_root("request_id", runtime_request_id)
+    _fill_root("attempt_id", runtime_attempt_id)
+    _fill_root("tier", external_tier)
+    _fill_root("mode", runtime_mode)
+    _fill_root("domain_mode", runtime_domain)
+    _fill_root("preferred_response_language", runtime_lang)
+
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return payload
+
+    for idx, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        if prune_unknown_item_keys and isinstance(allowed_item_keys, set):
+            for k in list(item.keys()):
+                if k not in allowed_item_keys:
+                    item.pop(k, None)
+        qsrc = normalized_questions[idx] if idx < len(normalized_questions) else {}
+        qid = str(item.get("question_id") or "").strip() or str((qsrc or {}).get("question_id") or f"q{idx + 1}")
+        qtext = str(item.get("question_text") or "").strip() or str((qsrc or {}).get("question_text") or "").strip()
+        item["question_id"] = qid
+        if qtext and allow_item_question_text:
+            item["question_text"] = qtext
+
+        # Keep normalization schema-safe pre-validation.
+        # Do not inject non-schema keys here (like final_answer) because
+        # newer FINAL minimal schemas may disallow additional properties.
+        # Canonical final_answer synthesis is handled later in _post_assertions.
+
+    return payload
+
+
+def _looks_like_min_final_batch_payload(payload: Dict[str, Any]) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    items = payload.get("items")
+    if not isinstance(items, list) or len(items) == 0:
+        return False
+    first = items[0] if isinstance(items[0], dict) else {}
+    if not isinstance(first, dict):
+        return False
+    keys = set(first.keys())
+    return bool({"status", "answer_text", "answer_latex"}.intersection(keys))
+
+
+def _adapt_min_final_payload_to_v2(
+    payload: Dict[str, Any],
+    *,
+    runtime_mode: str,
+    runtime_lang: str,
+    external_tier: str,
+    normalized_questions: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    src_items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    out_items: List[Dict[str, Any]] = []
+    for idx, raw_item in enumerate(src_items, start=1):
+        item = raw_item if isinstance(raw_item, dict) else {}
+        qsrc = normalized_questions[idx - 1] if idx - 1 < len(normalized_questions) else {}
+        qid = str(item.get("question_id") or qsrc.get("question_id") or f"q{idx}").strip() or f"q{idx}"
+        qtext = str(item.get("question_text") or qsrc.get("question_text") or "").strip() or qid
+        status = str(item.get("status") or "").strip().lower()
+        answer_text = str(item.get("answer_text") or "").strip()
+        answer_latex = str(item.get("answer_latex") or "").strip()
+        refusal_reason = str(item.get("refusal_reason") or "").strip() or None
+        safe_next_step = str(item.get("safe_next_step") or "").strip() or None
+        error_message = str(item.get("error_message") or "").strip() or None
+
+        is_refusal = status == "refusal"
+        if status == "error":
+            is_refusal = True
+            refusal_reason = refusal_reason or "error"
+            safe_next_step = safe_next_step or error_message or "Retry with clearer input."
+        if status == "ok" and not answer_text and not answer_latex:
+            is_refusal = True
+            refusal_reason = refusal_reason or "missing_final_answer"
+            safe_next_step = safe_next_step or "Retry with the same question."
+
+        final_answer: Optional[Dict[str, Any]]
+        if is_refusal:
+            final_answer = None
+        else:
+            final_answer = {
+                "answer_text": answer_text or answer_latex or "No answer returned.",
+                "answer_latex": answer_latex or (answer_text if "\\" in answer_text else None),
+                "values": [],
+                "units": None,
+            }
+
+        out_items.append(
+            {
+                "question_id": qid,
+                "question_index": idx,
+                "mode": _coerce_solution_item_mode(runtime_mode),
+                "problem": {
+                    "original_text": qtext,
+                    "normalized_text": qtext,
+                    "detected_tasks": _normalize_local_tasks(_infer_detected_tasks(qtext)),
+                    "extra": [],
+                },
+                "classification": {
+                    "grade_band": "undergraduate_upper",
+                    "domain": "other",
+                    "topic": "final answer",
+                    "difficulty": "medium",
+                },
+                "assumptions": [],
+                "steps": [],
+                "final_answer": final_answer,
+                "plot": {
+                    "should_visualize": False,
+                    "decision_reason": "no_plot_needed",
+                    "recipe": None,
+                },
+                "refusal": {
+                    "is_refusal": bool(is_refusal),
+                    "reason": refusal_reason,
+                    "safe_next_step": safe_next_step,
+                },
+                "quality": {
+                    "confidence": 0.72 if not is_refusal else 0.35,
+                    "common_mistakes": [],
+                },
+                "clarification": {
+                    "needs_clarification": False,
+                    "questions": [],
+                    "note": None,
+                },
+            }
+        )
+
+    return {
+        "schema_version": "v2",
+        "tier": str(external_tier or "FINAL").upper(),
+        "language": {
+            "user_language": runtime_lang,
+            "preferred_response_language": runtime_lang,
+            "response_language": runtime_lang,
+        },
+        "items": out_items,
+    }
+
+
+def _enforce_runtime_root_headers(
+    payload: Dict[str, Any],
+    *,
+    runtime_request_id: str,
+    runtime_attempt_id: str,
+    external_tier: str,
+    runtime_mode: str,
+    runtime_domain: str,
+    runtime_lang: str,
+    schema_name: Optional[str] = None,
+    schema_version: Optional[str] = None,
+    force_add_fields: bool = False,
+) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+
+    def _set_if_blank(key: str, value: Optional[str]) -> None:
+        if value is None:
+            return
+        if not force_add_fields and key not in payload:
+            return
+        existing = str(payload.get(key) or "").strip()
+        if not existing:
+            payload[key] = value
+
+    _set_if_blank("request_id", runtime_request_id)
+    _set_if_blank("attempt_id", runtime_attempt_id)
+    _set_if_blank("tier", external_tier)
+    _set_if_blank("mode", runtime_mode)
+    _set_if_blank("domain_mode", runtime_domain)
+    _set_if_blank("preferred_response_language", runtime_lang)
+    _set_if_blank("schema_name", (schema_name or "").strip() or None)
+    _set_if_blank("schema_version", (schema_version or "").strip() or None)
+    return payload
+
+
 def _post_assertions(
     payload: Dict[str, Any],
     *,
@@ -2074,6 +2401,12 @@ def _post_assertions(
             plot_obj["recipe"] = None
             item["plot"] = plot_obj
         if not bool(refusal.get("is_refusal")) and final_answer is None:
+            synthesized = _synthesize_final_answer(item)
+            if synthesized is not None:
+                item["final_answer"] = synthesized
+                final_answer = synthesized
+                logger.warning("batch_final_answer_synthesized item=%s", idx)
+        if not bool(refusal.get("is_refusal")) and final_answer is None:
             raise BatchSolveError(
                 f"final_answer must be non-null when refusal=false for item {idx}.",
                 status_code=502,
@@ -2136,12 +2469,13 @@ def _post_assertions(
 
         quality = item.get("quality") if isinstance(item.get("quality"), dict) else {}
         conf = quality.get("confidence")
-        if not isinstance(conf, (int, float)) or conf < 0 or conf > 1:
-            raise BatchSolveError(
-                f"quality.confidence out of range for item {idx}.",
-                status_code=502,
-                code="post_assert_failed",
-            )
+        if "quality" in solve_item_props and "confidence" in quality_props:
+            if not isinstance(conf, (int, float)) or conf < 0 or conf > 1:
+                raise BatchSolveError(
+                    f"quality.confidence out of range for item {idx}.",
+                    status_code=502,
+                    code="post_assert_failed",
+                )
         mistakes = quality.get("common_mistakes") if isinstance(quality.get("common_mistakes"), list) else []
         if tier == "FINAL" and "common_mistakes" in quality_props and len(mistakes) != 0:
             raise BatchSolveError(
@@ -2747,6 +3081,18 @@ async def execute_batch_solve(
                     questions=normalized_questions,
                     tier=external_tier,
                 )
+                local_payload = _enforce_runtime_root_headers(
+                    local_payload,
+                    runtime_request_id=runtime_request_id,
+                    runtime_attempt_id=runtime_attempt_id,
+                    external_tier=external_tier,
+                    runtime_mode=runtime_mode,
+                    runtime_domain=runtime_domain,
+                    runtime_lang=runtime_lang,
+                    schema_name=str(schema_wrapper.get("name") or _bget("output_schema_id") or external_tier),
+                    schema_version=schema_version_for_prompt,
+                    force_add_fields=True,
+                )
                 telemetry = {
                     "request_id": runtime_request_id,
                     "attempt_id": runtime_attempt_id,
@@ -3206,6 +3552,59 @@ async def execute_batch_solve(
                 },
             )
 
+        root_props = schema_body.get("properties") if isinstance(schema_body.get("properties"), dict) else {}
+        allowed_root_keys = set(root_props.keys()) if root_props else None
+        allow_item_question_text = True
+        allowed_item_keys: Optional[set[str]] = None
+        prune_unknown_item_keys = False
+        prune_unknown_root_keys = bool(root_props) and schema_body.get("additionalProperties") is False
+        try:
+            items_schema = root_props.get("items") if isinstance(root_props, dict) else None
+            item_schema_obj: Dict[str, Any] = {}
+            if isinstance(items_schema, dict):
+                item_schema_candidate = items_schema.get("items")
+                if isinstance(item_schema_candidate, dict):
+                    item_schema_obj = item_schema_candidate
+            if isinstance(item_schema_obj.get("$ref"), str) and str(item_schema_obj.get("$ref")).startswith("#/$defs/"):
+                def_key = str(item_schema_obj.get("$ref")).split("/")[-1]
+                defs = schema_body.get("$defs") if isinstance(schema_body.get("$defs"), dict) else {}
+                resolved = defs.get(def_key) if isinstance(defs, dict) else None
+                if isinstance(resolved, dict):
+                    item_schema_obj = resolved
+            item_props = item_schema_obj.get("properties") if isinstance(item_schema_obj.get("properties"), dict) else {}
+            allowed_item_keys = set(item_props.keys()) if item_props else None
+            prune_unknown_item_keys = bool(item_props) and item_schema_obj.get("additionalProperties") is False
+            allow_item_question_text = "question_text" in item_props
+        except Exception:
+            allow_item_question_text = True
+
+        payload_local = _normalize_provider_batch_payload(
+            payload_local,
+            runtime_request_id=runtime_request_id,
+            runtime_attempt_id=runtime_attempt_id,
+            external_tier=external_tier,
+            runtime_mode=runtime_mode,
+            runtime_domain=runtime_domain,
+            runtime_lang=runtime_lang,
+            normalized_questions=normalized_questions,
+            allowed_root_keys=allowed_root_keys,
+            allow_item_question_text=allow_item_question_text,
+            allowed_item_keys=allowed_item_keys,
+            prune_unknown_root_keys=prune_unknown_root_keys,
+            prune_unknown_item_keys=prune_unknown_item_keys,
+        )
+
+        if external_tier == "FINAL" and _looks_like_min_final_batch_payload(payload_local):
+            root_props = schema_body.get("properties") if isinstance(schema_body.get("properties"), dict) else {}
+            if isinstance(root_props, dict) and "language" in root_props and "request_id" not in root_props:
+                payload_local = _adapt_min_final_payload_to_v2(
+                    payload_local,
+                    runtime_mode=runtime_mode,
+                    runtime_lang=runtime_lang,
+                    external_tier=external_tier,
+                    normalized_questions=normalized_questions,
+                )
+
         errors_local = [] if relaxed_short_final else sorted(
             validator.iter_errors(payload_local), key=lambda e: e.path
         )
@@ -3235,6 +3634,37 @@ async def execute_batch_solve(
                     return extracted_payload, response_local, True
                 if relaxed_short_final:
                     return extracted_payload, response_local, True
+            if allow_repair_retry and provider_name in {"openai", "ollama"}:
+                repair_attempted_local = True
+                compact_errors = [
+                    {
+                        "path": "$" + "".join([f"[{repr(p)}]" for p in err.path]),
+                        "message": err.message,
+                    }
+                    for err in errors_local[:30]
+                ]
+                repair_context = (
+                    f"schema_validation_failed_errors: {json.dumps(compact_errors, ensure_ascii=False)}\n"
+                    f"expected_items_count: {len(normalized_questions)}\n"
+                    f"raw_response:\n{raw_local[:12000]}"
+                )
+                logger.warning(
+                    "batch_schema_validation_repair_retry request_id=%s attempt_id=%s provider=%s errors=%s",
+                    runtime_request_id,
+                    runtime_attempt_id,
+                    provider_name,
+                    compact_errors[:3],
+                )
+                repaired_response = await _call_provider(
+                    request_id_suffix="-schema-repair",
+                    force_json_only=True,
+                    repair_context=repair_context,
+                )
+                repaired_payload, repaired_response_obj, _ = await _parse_validate_response(
+                    repaired_response,
+                    allow_repair_retry=False,
+                )
+                return repaired_payload, repaired_response_obj, True
             raise BatchSolveError(
                 "Schema validation failed for provider payload.",
                 status_code=502,
@@ -3438,6 +3868,19 @@ async def execute_batch_solve(
             code="provider_unavailable",
             details={"providers_tried": provider_candidates},
         )
+
+    payload = _enforce_runtime_root_headers(
+        payload,
+        runtime_request_id=runtime_request_id,
+        runtime_attempt_id=runtime_attempt_id,
+        external_tier=external_tier,
+        runtime_mode=runtime_mode,
+        runtime_domain=runtime_domain,
+        runtime_lang=runtime_lang,
+        schema_name=str(schema_wrapper.get("name") or _bget("output_schema_id") or external_tier),
+        schema_version=schema_version_for_prompt,
+        force_add_fields=True,
+    )
 
     telemetry = {
         "request_id": runtime_request_id,

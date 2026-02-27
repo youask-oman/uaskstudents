@@ -59,6 +59,32 @@ const normalizeMathTokenForCompare = (value: string): string =>
     .trim()
     .toLowerCase();
 
+const hasBrokenInlineTextMath = (value: string): boolean => {
+  const text = stripProtocolMarkers(value || "");
+  if (!text) return false;
+  if (/[A-Za-z]{2,}\([^)]*\)[A-Za-z]{2,}/.test(text)) return true;
+  if (/,/.test(text) && /=/.test(text) && (text.match(/[A-Za-z]{4,}/g) || []).length >= 3) return true;
+  return false;
+};
+
+const normalizeBrokenInlineTextMath = (value: string): string =>
+  stripProtocolMarkers(value || "")
+    .replace(/([A-Za-z]{2,})\(/g, "$1 (")
+    .replace(/\)([A-Za-z]{2,})/g, ") $1")
+    .replace(/,\s*(?=[A-Za-z]\([^)]*\)\s*=)/g, ",\n")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+const collectCommonMistakes = (node: Record<string, unknown> | null | undefined): string[] => {
+  if (!node) return [];
+  const quality = asRecord(node.quality);
+  const mistakes = Array.isArray(quality?.common_mistakes) ? quality?.common_mistakes : [];
+  return mistakes
+    .map((item) => sanitizeInline(item))
+    .map((item) => normalizeBrokenInlineTextMath(item))
+    .filter((item) => item.length > 0);
+};
+
 const buildSegmentsFromSolutions = (structured: Record<string, unknown>): PlaybackResolution | null => {
   const solutions = Array.isArray(structured.solutions) ? structured.solutions : [];
   if (!solutions.length) return null;
@@ -123,6 +149,12 @@ const buildSegmentsFromSolutions = (structured: Record<string, unknown>): Playba
     segments.push({ kind: "final_answer", text: finalText });
   }
 
+  const mistakes = collectCommonMistakes(solution);
+  if (mistakes.length > 0) {
+    segments.push({ kind: "step_title", text: "Common Mistakes" });
+    mistakes.forEach((mistake) => segments.push({ kind: "markdown", text: `- ${mistake}` }));
+  }
+
   if (!segments.length) return null;
   const content = segmentsToMarkdown(segments);
   return {
@@ -137,43 +169,61 @@ const buildSegmentsFromItems = (structured: Record<string, unknown>): PlaybackRe
   const items = Array.isArray(structured.items) ? structured.items : [];
   if (!items.length) return null;
 
-  const item = items.map((raw) => asRecord(raw)).find(Boolean);
-  if (!item) return null;
+  const parsedItems = items.map((raw) => asRecord(raw)).filter((row): row is Record<string, unknown> => Boolean(row));
+  if (!parsedItems.length) return null;
 
-  const questionId = sanitizeInline(item.question_id || "q1") || "q1";
   const segments: PlaybackSegment[] = [];
-  segments.push({ kind: "markdown", text: `### ${questionId.toUpperCase()} (${questionId})` });
+  const trailingCommonMistakes: string[] = [];
+  const firstQuestionId = sanitizeInline(parsedItems[0]?.question_id || "q1") || "q1";
 
-  const steps = Array.isArray(item.steps) ? item.steps : [];
-  steps.forEach((rawStep, idx) => {
-    const step = asRecord(rawStep);
-    if (!step) return;
-    const stepIndex = Number(step.index);
-    const heading = sanitizeInline(step.title) || `Step ${Number.isFinite(stepIndex) ? stepIndex : idx + 1}`;
-    if (heading) {
-      segments.push({ kind: "step_title", text: heading });
-    }
-    const blocks = Array.isArray(step.blocks) ? step.blocks : [];
-    blocks.forEach((rawBlock) => {
-      const block = asRecord(rawBlock);
-      if (!block) return;
-      const text = sanitizeInline(block.content);
-      if (!text) return;
-      const kind = sanitizeInline(block.kind).toLowerCase();
-      if (kind === "math") {
-        segments.push({ kind: "math", text });
-        return;
+  parsedItems.forEach((item, idx) => {
+    const questionId = sanitizeInline(item.question_id || `q${idx + 1}`) || `q${idx + 1}`;
+    const questionText = sanitizeInline(item.question_text);
+    const heading = questionText
+      ? `### ${questionId.toUpperCase()} (${questionId})\n${questionText}`
+      : `### ${questionId.toUpperCase()} (${questionId})`;
+    segments.push({ kind: "markdown", text: heading });
+
+    const steps = Array.isArray(item.steps) ? item.steps : [];
+    steps.forEach((rawStep, stepIdx) => {
+      const step = asRecord(rawStep);
+      if (!step) return;
+      const stepIndex = Number(step.index);
+      const stepHeading = sanitizeInline(step.title) || `Step ${Number.isFinite(stepIndex) ? stepIndex : stepIdx + 1}`;
+      if (stepHeading) {
+        segments.push({ kind: "step_title", text: stepHeading });
       }
-      segments.push({ kind: "markdown", text });
+      const blocks = Array.isArray(step.blocks) ? step.blocks : [];
+      blocks.forEach((rawBlock) => {
+        const block = asRecord(rawBlock);
+        if (!block) return;
+        const text = sanitizeInline(block.content);
+        if (!text) return;
+        const kind = sanitizeInline(block.kind).toLowerCase();
+        if (kind === "math") {
+          segments.push({ kind: "math", text });
+          return;
+        }
+        segments.push({ kind: "markdown", text });
+      });
     });
+
+    const finalAnswer = asRecord(item.final_answer);
+    const finalText =
+      sanitizeInline(finalAnswer?.answer_latex) ||
+      sanitizeInline(finalAnswer?.answer_text) ||
+      sanitizeInline(item.answer_latex) ||
+      sanitizeInline(item.answer_text);
+    if (finalText) {
+      segments.push({ kind: "final_answer", text: finalText });
+    }
+    trailingCommonMistakes.push(...collectCommonMistakes(item));
   });
 
-  const finalAnswer = asRecord(item.final_answer);
-  const finalText =
-    sanitizeInline(finalAnswer?.answer_latex) ||
-    sanitizeInline(finalAnswer?.answer_text);
-  if (finalText) {
-    segments.push({ kind: "final_answer", text: finalText });
+  const uniqueMistakes = [...new Set(trailingCommonMistakes.map((m) => m.trim()).filter(Boolean))];
+  if (uniqueMistakes.length > 0) {
+    segments.push({ kind: "step_title", text: "Common Mistakes" });
+    uniqueMistakes.forEach((mistake) => segments.push({ kind: "markdown", text: `- ${mistake}` }));
   }
 
   if (!segments.length) return null;
@@ -182,7 +232,7 @@ const buildSegmentsFromItems = (structured: Record<string, unknown>): PlaybackRe
     source: "items_steps",
     content,
     segments,
-    questionId,
+    questionId: firstQuestionId,
   };
 };
 
@@ -247,8 +297,12 @@ export const segmentsToMarkdown = (segments: PlaybackSegment[]): string => {
       return;
     }
     if (seg.kind === "math") {
-      const mathBlock = text.startsWith("\\[") || text.startsWith("$$") ? text : `\\[\n${text}\n\\]`;
-      lines.push(mathBlock);
+      if (hasBrokenInlineTextMath(text)) {
+        lines.push(normalizeBrokenInlineTextMath(text));
+      } else {
+        const mathBlock = text.startsWith("\\[") || text.startsWith("$$") ? text : `\\[\n${text}\n\\]`;
+        lines.push(mathBlock);
+      }
       lines.push("");
       return;
     }

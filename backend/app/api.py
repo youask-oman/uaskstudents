@@ -84,6 +84,7 @@ from app.services.whatsapp.whatsapp_state import (
     get_upload_meta,
     create_pairing_code,
     get_pairing_code_for_user,
+    clear_pairing_code_for_user,
     consume_pairing_code,
     log_whatsapp_event,
     get_whatsapp_events,
@@ -2417,9 +2418,9 @@ async def get_token_policy_endpoint(session: Session = Depends(get_session)):
 async def get_ocr_engines_endpoint(session: Session = Depends(get_session)):
     runtime_cfg = get_active_ocr_config(session)
     default_engine = (
-        "glm_ocr"
-        if runtime_cfg.glm_ocr_engine_enabled
-        else ("pix2text" if runtime_cfg.local_engine_enabled else ("openai" if runtime_cfg.openai_engine_enabled else "pix2text"))
+        "openai"
+        if runtime_cfg.openai_engine_enabled
+        else ("pix2text" if runtime_cfg.local_engine_enabled else ("glm_ocr" if runtime_cfg.glm_ocr_engine_enabled else "pix2text"))
     )
     return OcrEngineAvailabilityResponse(
         local_engine_enabled=bool(runtime_cfg.local_engine_enabled),
@@ -3536,6 +3537,14 @@ async def _call_extract_questions(
         fallback_order=enabled_providers,
     )
     plan = build_provider_plan(engine_choice, routing_cfg)
+    # Safety guard: GLM OCR (Ollama) can crash at runtime for model-side GGML assertions.
+    # If GLM is selected directly, keep preference first but allow automatic fallback
+    # to other enabled providers so extraction does not hard-fail.
+    if plan == ["glm_ocr"]:
+        if "openai" in enabled_providers:
+            plan.append("openai")
+        if "pix2txt" in enabled_providers:
+            plan.append("pix2txt")
     if not plan:
         raise RuntimeError("No OCR providers enabled")
 
@@ -4416,22 +4425,36 @@ async def ocr_extract(
         ocr_job.quality_score = quality_score
         ocr_job.finished_at = datetime.utcnow()
         session.add(ocr_job)
-
-        cache_entry = OcrExtractionCache(
-            cache_key=dedupe_key,
-            user_id=user_id,
-            result_json={
-                "extracted_text": extracted_text,
-                "structured_json": payload,
-                "quality_score": quality_score,
-            },
-            meta={"ocr_job_id": job_id, "engine": engine_choice},
-            hit_count=1,
-            created_at=datetime.utcnow(),
-            last_hit_at=datetime.utcnow(),
-        )
-        session.add(cache_entry)
         session.commit()
+
+        # Cache write can race on identical dedupe_key under concurrent requests.
+        # Do not fail extraction if another request inserted the same key first.
+        try:
+            cache_entry = OcrExtractionCache(
+                cache_key=dedupe_key,
+                user_id=user_id,
+                result_json={
+                    "extracted_text": extracted_text,
+                    "structured_json": payload,
+                    "quality_score": quality_score,
+                },
+                meta={"ocr_job_id": job_id, "engine": engine_choice},
+                hit_count=1,
+                created_at=datetime.utcnow(),
+                last_hit_at=datetime.utcnow(),
+            )
+            session.add(cache_entry)
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            existing = session.exec(
+                select(OcrExtractionCache).where(OcrExtractionCache.cache_key == dedupe_key)
+            ).first()
+            if existing:
+                existing.last_hit_at = datetime.utcnow()
+                existing.hit_count = int(existing.hit_count or 0) + 1
+                session.add(existing)
+                session.commit()
         return OcrExtractResponse(
             ocr_attempt_id=job_id,
             status="completed",
@@ -4445,6 +4468,7 @@ async def ocr_extract(
         if isinstance(exc, HTTPException):
             raise
         logging.exception("ocr_extract failed")
+        session.rollback()
         ocr_job.status = "failed"
         ocr_job.error_code = "OCR_FAILED"
         ocr_job.error_message = str(exc)
@@ -11520,6 +11544,30 @@ async def issue_user_whatsapp_pairing_code(
         "pairing_code": code_payload["code"],
         "expires_in_seconds": int(code_payload["expires_in_seconds"]),
         "bot_number": bot_number,
+    }
+
+
+@api_router.post("/user/whatsapp/unlink")
+async def unlink_user_whatsapp(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    user = db.get(User, current_user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.whatsapp_number = None
+    user.whatsapp_enabled = False
+    db.add(user)
+    db.commit()
+
+    # Remove any pending pairing code for this user.
+    clear_pairing_code_for_user(user.id)
+
+    return {
+        "status": "ok",
+        "whatsapp_linked": False,
+        "whatsapp_enabled": False,
     }
 
 

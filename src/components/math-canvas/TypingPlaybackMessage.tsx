@@ -52,6 +52,60 @@ const safeSliceByCodePoints = (codePoints: string[], count: number): string => {
   return codePoints.slice(0, clamped).join("");
 };
 
+const hasBrokenInlineTextMath = (value: string): boolean => {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  if (/[A-Za-z]{2,}\([^)]*\)[A-Za-z]{2,}/.test(text)) return true;
+  if (/,/.test(text) && /=/.test(text) && (text.match(/[A-Za-z]{4,}/g) || []).length >= 3) return true;
+  return false;
+};
+
+const shouldUnwrapInlineProseMath = (value: string): boolean => {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  if (/\\text\{[^}]*\}/.test(text)) return true;
+  const words = (text.match(/[A-Za-z]{3,}/g) || []).length;
+  const hasEquationSignal = /[=,]/.test(text);
+  return words >= 4 && hasEquationSignal;
+};
+
+const normalizeBrokenInlineTextMath = (value: string): string =>
+  String(value || "")
+    // Recover TAB-corrupted "\text" tokens before spacing normalization.
+    .replace(/\text(?=[({])/g, "\\text")
+    .replace(/\\text\{([^}]*)\}/g, "$1")
+    .replace(/([A-Za-z]{2,})\(/g, "$1 (")
+    .replace(/\)([A-Za-z]{2,})/g, ") $1")
+    .replace(/,\s*(?=[A-Za-z]\([^)]*\)\s*=)/g, ",\n")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+const normalizeBrokenMathBlocksInMarkdown = (value: string): string => {
+  let out = String(value || "");
+  if (!out) return out;
+  // Fix plain streamed lines too, not only math-delimited blocks.
+  out = out
+    .split("\n")
+    .map((line) => (hasBrokenInlineTextMath(line) || /\text(?=[({])/.test(line) ? normalizeBrokenInlineTextMath(line) : line))
+    .join("\n");
+  out = out.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (_full, inner: string) => {
+    const body = String(inner || "").trim();
+    if (!hasBrokenInlineTextMath(body)) return _full;
+    return normalizeBrokenInlineTextMath(body);
+  });
+  out = out.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (_full, inner: string) => {
+    const body = String(inner || "").trim();
+    if (!hasBrokenInlineTextMath(body)) return _full;
+    return normalizeBrokenInlineTextMath(body);
+  });
+  out = out.replace(/\\\(\s*([^)]*?)\s*\\\)/g, (_full, inner: string) => {
+    const body = String(inner || "").trim();
+    if (!(hasBrokenInlineTextMath(body) || shouldUnwrapInlineProseMath(body))) return _full;
+    return normalizeBrokenInlineTextMath(body);
+  });
+  return out;
+};
+
 const isEscaped = (text: string, index: number): boolean => {
   let count = 0;
   let cursor = index - 1;
@@ -189,7 +243,9 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
         const data = (await res.json()) as PlaybackStateResponse;
         if (canceled) return;
         const serverText = typeof data.full_text === "string" ? data.full_text : "";
-        const text = serverText || effectiveFallbackText || "";
+        // Prefer freshly synthesized client-side segment markdown so renderer fixes
+        // (line wrapping / prose normalization) are reflected immediately.
+        const text = effectiveFallbackText || serverText || "";
         const cpLen = Array.from(text).length;
         const serverVisible = Number.isFinite(Number(data.visible_len)) ? Number(data.visible_len) : 0;
         const serverComplete = Boolean(data.is_complete);
@@ -278,7 +334,8 @@ export default function TypingPlaybackMessage({ messageId, fallbackContent, fall
     };
   }, [checkpoint]);
 
-  const rendered = safeSliceByCodePoints(codePoints, clampToSafeMathBoundary(fullText, visibleLen));
+  const renderedRaw = safeSliceByCodePoints(codePoints, clampToSafeMathBoundary(fullText, visibleLen));
+  const rendered = normalizeBrokenMathBlocksInMarkdown(renderedRaw);
   const showSkip = !loading && !shouldBypassPlayback && !isComplete && visibleLen < totalLen;
 
   return (

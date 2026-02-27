@@ -929,7 +929,12 @@ export default function CanvasWorkspace({
             }
             onActiveTextEditorChange={handleActiveTextEditorChange}
             onUpdateBlock={(blockId, updater) => dispatch({ type: "UPDATE_BLOCK", pageId: page.id, blockId, updater })}
-            onDeleteBlock={(blockId) => dispatch({ type: "DELETE_BLOCK", pageId: page.id, blockId })}
+            onDeleteBlock={(blockId) => {
+              const firstPageId = state.pages[0]?.id;
+              if (firstPageId && page.id === firstPageId) return;
+              dispatch({ type: "DELETE_BLOCK", pageId: page.id, blockId });
+            }}
+            isFirstPage={page.id === state.pages[0]?.id}
             viewMode={viewMode}
             isNew={page.id === newPageId}
             hideStepLabels={hideStepLabels}

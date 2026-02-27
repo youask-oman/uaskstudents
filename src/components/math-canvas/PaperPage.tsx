@@ -35,6 +35,7 @@ interface PaperPageProps {
   hideStepLabels?: boolean;
   finalHandwritten?: boolean;
   shortPaper?: boolean;
+  isFirstPage?: boolean;
 }
 
 interface Point {
@@ -363,6 +364,7 @@ export default function PaperPage({
   hideStepLabels = false,
   finalHandwritten = false,
   shortPaper = false,
+  isFirstPage = false,
 }: PaperPageProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -795,14 +797,16 @@ export default function PaperPage({
                       >
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        className={styles.blockActionButton}
-                        data-testid={`block-delete-${block.id}`}
-                        onClick={() => onDeleteBlock(block.id)}
-                      >
-                        Delete
-                      </button>
+                      {!isFirstPage ? (
+                        <button
+                          type="button"
+                          className={styles.blockActionButton}
+                          data-testid={`block-delete-${block.id}`}
+                          onClick={() => onDeleteBlock(block.id)}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                   {editingRecognition?.blockId === block.id ? (
@@ -858,14 +862,16 @@ export default function PaperPage({
                 <div key={block.id} id={block.id} className={styles.paperBlockWrap}>
                   {!finalHandwritten && !exportMode && viewMode === "edit" ? (
                     <div className={styles.paperBlockActions} data-no-export="true">
-                      <button
-                        type="button"
-                        className={styles.blockActionButton}
-                        data-testid={`block-delete-${block.id}`}
-                        onClick={() => onDeleteBlock(block.id)}
-                      >
-                        Delete
-                      </button>
+                      {!isFirstPage ? (
+                        <button
+                          type="button"
+                          className={styles.blockActionButton}
+                          data-testid={`block-delete-${block.id}`}
+                          onClick={() => onDeleteBlock(block.id)}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                   <SolutionStepsBlock
@@ -918,14 +924,16 @@ export default function PaperPage({
                       >
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        className={styles.blockActionButton}
-                        data-testid={`block-delete-${block.id}`}
-                        onClick={() => onDeleteBlock(block.id)}
-                      >
-                        Delete
-                      </button>
+                      {!isFirstPage ? (
+                        <button
+                          type="button"
+                          className={styles.blockActionButton}
+                          data-testid={`block-delete-${block.id}`}
+                          onClick={() => onDeleteBlock(block.id)}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                   {editingTextBlock?.blockId === block.id && viewMode === "edit" ? (

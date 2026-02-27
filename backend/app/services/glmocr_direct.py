@@ -119,6 +119,17 @@ async def run_glmocr_prompt(
     for attempt in range(1, OLLAMA_RETRIES + 1):
         started = time.perf_counter()
         try:
+            prompt_preview = " ".join(str(prompt or "").split())[:220]
+            logger.info(
+                "glmocr_prompt_start request_id=%s attempt=%s model=%s base_url=%s image_bytes=%s filename=%s prompt_preview=%s",
+                request_id,
+                attempt,
+                OLLAMA_MODEL,
+                OLLAMA_BASE_URL,
+                len(image_bytes),
+                filename or "",
+                prompt_preview,
+            )
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await _ollama_generate_once(
                     client=client,

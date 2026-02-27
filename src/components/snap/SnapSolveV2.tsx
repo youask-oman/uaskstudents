@@ -106,7 +106,7 @@ async function fetchApi(path: string, init?: RequestInit) {
 function normalizeExtractText(value: string): string {
     if (!value) return value;
     let text = decodeUnicodeEscapes(value);
-    text = text.replace(/\\n/g, "\n").replace(/\\r/g, "\r").replace(/\\t/g, "\t");
+    text = text.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
     text = text.replace(/\\\$/g, "$");
     text = text.replace(/\$/g, "");
     return text;

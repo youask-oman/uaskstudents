@@ -169,7 +169,6 @@ export default function SnapSolveInputPanel({ onResolveText, tier, requestedMode
         return value
             .replace(/\\n/g, "\n")
             .replace(/\\r/g, "\r")
-            .replace(/\\t/g, "\t")
             .replace(/\\\\/g, "\\")
             .replace(/âˆ’|−|—|–/g, "-")
             .replace(/÷/g, "\\div ")

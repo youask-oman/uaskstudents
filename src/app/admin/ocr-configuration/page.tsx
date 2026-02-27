@@ -57,6 +57,7 @@ export default function AdminOcrConfigurationPage() {
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9000';
 
     const [config, setConfig] = useState<OcrConfig | null>(null);
+    const [initialConfig, setInitialConfig] = useState<OcrConfig | null>(null);
     const [meta, setMeta] = useState<ConfigMeta | null>(null);
     const [history, setHistory] = useState<ConfigHistory[]>([]);
     const [prompts, setPrompts] = useState<PromptEntry[]>([]);
@@ -87,6 +88,7 @@ export default function AdminOcrConfigurationPage() {
             }
             const data = await res.json();
             setConfig(data.config);
+            setInitialConfig(data.config);
             setMeta(data.meta);
             setHistory(data.history || []);
             setPrompts(data.prompt_templates || []);
@@ -118,9 +120,33 @@ export default function AdminOcrConfigurationPage() {
         () => !config?.openai_engine_enabled || (Boolean(config?.openai_schema_key) && validSchemaKeys.has(config?.openai_schema_key || "")),
         [config, validSchemaKeys]
     );
+    const hasChanges = useMemo(() => {
+        if (!config || !initialConfig) return false;
+        return JSON.stringify(config) !== JSON.stringify(initialConfig);
+    }, [config, initialConfig]);
+
+    const openAiRelevantChanged = useMemo(() => {
+        if (!config || !initialConfig) return false;
+        return (
+            config.openai_engine_enabled !== initialConfig.openai_engine_enabled ||
+            config.openai_model !== initialConfig.openai_model ||
+            config.openai_system_prompt_key !== initialConfig.openai_system_prompt_key ||
+            config.openai_schema_key !== initialConfig.openai_schema_key
+        );
+    }, [config, initialConfig]);
+
+    const requiresOpenAiKeyValidation = useMemo(
+        () => Boolean(config?.openai_engine_enabled) && openAiRelevantChanged,
+        [config, openAiRelevantChanged]
+    );
+
     const canSave = useMemo(
-        () => Boolean(reason.trim()) && Boolean(config) && promptKeyValid && schemaKeyValid,
-        [reason, config, promptKeyValid, schemaKeyValid]
+        () =>
+            Boolean(reason.trim()) &&
+            Boolean(config) &&
+            hasChanges &&
+            (!requiresOpenAiKeyValidation || (promptKeyValid && schemaKeyValid)),
+        [reason, config, hasChanges, requiresOpenAiKeyValidation, promptKeyValid, schemaKeyValid]
     );
 
     const handleSave = async () => {
@@ -415,7 +441,7 @@ export default function AdminOcrConfigurationPage() {
                 </div>
                 {!canSave && config && (
                     <p className="text-xs text-slate-500">
-                        Save is disabled until reason is provided and prompt/schema keys are valid.
+                        Save is disabled until you provide a reason and make at least one change. OpenAI prompt/schema keys are only required when changing OpenAI settings while OpenAI OCR is enabled.
                     </p>
                 )}
             </section>

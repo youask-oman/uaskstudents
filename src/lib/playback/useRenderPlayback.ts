@@ -75,6 +75,8 @@ const getNow = (): number => (typeof performance !== "undefined" ? performance.n
 const decodeEscapedMathText = (value: string): string => {
   let text = String(value || "");
   if (!text) return "";
+  // Recover a common corruption where "\text" became a TAB + "ext" sequence.
+  text = text.replace(/\text(?=[({])/g, "\\text");
   text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
     try {
       return String.fromCodePoint(parseInt(hex, 16));
@@ -92,7 +94,6 @@ const decodeEscapedMathText = (value: string): string => {
   text = text
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
     .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
   return text;
 };

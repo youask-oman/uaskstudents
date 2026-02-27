@@ -130,4 +130,18 @@ describe("documentModel reducer", () => {
     expect(deletedLast.pages).toHaveLength(1);
     expect(deletedLast.pages[0].id).toBe(page1);
   });
+
+  test("never deletes the first page", () => {
+    const page1 = "page-1";
+    const page2 = "page-2";
+    const initial = buildInitialDocumentState([
+      { id: page1, blocks: [], elements: [] },
+      { id: page2, blocks: [], elements: [] },
+    ]);
+
+    const attempted = documentReducer(initial, { type: "DELETE_PAGE", pageId: page1 });
+    expect(attempted.pages).toHaveLength(2);
+    expect(attempted.pages[0].id).toBe(page1);
+    expect(attempted.pages[1].id).toBe(page2);
+  });
 });

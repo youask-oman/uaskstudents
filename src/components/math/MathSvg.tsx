@@ -2,6 +2,7 @@
 
 import React from "react";
 import DOMPurify from "dompurify";
+import { assertLatexSafe } from "@/lib/latexSafety";
 
 type MathSvgProps = {
   tex: string;
@@ -28,6 +29,15 @@ export default function MathSvg({ tex, display, className }: MathSvgProps) {
   });
 
   React.useEffect(() => {
+    let safeTex = "";
+    try {
+      safeTex = assertLatexSafe(tex, "MathSvg");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unsafe LaTeX input.";
+      setState({ status: "error", error: message });
+      return;
+    }
+
     const hit = responseCache.get(key);
     if (hit) {
       setState({ status: "ready", svg: hit });
@@ -40,7 +50,7 @@ export default function MathSvg({ tex, display, className }: MathSvgProps) {
     fetch("/api/v1/math/svg", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tex, display }),
+      body: JSON.stringify({ tex: safeTex, display }),
       signal: controller.signal,
     })
       .then(async (res) => {

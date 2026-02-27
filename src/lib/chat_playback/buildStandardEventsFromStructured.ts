@@ -193,9 +193,10 @@ export function buildStandardEventsFromStructuredData(
   if (quality) {
     const assumptions = Array.isArray(quality.assumptions) ? quality.assumptions : [];
     const warnings = Array.isArray(quality.warnings) ? quality.warnings : [];
+    const common_mistakes = Array.isArray(quality.common_mistakes) ? quality.common_mistakes : [];
     const confidence = typeof quality.confidence === "number" ? quality.confidence : null;
-    if (assumptions.length > 0 || warnings.length > 0 || confidence !== null) {
-      push("QUALITY_SET", { quality: { assumptions, warnings, confidence } }, 60);
+    if (assumptions.length > 0 || warnings.length > 0 || common_mistakes.length > 0 || confidence !== null) {
+      push("QUALITY_SET", { quality: { assumptions, warnings, common_mistakes, confidence } }, 60);
     }
   }
 
@@ -216,4 +217,3 @@ export function buildStandardEventsFromStructuredData(
   push("MESSAGE_END", {}, 120);
   return events;
 }
-

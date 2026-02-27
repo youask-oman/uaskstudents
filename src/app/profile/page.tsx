@@ -146,6 +146,7 @@ export default function ProfilePage() {
     const [whatsappUnlockRequested, setWhatsappUnlockRequested] = useState(false);
     const [whatsappUnlockRequestedAt, setWhatsappUnlockRequestedAt] = useState<string | null>(null);
     const [requestingUnlock, setRequestingUnlock] = useState(false);
+    const [unlinkingWhatsapp, setUnlinkingWhatsapp] = useState(false);
 
     // Security (password)
     const [currentPassword, setCurrentPassword] = useState("");
@@ -536,8 +537,8 @@ export default function ProfilePage() {
         if (!whatsappBotConnected) {
             pushToast({
                 type: "error",
-                title: "WhatsApp bot offline",
-                message: "Bot is offline. Ask admin to initialize WhatsApp first, then generate a pairing code.",
+                title: "WhatsApp offline",
+                message: "WhatsApp is offline. Ask admin to initialize WhatsApp first, then generate a pairing code.",
             });
             return;
         }
@@ -585,7 +586,7 @@ export default function ProfilePage() {
             pushToast({
                 type: "success",
                 title: "Pairing code ready",
-                message: "Send this code to the WhatsApp bot to link your number.",
+                message: "Send this code on WhatsApp to link your number.",
             });
         } catch (err) {
             pushToast({
@@ -644,6 +645,52 @@ export default function ProfilePage() {
             });
         } finally {
             setRequestingUnlock(false);
+        }
+    };
+
+    const handleUnlinkWhatsapp = async () => {
+        if (!whatsappLinked || unlinkingWhatsapp) return;
+        const confirmed = window.confirm("Unlink your WhatsApp account from UASK?");
+        if (!confirmed) return;
+        const token = getAuthToken();
+        if (!token) {
+            window.location.href = "/login?redirect=/profile";
+            return;
+        }
+        setUnlinkingWhatsapp(true);
+        try {
+            const res = await fetch(`${apiBaseUrl}/api/v1/user/whatsapp/unlink`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (res.status === 404) {
+                throw new Error("Unlink endpoint not found on backend. Restart/deploy backend to include /api/v1/user/whatsapp/unlink.");
+            }
+            if (!res.ok) {
+                const err = await parseApiError(res);
+                throw new Error(err.message);
+            }
+            setWhatsappLinked(false);
+            setWhatsappEnabled(false);
+            setPairingCode("");
+            setPairingCodeExpiresIn(null);
+            setWhatsappUnlockRequested(false);
+            setWhatsappUnlockRequestedAt(null);
+            pushToast({
+                type: "success",
+                title: "WhatsApp unlinked",
+                message: "Your WhatsApp account has been disconnected.",
+            });
+        } catch (err) {
+            pushToast({
+                type: "error",
+                title: "Unlink failed",
+                message: err instanceof Error ? err.message : "Unexpected error",
+            });
+        } finally {
+            setUnlinkingWhatsapp(false);
         }
     };
 
@@ -1242,7 +1289,7 @@ export default function ProfilePage() {
                                                         : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                                                 }`}
                                             >
-                                                {whatsappBotConnected ? "Bot Online" : "Bot Offline"}
+                                                {whatsappBotConnected ? "Online" : "Offline"}
                                             </span>
                                             <span
                                                 className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -1312,22 +1359,36 @@ export default function ProfilePage() {
                                         <div className="space-y-2">
                                             <p className="text-xs font-semibold text-green-900 dark:text-green-100">How to use:</p>
                                             {whatsappLinked ? (
-                                                <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
-                                                    <li>Open WhatsApp and send your problem to the bot number.</li>
-                                                    <li>You can send text questions or photos.</li>
-                                                    <li>Keep this toggle on to receive WhatsApp replies.</li>
-                                                </ol>
+                                                <div className="space-y-3">
+                                                    <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
+                                                    <li>Open WhatsApp and send your problem to the WhatsApp number.</li>
+                                                        <li>You can send text questions or photos.</li>
+                                                        <li>Keep this toggle on to receive WhatsApp replies.</li>
+                                                    </ol>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={handleUnlinkWhatsapp}
+                                                            disabled={unlinkingWhatsapp}
+                                                            className="px-3 py-2 text-xs font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60"
+                                                        >
+                                                            {unlinkingWhatsapp ? "Unlinking..." : "Unlink WhatsApp"}
+                                                        </button>
+                                                        <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                                                            Stop receiving messages on your current linked number.
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             ) : (
                                                 <div className="space-y-3">
                                                     <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
                                                         <li>Generate your one-time pairing code below.</li>
-                                                        <li>Open WhatsApp and send <code className="bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded">CODE XXXXXXXX</code> to the bot.</li>
-                                                        <li>Send from a different WhatsApp account than the bot account.</li>
+                                                        <li>Open WhatsApp and send <code className="bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded">CODE XXXXXXXX</code> to the WhatsApp number.</li>
+                                                        <li>Send from a different WhatsApp account than the connected WhatsApp account.</li>
                                                         <li>When linked, return here and enable WhatsApp Notifications.</li>
                                                     </ol>
                                                     <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-700 space-y-3">
                                                         <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                                                            Bot number: <span className="font-mono">{waDigits || "unknown"}</span>
+                                                            WhatsApp number: <span className="font-mono">{waDigits || "unknown"}</span>
                                                         </div>
                                                         <div className="flex items-center justify-between gap-3">
                                                             <div>
@@ -1349,7 +1410,7 @@ export default function ProfilePage() {
                                                         </div>
                                                         {!whatsappBotConnected ? (
                                                             <div className="text-[11px] text-amber-700 dark:text-amber-300">
-                                                                Bot is currently offline. Admin must initialize WhatsApp before linking can work.
+                                                                WhatsApp is currently offline. Admin must initialize WhatsApp before linking can work.
                                                             </div>
                                                         ) : null}
                                                         <div className="flex flex-wrap items-center gap-2">
@@ -1378,7 +1439,7 @@ export default function ProfilePage() {
                                                             </a>
                                                             {!waLink ? (
                                                                 <span className="text-[11px] text-amber-700 dark:text-amber-300">
-                                                                    Bot number not configured yet.
+                                                                    WhatsApp number not configured yet.
                                                                 </span>
                                                             ) : null}
                                                         </div>
@@ -1389,7 +1450,7 @@ export default function ProfilePage() {
                                     </div>
                                     {!whatsappBotConnected && (
                                         <div className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
-                                            WhatsApp Bot is not connected right now (status: {whatsappBotStatus}). User access is disabled until bot status is connected.
+                                            WhatsApp is not connected right now (status: {whatsappBotStatus}). User access is disabled until status is connected.
                                         </div>
                                     )}
                                     
@@ -1398,7 +1459,7 @@ export default function ProfilePage() {
                                             <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">sms</span>
                                             <div>
                                                 <p className="text-sm font-semibold">WhatsApp Notifications</p>
-                                                <p className="text-xs text-slate-500">Enable/disable WhatsApp bot responses</p>
+                                                <p className="text-xs text-slate-500">Enable/disable WhatsApp responses</p>
                                             </div>
                                         </div>
                                         <button

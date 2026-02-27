@@ -6,6 +6,7 @@ import StudentLayout from "@/components/layout/StudentLayout";
 import MathRenderer from "@/components/math/MathJaxRenderer";
 import ShareSolutionModal from "@/components/share/ShareSolutionModal";
 import { useToast } from "@/components/ui/ToastProvider";
+import { fetchApi, getAuthToken, parseApiError } from "@/lib/api";
 import {
     fetchWalletLedger,
     fetchWalletPrograms,
@@ -59,7 +60,6 @@ interface UserProfile {
     full_name?: string;
     usage?: UserUsage;
     is_public?: boolean;
-    learning_interests?: string[];
 }
 
 interface StatCard {
@@ -72,7 +72,6 @@ interface StatCard {
 
 type ProfileUpdate = {
     is_public?: boolean;
-    learning_interests?: string[];
 };
 
 function DashboardContent() {
@@ -118,8 +117,7 @@ function DashboardContent() {
     }, [tabParam]);
 
     const [isPublic, setIsPublic] = useState(false);
-    const [interests, setInterests] = useState<string[]>([]);
-    const [newInterest, setNewInterest] = useState("");
+    const [updatingPublic, setUpdatingPublic] = useState(false);
     const [historyPage, setHistoryPage] = useState(1);
     const historyPerPage = 10;
     const [historySearch, setHistorySearch] = useState("");
@@ -130,36 +128,46 @@ function DashboardContent() {
     const updateProfile = async (updates: ProfileUpdate) => {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
-        try {
-            await fetch(`/api/v1/user/profile?user_id=${userId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            });
-        } catch (e) {
-            console.error("Failed to update profile", e);
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error("Not authenticated");
+        }
+        const res = await fetchApi(`/api/v1/user/profile?user_id=${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(updates)
+        });
+        if (!res.ok) {
+            const err = await parseApiError(res);
+            throw new Error(err.message);
         }
     };
 
-    const togglePublic = () => {
+    const togglePublic = async () => {
+        if (updatingPublic) return;
         const newVal = !isPublic;
         setIsPublic(newVal);
-        updateProfile({ is_public: newVal });
-    };
-
-    const addInterest = () => {
-        if (!newInterest.trim()) return;
-        if (interests.includes(newInterest.trim())) return;
-        const updated = [...interests, newInterest.trim()];
-        setInterests(updated);
-        setNewInterest("");
-        updateProfile({ learning_interests: updated });
-    };
-
-    const removeInterest = (tag: string) => {
-        const updated = interests.filter(i => i !== tag);
-        setInterests(updated);
-        updateProfile({ learning_interests: updated });
+        setUpdatingPublic(true);
+        try {
+            await updateProfile({ is_public: newVal });
+            pushToast({
+                type: "success",
+                title: "Profile visibility updated",
+                message: newVal ? "Your profile is now public." : "Your profile is now hidden.",
+            });
+        } catch (e) {
+            setIsPublic(!newVal);
+            pushToast({
+                type: "error",
+                title: "Could not save visibility",
+                message: e instanceof Error ? e.message : "Unexpected error",
+            });
+        } finally {
+            setUpdatingPublic(false);
+        }
     };
 
     useEffect(() => {
@@ -190,11 +198,10 @@ function DashboardContent() {
                 }
 
                 // Fetch Profile Stats
-                const profileRes = await fetch(`/api/v1/user/profile?user_id=${userId}`);
+                const profileRes = await fetchApi(`/api/v1/user/profile?user_id=${userId}`);
                 if (profileRes.ok) {
                     const profile = (await profileRes.json()) as UserProfile;
                     setIsPublic(Boolean(profile.is_public));
-                    setInterests(profile.learning_interests || []);
                     const usage = profile.usage ?? { questions_count: 0, scans_count: 0 };
                     const problemsValue = usage.questions_count.toString();
                     const scansValue = usage.scans_count.toString();
@@ -315,6 +322,24 @@ function DashboardContent() {
             .filter(Boolean)
             .some(value => value!.toLowerCase().includes(normalizedHistorySearch)))
         : history;
+    const formatSessionInputForRender = (raw: string) => {
+        const text = raw.trim();
+        if (!text) return "No input";
+
+        const hasMathDelimiters = /\\\(|\\\[|\$[^$]+\$/.test(text);
+        const hasLatexCommands = /\\[a-zA-Z]+/.test(text);
+
+        if (!hasMathDelimiters && hasLatexCommands) {
+            return `$${text}$`;
+        }
+        return text;
+    };
+    const getSessionDisplayInput = (session: ChatSession) =>
+        formatSessionInputForRender(
+            (session.input && session.input.trim()) ||
+            (session.title && session.title.trim()) ||
+            "No input"
+        );
     const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / historyPerPage));
     const historyStart = (historyPage - 1) * historyPerPage;
     const pagedHistory = filteredHistory.slice(historyStart, historyStart + historyPerPage);
@@ -509,8 +534,8 @@ function DashboardContent() {
                         </div>
                     </div>
 
-                    {/* Profile & Interests Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Profile Section */}
+                    <div className="grid grid-cols-1 gap-6">
                         {/* Public Profile Card */}
                         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                             <div>
@@ -530,51 +555,10 @@ function DashboardContent() {
                                 </span>
                                 <button
                                     onClick={togglePublic}
+                                    disabled={updatingPublic}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isPublic ? 'bg-green-500' : 'bg-slate-300'}`}
                                 >
                                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isPublic ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Learning Interests Card */}
-                        <div className="md:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-lg">school</span>
-                                </div>
-                                <h3 className="font-bold text-sm">Learning Interests</h3>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {interests.map((tag, idx) => (
-                                    <div key={idx} className="flex items-center gap-1 pl-3 pr-1 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                        <span>{tag}</span>
-                                        <button onClick={() => removeInterest(tag)} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-red-500 transition-colors">
-                                            <span className="material-symbols-outlined text-[14px]">close</span>
-                                        </button>
-                                    </div>
-                                ))}
-                                {interests.length === 0 && (
-                                    <span className="text-xs text-slate-400 italic py-1">No interests added yet.</span>
-                                )}
-                            </div>
-
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={newInterest}
-                                    onChange={(e) => setNewInterest(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && addInterest()}
-                                    placeholder="Add a topic (e.g. Calculus, Physics)..."
-                                    className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm px-4 py-2 focus:ring-2 focus:ring-primary/50 outline-none"
-                                />
-                                <button
-                                    onClick={addInterest}
-                                    disabled={!newInterest.trim()}
-                                    className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                >
-                                    Add
                                 </button>
                             </div>
                         </div>
@@ -649,8 +633,8 @@ function DashboardContent() {
                                                                     </span>
                                                                 </div>
                                                                 <div className="min-w-0 flex-1">
-                                                                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200" title={session.input}>
-                                                                        <MathRenderer content={session.input && session.input.length > 100 ? session.input.substring(0, 100) + "..." : (session.input || "No input")} mode="prose" />
+                                                                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 line-clamp-2" title={getSessionDisplayInput(session)}>
+                                                                        <MathRenderer content={getSessionDisplayInput(session)} mode="prose" simple />
                                                                     </div>
                                                                     {session.is_saved && (
                                                                         <span className="mt-1 inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold rounded">Saved</span>
@@ -777,11 +761,11 @@ function DashboardContent() {
                                                         <span className="material-symbols-outlined">bookmark</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-semibold truncate">
-                                                            <MathRenderer content={session.title} mode="prose" />
-                                                        </h4>
+                                                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 line-clamp-2" title={getSessionDisplayInput(session)}>
+                                                            <MathRenderer content={getSessionDisplayInput(session)} mode="prose" simple />
+                                                        </div>
                                                         <p className="text-xs text-slate-500 capitalize">
-                                                            {session.subject || "Math"} • {new Date(session.created_at).toLocaleDateString()}
+                                                            {session.subject || "Math"} | {new Date(session.created_at).toLocaleDateString()}
                                                         </p>
                                                     </div>
                                                     <div className="flex gap-2">

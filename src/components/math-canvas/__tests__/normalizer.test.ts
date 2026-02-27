@@ -1,4 +1,4 @@
-import { normalizeAssistantMessage } from "@/components/math-canvas/normalizer";
+import { extractBatchSolutionsFromSessionMessages, normalizeAssistantMessage } from "@/components/math-canvas/normalizer";
 import { SessionMessage } from "@/components/math-canvas/types";
 
 describe("math-canvas normalizer", () => {
@@ -393,7 +393,7 @@ To verify the identity, we can consider a specific value of \\(x\\). Let's choos
     const solutionItem = normalized.items.find((item) => item.type === "math_solution");
     expect(solutionItem).toBeDefined();
     if (!solutionItem || solutionItem.type !== "math_solution") return;
-    expect(solutionItem.payload.originalProblem).toBe("Linear equation");
+    expect(solutionItem.payload.originalProblem).toBe("Solve x+1=3");
     expect(solutionItem.payload.steps.length).toBeGreaterThanOrEqual(2);
     expect(solutionItem.payload.steps[0].explanation).toContain("Subtract 1");
     expect(solutionItem.payload.steps[0].mathLatex).toContain("x=2");
@@ -401,6 +401,67 @@ To verify the identity, we can consider a specific value of \\(x\\). Let's choos
     expect(solutionItem.payload.finalAnswer?.values?.[0]?.label).toBe("x");
     expect(solutionItem.payload.finalAnswer?.values?.[0]?.value_latex).toBe("2");
     expect(solutionItem.payload.finalAnswer?.values?.[0]?.value).toBe(2);
+  });
+
+  test("parses final-tier minimal item answer_text/answer_latex without final_answer wrapper", () => {
+    const assistant: SessionMessage = {
+      role: "assistant",
+      content: "",
+      structured_data: {
+        items: [
+          {
+            question_id: "q1",
+            question_text: "Full question text",
+            status: "ok",
+            answer_text: "Full answer text",
+            answer_latex: "x=1",
+          },
+        ],
+      },
+    };
+
+    const normalized = normalizeAssistantMessage(assistant, 11);
+    const solutionItem = normalized.items.find((item) => item.type === "math_solution");
+    expect(solutionItem).toBeDefined();
+    if (!solutionItem || solutionItem.type !== "math_solution") return;
+    expect(solutionItem.payload.originalProblem).toBe("Full question text");
+    expect(solutionItem.payload.finalAnswer?.answer_text).toBe("Full answer text");
+    expect(solutionItem.payload.finalAnswer?.answer_latex).toBe("x=1");
+  });
+
+  test("extracts batch solutions from items[] when solutions[] is absent", () => {
+    const messages: SessionMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        structured_data: {
+          mode: "batch_text_solve",
+          items: [
+            {
+              question_id: "q1",
+              question_text: "Question one full text",
+              answer_text: "Answer one",
+              answer_latex: "x=1",
+            },
+            {
+              question_id: "q2",
+              question_text: "Question two full text",
+              answer_text: "Answer two",
+              answer_latex: "x=2",
+            },
+          ],
+        },
+      },
+    ];
+
+    const out = extractBatchSolutionsFromSessionMessages(messages);
+    expect(out).toHaveLength(2);
+    expect(out[0]?.questionId).toBe("q1");
+    expect(out[0]?.questionText).toBe("Question one full text");
+    expect(out[0]?.solution.finalAnswer?.answer_text).toBe("Answer one");
+    expect(out[1]?.questionId).toBe("q2");
+    expect(out[1]?.questionText).toBe("Question two full text");
+    expect(out[1]?.solution.finalAnswer?.answer_text).toBe("Answer two");
   });
 
   test("captures recipe expression for equation-style rendering", () => {

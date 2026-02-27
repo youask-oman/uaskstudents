@@ -985,7 +985,8 @@ def admin_patch_prompt_binding(
     if not binding:
         raise HTTPException(status_code=404, detail="Binding not found")
 
-    changed_keys = {k for k, v in body.model_dump().items() if k != "reason" and v is not None}
+    patch_data = body.model_dump(exclude_unset=True)
+    changed_keys = {k for k in patch_data.keys() if k != "reason"}
     role = _role(current_user)
     if changed_keys and role not in {"superadmin", "admin"}:
         raise HTTPException(status_code=403, detail="Only admin/superadmin can modify prompt bindings")
@@ -999,8 +1000,8 @@ def admin_patch_prompt_binding(
         "attempt_fee": float(getattr(binding, "attempt_fee", 0) or 0),
     }
 
-    for key, value in body.model_dump().items():
-        if key in {"reason"} or value is None:
+    for key, value in patch_data.items():
+        if key == "reason":
             continue
         if not hasattr(binding, key):
             continue

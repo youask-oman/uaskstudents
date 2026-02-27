@@ -129,11 +129,30 @@ const shouldRenderAsProse = (value: string): boolean => {
   return false;
 };
 
+const hasBrokenInlineTextMath = (value: string): boolean => {
+  const text = (value || "").trim();
+  if (!text) return false;
+  // Typical broken model output: ext(forA)isnotimplied, foo(bar)baz
+  if (/[A-Za-z]{2,}\([^)]*\)[A-Za-z]{2,}/.test(text)) return true;
+  // Comma-separated equation clauses carrying prose tokens are better in prose mode.
+  if (/,/.test(text) && /=/.test(text) && (text.match(/[A-Za-z]{4,}/g) || []).length >= 3) return true;
+  return false;
+};
+
+const normalizeBrokenInlineTextMath = (value: string): string =>
+  (value || "")
+    .replace(/([A-Za-z]{2,})\(/g, "$1 (")
+    .replace(/\)([A-Za-z]{2,})/g, ") $1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
 const normalizeValueLabel = (value: string): string => (value || "").replace(/_/g, " ").trim();
 
 const decodeEscapedMathText = (value: string): string => {
   let text = String(value || "");
   if (!text) return "";
+  // Recover a common corruption where "\text" became TAB + "ext".
+  text = text.replace(/\text(?=[({])/g, "\\text");
   text = text.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex: string) => {
     try {
       return String.fromCodePoint(parseInt(hex, 16));
@@ -151,7 +170,6 @@ const decodeEscapedMathText = (value: string): string => {
   text = text
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
     .replace(/\\\\([a-zA-Z]+)/g, "\\$1");
   return text;
 };
@@ -423,14 +441,46 @@ export default function SolutionStepsBlock({
 
   if (finalHandwritten) {
     const finalValue = displayAnswerLatex || displayAnswerText || result || "";
-    const finalMode = shouldRenderAsProse(finalValue) ? "prose" : "block";
+    const finalMode = (shouldRenderAsProse(finalValue) || hasBrokenInlineTextMath(finalValue)) ? "prose" : "block";
+    const finalBlocks = finalMode === "block" ? parseLatexToBlocks(finalValue) : [];
     return (
       <div className={styles.stepsBlockFinalHandwritten} ref={rootRef}>
         <div className={styles.finalDividerFinalHandwritten} />
         <div className={styles.resultMetaFinalHandwritten}>RESULT</div>
         <div className={styles.resultContentFinalHandwritten}>
-          <MathRenderer content={finalValue} mode={finalMode} />
+          {finalMode === "prose" ? (
+            <MathRenderer content={normalizeBrokenInlineTextMath(finalValue)} mode="prose" />
+          ) : finalBlocks.length > 1 ? (
+            finalBlocks.map((block, idx) =>
+              block.kind === "math" ? (
+                <div key={`final-hand-math-${idx}`}>
+                  <MathRenderer content={block.latex} mode="block" />
+                </div>
+              ) : (
+                <div key={`final-hand-text-${idx}`}>
+                  <MathRenderer content={block.text} mode="prose" />
+                </div>
+              )
+            )
+          ) : (
+            <MathRenderer content={finalValue} mode="block" />
+          )}
         </div>
+        {Array.isArray(commonMistakes) && commonMistakes.length > 0 ? (
+          <>
+            <div className={styles.finalDividerFinalHandwritten} />
+            <div className={styles.resultMetaFinalHandwritten}>COMMON MISTAKES</div>
+            <div style={{ paddingLeft: 20 }}>
+              <ul style={{ margin: 0, paddingLeft: 16, listStyleType: "disc", lineHeight: 1.5 }}>
+                {commonMistakes.map((mistake, idx) => (
+                  <li key={`final-hand-mistake-${idx}`} style={{ marginBottom: 4 }}>
+                    <MathRenderer content={String(mistake || "")} mode="prose" />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        ) : null}
       </div>
     );
   }
@@ -462,6 +512,20 @@ export default function SolutionStepsBlock({
             )}
           </div>
         </SectionRow>
+        {Array.isArray(commonMistakes) && commonMistakes.length > 0 ? (
+          <SectionRow label="MISTAKES" id={`${sectionId}-playback-mistakes`} hideLabel={false} style={{ borderLeft: "3px solid #f59e0b", background: "#fffbeb" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#b45309", marginBottom: 8, textTransform: "uppercase" }}>
+              Common Mistakes to Avoid
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 20, listStyleType: "disc", fontSize: 13, color: "#92400e", lineHeight: 1.6 }}>
+              {commonMistakes.map((mistake, index) => (
+                <li key={`${sectionId}-playback-mistake-${index}`} style={{ marginBottom: 4 }}>
+                  {mistake}
+                </li>
+              ))}
+            </ul>
+          </SectionRow>
+        ) : null}
       </div>
     );
   }
@@ -882,7 +946,29 @@ export default function SolutionStepsBlock({
                   />
                 ) : step.mathLatex ? (
                   <div style={{ marginTop: 8 }}>
-                    <MathRenderer content={step.mathLatex} mode={shouldRenderAsProse(step.mathLatex) ? "prose" : "block"} />
+                    {(shouldRenderAsProse(step.mathLatex) || hasBrokenInlineTextMath(step.mathLatex)) ? (
+                      <MathRenderer content={normalizeBrokenInlineTextMath(step.mathLatex)} mode="prose" />
+                    ) : (() => {
+                      const stepMathBlocks = parseLatexToBlocks(step.mathLatex);
+                      if (stepMathBlocks.length <= 1) {
+                        return <MathRenderer content={step.mathLatex} mode="block" />;
+                      }
+                      return stepMathBlocks.map((block, blockIndex) =>
+                        block.kind === "math" ? (
+                          <div key={`${sectionId}-step-${index}-math-${blockIndex}`}>
+                            {(shouldRenderAsProse(block.latex) || hasBrokenInlineTextMath(block.latex)) ? (
+                              <MathRenderer content={normalizeBrokenInlineTextMath(block.latex)} mode="prose" />
+                            ) : (
+                              <MathRenderer content={block.latex} mode="block" />
+                            )}
+                          </div>
+                        ) : (
+                          <div key={`${sectionId}-step-${index}-text-${blockIndex}`}>
+                            <MathRenderer content={block.text} mode="prose" />
+                          </div>
+                        )
+                      );
+                    })()}
                   </div>
                 ) : null}
                 {editable && !exportMode && (

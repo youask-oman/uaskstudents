@@ -231,6 +231,9 @@ export const documentReducer = (state: CanvasDocumentState, action: DocumentActi
       return { ...state, clipboard: action.clipboard };
     case "DELETE_PAGE": {
       if (state.pages.length <= 1) return state; // Prevent deleting the last page
+      const firstPageId = state.pages[0]?.id;
+      if (!firstPageId) return state;
+      if (action.pageId === firstPageId) return state; // Never delete the first page
 
       const newPages = state.pages.filter((p) => p.id !== action.pageId);
       const newActivePageId = state.activePageId === action.pageId

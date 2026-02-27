@@ -92,20 +92,22 @@ export async function parseApiError(res: Response): Promise<ApiError> {
 }
 
 function buildApiCandidates(): string[] {
-    return Array.from(
+    const absolute = Array.from(
         new Set(
             [
                 API_BASE_URL,
                 API_FALLBACK_URL,
                 "http://127.0.0.1:9000",
                 "http://localhost:9000",
-                "",
                 "http://127.0.0.1:9016",
                 "http://localhost:9016",
             ]
                 .map((x) => (x || "").trim())
+                .filter((x) => x.length > 0)
         )
     );
+    // Keep same-origin Next proxy as final fallback only.
+    return [...absolute, ""];
 }
 
 function joinApiUrl(base: string, path: string): string {
@@ -117,17 +119,29 @@ export async function fetchApi(path: string, init?: RequestInit): Promise<Respon
     const candidates = buildApiCandidates();
     let lastErr: unknown = null;
     let lastResponse: Response | null = null;
+    const maxAttemptsPerCandidate = 2;
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
     for (const base of candidates) {
-        try {
-            const res = await fetch(joinApiUrl(base, path), init);
-            if (res.status === 404 || res.status >= 500) {
-                lastResponse = res;
+        for (let attempt = 1; attempt <= maxAttemptsPerCandidate; attempt += 1) {
+            try {
+                const res = await fetch(joinApiUrl(base, path), init);
+                if (res.status === 404 || res.status >= 500) {
+                    lastResponse = res;
+                    if (attempt < maxAttemptsPerCandidate && (res.status === 502 || res.status === 503 || res.status === 504)) {
+                        await sleep(200 * attempt);
+                    }
+                    continue;
+                }
+                return res;
+            } catch (err) {
+                lastErr = err;
+                if (attempt < maxAttemptsPerCandidate) {
+                    await sleep(200 * attempt);
+                }
                 continue;
             }
-            return res;
-        } catch (err) {
-            lastErr = err;
         }
     }
 
