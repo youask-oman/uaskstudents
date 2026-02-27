@@ -1,0 +1,21 @@
+﻿{
+    "generated_at_utc":  "2026-02-27T04:13:58.1324536Z",
+    "files":  {
+                  "dump":  {
+                               "path":  "D:\\uaskstudents\\backups\\uask_db_20260226_201340.dump",
+                               "bytes":  13073251,
+                               "sha256":  "33353FE722C7F2606E4E5D986DD4BCAA5D00EFCA60E7EDB27B0EDB518F9C9A6D"
+                           },
+                  "sql":  {
+                              "path":  "d:\\uaskstudents\\backups\\uask_db_20260226_201340.sql",
+                              "bytes":  44214273,
+                              "sha256":  "FB1DDA68C4ADD499A341530C04D7C7E32A017DC595283B4A1D3E349B62056A00"
+                          },
+                  "schema_sql":  {
+                                     "path":  "d:\\uaskstudents\\backups\\uask_db_20260226_201340_schema.sql",
+                                     "bytes":  210868,
+                                     "sha256":  "D7EFF04BA711F7FAE6F4116823BB32B3CCACA24D2803EE7CFD2E3B265928427B"
+                                 }
+              },
+    "pg_restore_list_entries":  995
+}

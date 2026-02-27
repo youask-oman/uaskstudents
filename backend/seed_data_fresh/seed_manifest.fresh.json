@@ -1,0 +1,86 @@
+{
+  "files": {
+    "credit_transfers.json": {
+      "file": "credit_transfers.json",
+      "row_count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "table": "credit_transfers"
+    },
+    "creditprogramdefinition.json": {
+      "file": "creditprogramdefinition.json",
+      "row_count": 6,
+      "sha256": "a728b939d9032dca4abcf16775535b112ce5394ab677a2ae576c4704d634b441",
+      "table": "creditprogramdefinition"
+    },
+    "json_schemas.json": {
+      "file": "json_schemas.json",
+      "row_count": 5,
+      "sha256": "3b99c756cf26b0a4a27f735856bbecfef647ce926ed37a2f0502205628ee0f5f",
+      "table": "json_schemas"
+    },
+    "legal_documents.json": {
+      "file": "legal_documents.json",
+      "row_count": 2,
+      "sha256": "159d1782c5a522a612f420a9715e9a559764e9011dbd22fa1a5024afb0b50652",
+      "table": "legal_documents"
+    },
+    "notifications.json": {
+      "file": "notifications.json",
+      "row_count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "table": "notifications"
+    },
+    "plan.json": {
+      "file": "plan.json",
+      "row_count": 6,
+      "sha256": "37b0224a0175a0ba73a80425a222c3009db1501d44ac563bd2868663deda8d0a",
+      "table": "plan"
+    },
+    "prompt_bindings.json": {
+      "file": "prompt_bindings.json",
+      "row_count": 3,
+      "sha256": "eae7b6240ee190c2a959ff6c03c1602283903de157283b7cb0b0350ded1879fc",
+      "table": "prompt_bindings"
+    },
+    "prompt_templates.json": {
+      "file": "prompt_templates.json",
+      "row_count": 6,
+      "sha256": "117bab78c164230d8b684987734082b37e3687d8238c20a3a48cd1c7578d587f",
+      "table": "prompt_templates"
+    },
+    "providermodelpricing.json": {
+      "file": "providermodelpricing.json",
+      "row_count": 8,
+      "sha256": "eedd6b39ef0a0b27872a017b1c20e41204a06cba1c214e18a53eaf7587393358",
+      "table": "providermodelpricing"
+    },
+    "school.seed_source.json": {
+      "file": "school.seed_source.json",
+      "row_count": 120227,
+      "sha256": "cddd872975e694374cac323050fbbf8955992f2347d3f546f5c1652fe8844f1e",
+      "table": "school"
+    },
+    "systemconfig.json": {
+      "file": "systemconfig.json",
+      "row_count": 56,
+      "sha256": "6f78e99bfd3a6b53424cb1fdba5bbeffb6afefe81949cde4c7575ca4743bfe0b",
+      "table": "systemconfig"
+    },
+    "topupproduct.json": {
+      "file": "topupproduct.json",
+      "row_count": 4,
+      "sha256": "18d66bfde2c1271f7619735b9fb0d7a45cb0e4fe1906481421475fc90638ab47",
+      "table": "topupproduct"
+    },
+    "user.json": {
+      "file": "user.json",
+      "row_count": 7,
+      "sha256": "6d863413257b190fe75d328de4c1817445df622a0b155be36eea1027a4cef016",
+      "table": "user"
+    }
+  },
+  "generated_at_utc": "2026-02-27T04:13:08.391756+00:00",
+  "note": "Fresh export from live DB. Do not mix with legacy seed files.",
+  "source": "current_database",
+  "warnings": []
+}

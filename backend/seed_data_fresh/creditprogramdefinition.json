@@ -1,0 +1,137 @@
+[
+  {
+    "created_at": "2026-02-23T07:30:53.235035+00:00",
+    "created_by": null,
+    "description": null,
+    "display_price_monthly_usd": null,
+    "effective_from": "2026-02-23T07:30:53.235035+00:00",
+    "effective_to": null,
+    "entitlements": {
+      "allow_ocr": true,
+      "allow_plot": true,
+      "allow_research_tier": true,
+      "allow_verify": true,
+      "allow_voice": true,
+      "max_daily_research": 500,
+      "max_daily_solves": 1000
+    },
+    "gift_expiry_window_days": 60,
+    "id": 13,
+    "monthly_gift_credits": "2000.0000000000",
+    "name": "Enterprise Tier",
+    "purchase_bonus_rules": null,
+    "slug": "enterprise_tier",
+    "status": "active",
+    "updated_at": "2026-02-23T07:30:53.235035+00:00"
+  },
+  {
+    "created_at": "2026-02-23T07:30:53.239794+00:00",
+    "created_by": null,
+    "description": null,
+    "display_price_monthly_usd": null,
+    "effective_from": "2026-02-23T07:30:53.239794+00:00",
+    "effective_to": null,
+    "entitlements": {
+      "allow_ocr": true,
+      "allow_plot": true,
+      "allow_research_tier": false,
+      "allow_voice": false,
+      "max_daily_solves": 5
+    },
+    "gift_expiry_window_days": 30,
+    "id": 14,
+    "monthly_gift_credits": "10.0000000000",
+    "name": "Free Tier",
+    "purchase_bonus_rules": null,
+    "slug": "free_tier",
+    "status": "active",
+    "updated_at": "2026-02-23T07:30:53.239794+00:00"
+  },
+  {
+    "created_at": "2026-02-23T07:30:53.243156+00:00",
+    "created_by": null,
+    "description": null,
+    "display_price_monthly_usd": null,
+    "effective_from": "2026-02-23T07:30:53.243156+00:00",
+    "effective_to": null,
+    "entitlements": {
+      "allow_ocr": true,
+      "allow_plot": true,
+      "allow_research_tier": true,
+      "allow_verify": true,
+      "allow_voice": true,
+      "max_daily_research": 50,
+      "max_daily_solves": 200
+    },
+    "gift_expiry_window_days": 45,
+    "id": 15,
+    "monthly_gift_credits": "500.0000000000",
+    "name": "Pro Tier",
+    "purchase_bonus_rules": null,
+    "slug": "pro_tier",
+    "status": "active",
+    "updated_at": "2026-02-23T07:30:53.243156+00:00"
+  },
+  {
+    "created_at": "2026-02-23T07:30:53.245120+00:00",
+    "created_by": null,
+    "description": "Smoke test program updated",
+    "display_price_monthly_usd": null,
+    "effective_from": "2026-02-23T07:30:53.245120+00:00",
+    "effective_to": null,
+    "entitlements": {
+      "tier": "STANDARD"
+    },
+    "gift_expiry_window_days": 30,
+    "id": 16,
+    "monthly_gift_credits": "25.0000000000",
+    "name": "Smoke Program 1771167627 Updated",
+    "purchase_bonus_rules": null,
+    "slug": "smoke_program_1771167627",
+    "status": "archived",
+    "updated_at": "2026-02-23T07:30:53.245120+00:00"
+  },
+  {
+    "created_at": "2026-02-23T07:30:53.247401+00:00",
+    "created_by": null,
+    "description": "Smoke test program updated",
+    "display_price_monthly_usd": null,
+    "effective_from": "2026-02-23T07:30:53.247401+00:00",
+    "effective_to": null,
+    "entitlements": {
+      "tier": "STANDARD"
+    },
+    "gift_expiry_window_days": 30,
+    "id": 17,
+    "monthly_gift_credits": "25.0000000000",
+    "name": "Smoke Program 1771167719 Updated",
+    "purchase_bonus_rules": null,
+    "slug": "smoke_program_1771167719",
+    "status": "archived",
+    "updated_at": "2026-02-23T07:30:53.247401+00:00"
+  },
+  {
+    "created_at": "2026-02-23T07:30:53.249480+00:00",
+    "created_by": null,
+    "description": null,
+    "display_price_monthly_usd": null,
+    "effective_from": "2026-02-23T07:30:53.249480+00:00",
+    "effective_to": null,
+    "entitlements": {
+      "allow_ocr": true,
+      "allow_plot": true,
+      "allow_research_tier": true,
+      "allow_voice": true,
+      "max_daily_research": 10,
+      "max_daily_solves": 50
+    },
+    "gift_expiry_window_days": 30,
+    "id": 18,
+    "monthly_gift_credits": "100.0000000000",
+    "name": "Standard Tier",
+    "purchase_bonus_rules": null,
+    "slug": "standard_tier",
+    "status": "active",
+    "updated_at": "2026-02-23T07:30:53.249997+00:00"
+  }
+]

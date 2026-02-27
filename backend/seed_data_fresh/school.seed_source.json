@@ -1,0 +1,17 @@
+{
+  "files": {
+    "schools_ca.csv": {
+      "exists": true,
+      "path": "D:\\uaskstudents\\backend\\data\\schools_ca.csv",
+      "row_count": 18982,
+      "sha256": "cb11bb2420f3b5201e00cf38e991e08595b5a76b992186b481072de084b128c0"
+    },
+    "schools_us.csv": {
+      "exists": true,
+      "path": "D:\\uaskstudents\\backend\\data\\schools_us.csv",
+      "row_count": 101245,
+      "sha256": "b65f461988d2a86865c5fc40c0d946024c1b0689fa874a8fddb40384b5641ee8"
+    }
+  },
+  "source": "csv_only"
+}

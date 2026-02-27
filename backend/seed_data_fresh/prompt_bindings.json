@@ -1,0 +1,329 @@
+[
+  {
+    "attempt_fee": "1.0000000000",
+    "context_budget_tokens": null,
+    "created_at": "2026-02-23T07:30:53.172721+00:00",
+    "developer_prompt_id": "solve_dev_free_v2",
+    "features": {
+      "allow_plot": true,
+      "allow_research": false,
+      "allow_verify": true,
+      "daily_credit_cap": null,
+      "generated_images_monthly_cap": null,
+      "include_task_results": true,
+      "make_it_right_monthly_cap": null,
+      "model": "gpt-5-mini",
+      "ocr_monthly_cap": null,
+      "reasoning_effort": "low",
+      "voice_monthly_cap": null
+    },
+    "global_system_prompt_id": "global_system_prompt_openai_v1",
+    "id": "5460b7aa-7733-4f61-bac5-456c83234baa",
+    "is_active": true,
+    "json_retry_max_attempts": 1,
+    "json_retry_max_output_tokens": null,
+    "max_input_tokens": null,
+    "max_output_tokens": null,
+    "max_questions_allowed": 3,
+    "max_steps": null,
+    "mode": "SOLVE",
+    "multipliers": {
+      "credits": {
+        "attempt_fee": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        },
+        "plot_spec": 1,
+        "plot_trigger": 0,
+        "solve": {
+          "final": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "research": {
+            "snap_image": 5,
+            "snap_pdf": 6,
+            "text": 4,
+            "voice": 5
+          },
+          "short_steps": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "standard": {
+            "snap_image": 3,
+            "snap_pdf": 4,
+            "text": 2,
+            "voice": 3
+          }
+        },
+        "verify": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        }
+      },
+      "version": 1
+    },
+    "openai_prompt_cache_key_template": "solve:{TIER}:{MODE}:{DOMAIN_MODE}:{GRAPH_MODE}:{PREFERRED_RESPONSE_LANGUAGE}",
+    "openai_prompt_cache_retention": "24h",
+    "openai_prompt_id": "pmpt_699bd302d0f4819692162fd6066621fc011cbc57e13867cf",
+    "openai_prompt_use_latest": true,
+    "openai_prompt_variable_mapping": {
+      "ATTEMPT_ID": "attempt_id",
+      "DOMAIN_MODE": "domain_mode",
+      "GRAPH_MODE": "graph_mode",
+      "MAX_QUESTIONS": "max_questions",
+      "MODE": "mode",
+      "PREFERRED_RESPONSE_LANGUAGE": "preferred_response_language",
+      "QUESTIONS_JSON": "questions_json_str",
+      "REQUEST_ID": "request_id",
+      "TIER": "tier"
+    },
+    "openai_prompt_version": "2",
+    "output_schema_id": "youask_math_openai_v1",
+    "plot_addon_cost": "0E-10",
+    "plot_annotations_cap": 5,
+    "plot_points_cap": 25,
+    "plot_traces_cap": 5,
+    "provider": "openai",
+    "retry_cap_tokens": null,
+    "solve_snap_image_cost": "2.0000000000",
+    "solve_snap_pdf_cost": "3.0000000000",
+    "solve_text_cost": "5.0000000000",
+    "solve_voice_cost": "2.0000000000",
+    "system_schema_budget_tokens": null,
+    "temperature": 0.0,
+    "tier": "SHORT_STEPS",
+    "timeout_ms": 60000,
+    "top_p": 1.0,
+    "trim_strategy": "TRIM_CONTEXT_FIRST",
+    "updated_at": "2026-02-26T08:07:57.505109+00:00",
+    "updated_by": "admin@uask.ai",
+    "verify_addon_cost": "1.0000000000"
+  },
+  {
+    "attempt_fee": "1.0000000000",
+    "context_budget_tokens": null,
+    "created_at": "2026-02-23T07:30:53.179605+00:00",
+    "developer_prompt_id": "final_answer_system_prompt_openai_v1",
+    "features": {
+      "allow_plot": true,
+      "allow_research": false,
+      "allow_verify": true,
+      "daily_credit_cap": null,
+      "generated_images_monthly_cap": null,
+      "make_it_right_monthly_cap": null,
+      "model": "gpt-5-mini",
+      "ocr_monthly_cap": null,
+      "reasoning_effort": "low",
+      "voice_monthly_cap": null
+    },
+    "global_system_prompt_id": "global_system_prompt_openai_v1",
+    "id": "f09e50d8-93eb-4141-914a-01b41b1ee51e",
+    "is_active": true,
+    "json_retry_max_attempts": 1,
+    "json_retry_max_output_tokens": null,
+    "max_input_tokens": null,
+    "max_output_tokens": null,
+    "max_questions_allowed": 15,
+    "max_steps": null,
+    "mode": "SOLVE",
+    "multipliers": {
+      "credits": {
+        "attempt_fee": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        },
+        "plot_spec": 1,
+        "plot_trigger": 0,
+        "solve": {
+          "final": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "research": {
+            "snap_image": 5,
+            "snap_pdf": 6,
+            "text": 4,
+            "voice": 5
+          },
+          "short_steps": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "standard": {
+            "snap_image": 3,
+            "snap_pdf": 4,
+            "text": 2,
+            "voice": 3
+          }
+        },
+        "verify": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        }
+      },
+      "version": 1
+    },
+    "openai_prompt_cache_key_template": null,
+    "openai_prompt_cache_retention": null,
+    "openai_prompt_id": "pmpt_69a10f7b3b0881938a95a12172d977c00886cc849e1d9dd0",
+    "openai_prompt_use_latest": true,
+    "openai_prompt_variable_mapping": {
+      "ATTEMPT_ID": "attempt_id",
+      "DOMAIN_MODE": "domain_mode",
+      "MODE": "mode",
+      "PREFERRED_RESPONSE_LANGUAGE": "preferred_response_language",
+      "REQUEST_ID": "request_id",
+      "TIER": "tier"
+    },
+    "openai_prompt_version": "2",
+    "output_schema_id": "youask_math_openai_min_final_batch_v1",
+    "plot_addon_cost": "0E-10",
+    "plot_annotations_cap": 5,
+    "plot_points_cap": 25,
+    "plot_traces_cap": 5,
+    "provider": "openai",
+    "retry_cap_tokens": null,
+    "solve_snap_image_cost": "2.0000000000",
+    "solve_snap_pdf_cost": "3.0000000000",
+    "solve_text_cost": "3.0000000000",
+    "solve_voice_cost": "2.0000000000",
+    "system_schema_budget_tokens": null,
+    "temperature": 0.0,
+    "tier": "FINAL",
+    "timeout_ms": 60000,
+    "top_p": 1.0,
+    "trim_strategy": "TRIM_CONTEXT_FIRST",
+    "updated_at": "2026-02-27T03:30:53.247905+00:00",
+    "updated_by": "admin@uask.ai",
+    "verify_addon_cost": "1.0000000000"
+  },
+  {
+    "attempt_fee": "1.0000000000",
+    "context_budget_tokens": null,
+    "created_at": "2026-02-23T07:30:53.182890+00:00",
+    "developer_prompt_id": "solve_dev_detalied_openai_v1",
+    "features": {
+      "allow_plot": true,
+      "allow_research": false,
+      "allow_verify": true,
+      "daily_credit_cap": null,
+      "generated_images_monthly_cap": null,
+      "make_it_right_monthly_cap": null,
+      "model": "gpt-5-mini",
+      "ocr_monthly_cap": null,
+      "reasoning_effort": "low",
+      "voice_monthly_cap": null
+    },
+    "global_system_prompt_id": "global_system_prompt_openai_v1",
+    "id": "d11d98c8-569e-4089-9b71-aebe8c6d92af",
+    "is_active": true,
+    "json_retry_max_attempts": 1,
+    "json_retry_max_output_tokens": null,
+    "max_input_tokens": 8000,
+    "max_output_tokens": 20000,
+    "max_questions_allowed": 1,
+    "max_steps": null,
+    "mode": "SOLVE",
+    "multipliers": {
+      "credits": {
+        "attempt_fee": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        },
+        "plot_spec": 1,
+        "plot_trigger": 1,
+        "solve": {
+          "final": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "research": {
+            "snap_image": 5,
+            "snap_pdf": 6,
+            "text": 4,
+            "voice": 5
+          },
+          "short_steps": {
+            "snap_image": 2,
+            "snap_pdf": 3,
+            "text": 1,
+            "voice": 2
+          },
+          "standard": {
+            "snap_image": 3,
+            "snap_pdf": 4,
+            "text": 2,
+            "voice": 3
+          }
+        },
+        "verify": {
+          "final": 1,
+          "research": 2,
+          "short_steps": 1,
+          "standard": 1
+        }
+      },
+      "version": 1
+    },
+    "openai_prompt_cache_key_template": "solve:{TIER}:{MODE}:{DOMAIN_MODE}:{PREFERRED_RESPONSE_LANGUAGE}:{REQUEST_ID}",
+    "openai_prompt_cache_retention": null,
+    "openai_prompt_id": "pmpt_699d2ad64118819683cc98063af20a3f00d0a4a934391c15",
+    "openai_prompt_use_latest": true,
+    "openai_prompt_variable_mapping": {
+      "ATTEMPT_ID": "attempt_id",
+      "DOMAIN_MODE": "domain_mode",
+      "GRAPH_MODE": "graph_mode",
+      "MAX_QUESTIONS": "max_questions",
+      "MODE": "mode",
+      "PREFERRED_RESPONSE_LANGUAGE": "preferred_response_language",
+      "QUESTION": "question",
+      "QUESTIONS_JOINED": "questions_joined",
+      "QUESTIONS_JSON": "questions_json_str",
+      "REQUEST_ID": "request_id",
+      "TIER": "tier"
+    },
+    "openai_prompt_version": "1",
+    "output_schema_id": "youask_math_openai_detailed_v1",
+    "plot_addon_cost": "1.0000000000",
+    "plot_annotations_cap": 5,
+    "plot_points_cap": 25,
+    "plot_traces_cap": 5,
+    "provider": "openai",
+    "retry_cap_tokens": null,
+    "solve_snap_image_cost": "3.0000000000",
+    "solve_snap_pdf_cost": "4.0000000000",
+    "solve_text_cost": "16.0000000000",
+    "solve_voice_cost": "3.0000000000",
+    "system_schema_budget_tokens": null,
+    "temperature": 0.0,
+    "tier": "STANDARD",
+    "timeout_ms": 180000,
+    "top_p": 1.0,
+    "trim_strategy": "TRIM_CONTEXT_FIRST",
+    "updated_at": "2026-02-24T04:37:19.173539+00:00",
+    "updated_by": "admin@uask.ai",
+    "verify_addon_cost": "1.0000000000"
+  }
+]

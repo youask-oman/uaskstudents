@@ -1,0 +1,338 @@
+[
+  {
+    "description": "Allow selection of gpt-5 and gpt-5-nano in addition to gpt-5-mini",
+    "key": "ALLOW_ADVANCED_MODELS",
+    "updated_at": "2026-02-23T07:30:52.878772+00:00",
+    "value": "false"
+  },
+  {
+    "description": "Minimum account age (minutes) to allow transfer",
+    "key": "CREDIT_TRANSFER_ACCOUNT_AGE_MINUTES",
+    "updated_at": "2026-02-23T07:30:52.881766+00:00",
+    "value": "0"
+  },
+  {
+    "description": "Daily sender credit transfer cap",
+    "key": "CREDIT_TRANSFER_DAILY_CAP",
+    "updated_at": "2026-02-23T07:30:52.883682+00:00",
+    "value": "5000.0"
+  },
+  {
+    "description": "Enable credit transfer flow",
+    "key": "CREDIT_TRANSFER_ENABLED",
+    "updated_at": "2026-02-23T07:30:52.884991+00:00",
+    "value": "true"
+  },
+  {
+    "description": "Maximum credit transfer amount",
+    "key": "CREDIT_TRANSFER_MAX",
+    "updated_at": "2026-02-23T07:30:52.886010+00:00",
+    "value": "1000.0"
+  },
+  {
+    "description": "Minimum credit transfer amount",
+    "key": "CREDIT_TRANSFER_MIN",
+    "updated_at": "2026-02-23T07:30:52.887518+00:00",
+    "value": "1.0"
+  },
+  {
+    "description": "Days before pending transfers expire/refund",
+    "key": "CREDIT_TRANSFER_PENDING_EXPIRY_DAYS",
+    "updated_at": "2026-02-23T07:30:52.888522+00:00",
+    "value": "30"
+  },
+  {
+    "description": "Sender transfer rate limit per minute",
+    "key": "CREDIT_TRANSFER_PER_MIN_LIMIT",
+    "updated_at": "2026-02-23T07:30:52.890169+00:00",
+    "value": "10"
+  },
+  {
+    "description": "Enable in-app notifications",
+    "key": "NOTIFICATIONS_ENABLED",
+    "updated_at": "2026-02-23T07:30:52.890684+00:00",
+    "value": "true"
+  },
+  {
+    "description": "Notification thank action limit per minute",
+    "key": "NOTIFICATIONS_THANK_PER_MIN_LIMIT",
+    "updated_at": "2026-02-23T07:30:52.892688+00:00",
+    "value": "5"
+  },
+  {
+    "description": "Active solve clarification prompt ID",
+    "key": "SOLVE_CLARIFY_PROMPT_ID",
+    "updated_at": "2026-02-23T07:30:52.892688+00:00",
+    "value": "solve_clarification_patch_v1.txt"
+  },
+  {
+    "description": "Active solve clarification OpenAI response schema ID",
+    "key": "SOLVE_CLARIFY_SCHEMA_ID",
+    "updated_at": "2026-02-23T07:30:52.895524+00:00",
+    "value": "solve_clarification_patch_v1.schema.json"
+  },
+  {
+    "description": "Active solve main OpenAI response schema ID",
+    "key": "SOLVE_LLM_MIN_SCHEMA_ID",
+    "updated_at": "2026-02-23T07:30:52.896529+00:00",
+    "value": "solve_llm_min_v2.schema.json"
+  },
+  {
+    "description": "Enable local SymPy/NumPy solve path before LLM fallback (FINAL/SHORT tiers).",
+    "key": "SOLVE_LOCAL_SYMPY_NUMPY_ENABLED",
+    "updated_at": "2026-02-23T07:30:52.897530+00:00",
+    "value": "true"
+  },
+  {
+    "description": "Enable solve narrator pass",
+    "key": "SOLVE_NARRATOR_ENABLED",
+    "updated_at": "2026-02-23T07:30:52.899528+00:00",
+    "value": "false"
+  },
+  {
+    "description": "Active solve narrator prompt ID",
+    "key": "SOLVE_NARRATOR_PROMPT_ID",
+    "updated_at": "2026-02-23T07:30:52.900462+00:00",
+    "value": "solve_explain_narrator_v2_compact.txt"
+  },
+  {
+    "description": "Active solve orchestrator developer prompt ID",
+    "key": "SOLVE_ORCHESTRATOR_DEV_PROMPT_ID",
+    "updated_at": "2026-02-23T07:30:52.902097+00:00",
+    "value": "solve_orchestrator_developer_v2_compact.txt"
+  },
+  {
+    "description": "Legacy output contract prompt ID (unused by solve_v3)",
+    "key": "SOLVE_OUTPUT_CONTRACT_ID",
+    "updated_at": "2026-02-23T07:30:52.903668+00:00",
+    "value": "solve_output_contract_v2_compact.txt"
+  },
+  {
+    "description": "Active solve plot spec prompt ID",
+    "key": "SOLVE_PLOT_SPEC_PROMPT_ID",
+    "updated_at": "2026-02-23T07:30:52.905176+00:00",
+    "value": "solve_plot_spec_v2_compact.txt"
+  },
+  {
+    "description": "Active solve verification-repair prompt ID",
+    "key": "SOLVE_REPAIR_PROMPT_ID",
+    "updated_at": "2026-02-23T07:30:52.906778+00:00",
+    "value": "solve_repair_verification_patch_v1.txt"
+  },
+  {
+    "description": "Active solve repair OpenAI response schema ID",
+    "key": "SOLVE_REPAIR_SCHEMA_ID",
+    "updated_at": "2026-02-23T07:30:52.908404+00:00",
+    "value": "solve_repair_patch_v1.schema.json"
+  },
+  {
+    "description": "Active solve internal response schema ID",
+    "key": "SOLVE_SCHEMA_ID",
+    "updated_at": "2026-02-23T07:30:52.909939+00:00",
+    "value": "solve_superset_v2.schema.json"
+  },
+  {
+    "description": "Active solve system prompt ID",
+    "key": "SOLVE_SYSTEM_PROMPT_ID",
+    "updated_at": "2026-02-23T07:30:52.910983+00:00",
+    "value": "global_system_prompt_v2_compact.txt"
+  },
+  {
+    "description": "Solve tier policy JSON",
+    "key": "SOLVE_TIER_POLICY_JSON",
+    "updated_at": "2026-02-23T07:30:52.912535+00:00",
+    "value": "{}"
+  },
+  {
+    "description": "Use superset v2 solve pipeline for /solve_v3",
+    "key": "SOLVE_V3_USE_SUPERSET_V2",
+    "updated_at": "2026-02-23T07:30:52.914205+00:00",
+    "value": "true"
+  },
+  {
+    "description": null,
+    "key": "active_llm_provider",
+    "updated_at": "2026-02-23T07:30:52.915361+00:00",
+    "value": "openai"
+  },
+  {
+    "description": "Enable billing v2 stack.",
+    "key": "billing_v2_enabled",
+    "updated_at": "2026-02-23T07:30:52.916908+00:00",
+    "value": "true"
+  },
+  {
+    "description": "Percent of traffic routed to billing v2.",
+    "key": "billing_v2_rollout_percent",
+    "updated_at": "2026-02-23T07:30:52.918319+00:00",
+    "value": "100"
+  },
+  {
+    "description": "Enable credit program based subscriptions.",
+    "key": "credit_programs_enabled",
+    "updated_at": "2026-02-23T07:30:52.919841+00:00",
+    "value": "true"
+  },
+  {
+    "description": null,
+    "key": "ocr_configuration",
+    "updated_at": "2026-02-23T07:30:52.921593+00:00",
+    "value": "{\"dedupe_window_hours\": 24, \"local_engine_enabled\": true, \"local_ocr_credit\": 3, \"ocr_hold_ttl_minutes\": 5, \"openai_engine_enabled\": true, \"openai_model\": \"gpt-5-mini\", \"openai_ocr_credit\": 3, \"openai_schema_key\": \"openai_image_extract_v1.schema.json\", \"openai_system_prompt_key\": \"openai_ocr_system_prompt_v1.txt\", \"rate_limit_extract_per_min\": 5, \"solve_credit\": 3}"
+  },
+  {
+    "description": "Nightly reconciliation auto-fix toggle.",
+    "key": "reconciliation_autofix_enabled",
+    "updated_at": "2026-02-23T07:30:52.923167+00:00",
+    "value": "false"
+  },
+  {
+    "description": "Enable v2 refund APIs.",
+    "key": "refund_v2_enabled",
+    "updated_at": "2026-02-23T07:30:52.925300+00:00",
+    "value": "true"
+  },
+  {
+    "description": null,
+    "key": "text_input_max",
+    "updated_at": "2026-02-23T07:30:52.925824+00:00",
+    "value": "8000"
+  },
+  {
+    "description": "Max tokens for OCR image extraction",
+    "key": "tokens.ocr_image.extract_max",
+    "updated_at": "2026-02-23T07:30:52.927828+00:00",
+    "value": "2200"
+  },
+  {
+    "description": "Max input tokens for OCR image solve",
+    "key": "tokens.ocr_image.input_max",
+    "updated_at": "2026-02-23T07:30:52.928828+00:00",
+    "value": "1600"
+  },
+  {
+    "description": "Input overhead tokens for OCR image solve",
+    "key": "tokens.ocr_image.input_overhead",
+    "updated_at": "2026-02-23T07:30:52.930811+00:00",
+    "value": "500"
+  },
+  {
+    "description": "Max tokens for OCR PDF extraction",
+    "key": "tokens.ocr_pdf.extract_max",
+    "updated_at": "2026-02-23T07:30:52.931876+00:00",
+    "value": "4200"
+  },
+  {
+    "description": "Max input tokens for OCR PDF solve",
+    "key": "tokens.ocr_pdf.input_max",
+    "updated_at": "2026-02-23T07:30:52.933942+00:00",
+    "value": "2400"
+  },
+  {
+    "description": "Input overhead tokens for OCR PDF solve",
+    "key": "tokens.ocr_pdf.input_overhead",
+    "updated_at": "2026-02-23T07:30:52.935202+00:00",
+    "value": "500"
+  },
+  {
+    "description": "Max output tokens for OCR v5",
+    "key": "tokens.ocr_v5.output_max",
+    "updated_at": "2026-02-23T07:30:52.936231+00:00",
+    "value": "4200"
+  },
+  {
+    "description": "Expected output tokens for request fit",
+    "key": "tokens.request.expected_output_budget",
+    "updated_at": "2026-02-23T07:30:52.937996+00:00",
+    "value": "2200"
+  },
+  {
+    "description": "Estimated system+schema tokens",
+    "key": "tokens.request.system_and_schema_budget",
+    "updated_at": "2026-02-23T07:30:52.938996+00:00",
+    "value": "2800"
+  },
+  {
+    "description": "Max input tokens for text solve",
+    "key": "tokens.text.input_max",
+    "updated_at": "2026-02-23T07:30:52.940570+00:00",
+    "value": "4200"
+  },
+  {
+    "description": "Max input characters for text solve",
+    "key": "tokens.text.input_max_chars",
+    "updated_at": "2026-02-23T07:30:52.941573+00:00",
+    "value": "5500"
+  },
+  {
+    "description": "Max output tokens for detailed solve",
+    "key": "tokens.text.output_max_detailed_solve",
+    "updated_at": "2026-02-23T07:30:52.943036+00:00",
+    "value": "8000"
+  },
+  {
+    "description": "Max output tokens for detailed study",
+    "key": "tokens.text.output_max_detailed_study",
+    "updated_at": "2026-02-23T07:30:52.944275+00:00",
+    "value": "3500"
+  },
+  {
+    "description": "Max output tokens for minimal solve",
+    "key": "tokens.text.output_max_minimal_solve",
+    "updated_at": "2026-02-23T07:30:52.946444+00:00",
+    "value": "1600"
+  },
+  {
+    "description": "Max output tokens for minimal study",
+    "key": "tokens.text.output_max_minimal_study",
+    "updated_at": "2026-02-23T07:30:52.946964+00:00",
+    "value": "1900"
+  },
+  {
+    "description": "Retry max output tokens for detailed solve",
+    "key": "tokens.text.output_retry_cap_detailed_solve",
+    "updated_at": "2026-02-23T07:30:52.949369+00:00",
+    "value": "3200"
+  },
+  {
+    "description": "Retry max output tokens for detailed study",
+    "key": "tokens.text.output_retry_cap_detailed_study",
+    "updated_at": "2026-02-23T07:30:52.950383+00:00",
+    "value": "3600"
+  },
+  {
+    "description": "Max steps for detailed solve",
+    "key": "tokens.text.steps_detailed_solve",
+    "updated_at": "2026-02-23T07:30:52.951515+00:00",
+    "value": "9"
+  },
+  {
+    "description": "Max steps for detailed study",
+    "key": "tokens.text.steps_detailed_study",
+    "updated_at": "2026-02-23T07:30:52.952521+00:00",
+    "value": "13"
+  },
+  {
+    "description": "Max steps for minimal solve",
+    "key": "tokens.text.steps_minimal_solve",
+    "updated_at": "2026-02-23T07:30:52.954521+00:00",
+    "value": "2"
+  },
+  {
+    "description": "Max steps for minimal study",
+    "key": "tokens.text.steps_minimal_study",
+    "updated_at": "2026-02-23T07:30:52.956497+00:00",
+    "value": "3"
+  },
+  {
+    "description": "Max input tokens for voice solve",
+    "key": "tokens.voice.input_max",
+    "updated_at": "2026-02-23T07:30:52.957501+00:00",
+    "value": "1200"
+  },
+  {
+    "description": "Input overhead tokens for voice solve",
+    "key": "tokens.voice.input_overhead",
+    "updated_at": "2026-02-23T07:30:52.958912+00:00",
+    "value": "180"
+  }
+]
